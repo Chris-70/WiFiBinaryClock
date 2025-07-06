@@ -65,7 +65,7 @@ namespace BinaryClockShield
    //
 
    // Notes in the melody: (70)
-   const int BinaryClock::MelodyAlarm[] PROGMEM =
+   const unsigned BinaryClock::MelodyAlarm[] PROGMEM =
          {
          NOTE_A4,  NOTE_A4,  NOTE_A4,  NOTE_F4,  NOTE_C5,  NOTE_A4,  NOTE_F4,  NOTE_C5,
          NOTE_A4,  NOTE_E5,  NOTE_E5,  NOTE_E5,  NOTE_F5,  NOTE_C5,  NOTE_GS4, NOTE_F4,
@@ -78,24 +78,29 @@ namespace BinaryClockShield
          NOTE_F4,  NOTE_C5,  NOTE_A4,  NOTE_F4,  NOTE_C5,  NOTE_A4,
          };
 
+   #define NOTE_MS(N) (1000 / N) // Convert note duration to milliseconds
    // Note durations: 4 = quarter note, 8 = eighth note, etc.:
    // Some notes durations have been changed (1, 3, 6) to make them sound better
-   const byte BinaryClock::NoteDurations[] PROGMEM =
+   const unsigned long BinaryClock::NoteDurations[] PROGMEM =
          {
-         2, 2, 2, 3, 6, 2, 3, 6,
-         1, 2, 2, 2, 3, 6, 2, 3,
-         6, 1, 2, 3, 6, 2, 4, 4,
-         8, 8, 4, 3, 4, 2, 4, 4,
-         8, 8, 4, 3, 6, 2, 3, 6,
-         2, 3, 6, 1, 2, 3, 8, 2,
-         4, 4, 8, 8, 4, 4, 4, 2,
-         4, 4, 8, 8, 4, 4, 4, 2,
-         3, 8, 2, 3, 8, 1,
+         NOTE_MS(2), NOTE_MS(2), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6),
+         NOTE_MS(1), NOTE_MS(2), NOTE_MS(2), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6), NOTE_MS(2), NOTE_MS(3),
+         NOTE_MS(6), NOTE_MS(1), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6), NOTE_MS(2), NOTE_MS(4), NOTE_MS(4),
+         NOTE_MS(8), NOTE_MS(8), NOTE_MS(4), NOTE_MS(3), NOTE_MS(4), NOTE_MS(2), NOTE_MS(4), NOTE_MS(4),
+         NOTE_MS(8), NOTE_MS(8), NOTE_MS(4), NOTE_MS(3), NOTE_MS(6), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6),
+         NOTE_MS(2), NOTE_MS(3), NOTE_MS(6), NOTE_MS(1), NOTE_MS(2), NOTE_MS(3), NOTE_MS(8), NOTE_MS(2),
+         NOTE_MS(4), NOTE_MS(4), NOTE_MS(8), NOTE_MS(8), NOTE_MS(4), NOTE_MS(4), NOTE_MS(4), NOTE_MS(2),
+         NOTE_MS(4), NOTE_MS(4), NOTE_MS(8), NOTE_MS(8), NOTE_MS(4), NOTE_MS(4), NOTE_MS(4), NOTE_MS(2),
+         NOTE_MS(3), NOTE_MS(8), NOTE_MS(2), NOTE_MS(3), NOTE_MS(8), NOTE_MS(1),
          };
 
-   const int BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(int);           // Size of the melody array (e.g. 70 notes)
-   const int BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(byte); // Size of the note durations array (70)
+   // Calculate the number of elements in each array, then we validate they are the same size to catch definition errors.
+   const int BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(BinaryClock::MelodyAlarm[0]); 
+   const int BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(BinaryClock::NoteDurations[0]); 
    
+   CRGB BinaryClock::leds[NUM_LEDS] = {};        // Array of LED colors to display the current time
+   bool BinaryClock::binaryArray[NUM_LEDS] = {}; // Serial Debug: Array for binary representation of time
+
    // Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
    CRGB BinaryClock::OnColor[NUM_LEDS] = 
          {
@@ -111,11 +116,23 @@ namespace BinaryClockShield
          CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black                // Hours
          };
 
-   CRGB BinaryClock::leds[NUM_LEDS] = {};        // Array of LED colors to display the current time
-   bool BinaryClock::binaryArray[NUM_LEDS] = {}; // Serial Debug: Array for binary representation of time
-   
    // Flag to indicate the RTC interrupt was called (Class Global)
    volatile bool BinaryClock::RTCinterruptWasCalled;
+
+   // When the SERIAL_SETUP code is remove, redefine the method calls to be whitespace only
+   // This allows the code to compile without the serial setup code, but still allows the methods 
+   // to be "called" in the code without causing compilation errors (Must return void tp work).
+   #if SERIAL_SETUP != 1
+   #define serialStartInfo()
+   #define serialSettings()
+   #define serialAlarmInfo()
+   #define serialCurrentModifiedValue()
+   #endif 
+
+   // When the SERIAL_TIME code is remove, redefine the method calls to be whitespace only
+   #if SERIAL_TIME != 1
+   #define serialTime() 
+   #endif
 
    //################################################################################//
    // SETUP
@@ -124,8 +141,14 @@ namespace BinaryClockShield
       {
       #if SERIAL_SETUP || SERIAL_TIME
       Serial.begin(115200);
-      Serial.println("Binary Clock Shield for Arduino\n");
+      delay(10);
+      Serial.println("Binary Clock Shield for Arduino by Marcin Saj https://nixietester.com");
+         #if DEBUG_PIN > 0
+         Serial << "Serial Menu: " << (isSerialSetup ? "ON" : "OFF") << "; Serial Time: " << (isSerialTime ? "ON" : "OFF") << "\n";
+         #endif
       #endif
+
+      assert(melodySize == noteDurationsSize);  // Ensure the melody and note durations arrays are the same size
 
       RTC.begin();
       // Important power-up safety delay
@@ -136,15 +159,14 @@ namespace BinaryClockShield
 
       // Initialize LEDs
       FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-      FastLED.setBrightness(DEFAULT_BRIGHTNESS);
-
+      FastLED.setBrightness(brightness);
       // Initialize the buttons pins as an input
       pinMode(S1, INPUT);
       pinMode(S2, INPUT);
       pinMode(S3, INPUT);
 
       getAlarmTimeAndStatus();
-      serialStartInfo();
+      if (isSerialSetup) { serialStartInfo(); }
 
       // Configure an interrupt on the falling edge from the RTC INT/SQW output
       pinMode(INT, INPUT_PULLUP);
@@ -163,57 +185,166 @@ namespace BinaryClockShield
       RTC.squareWave(DS3232RTC::SQWAVE_1_HZ);
       }
 
-   void BinaryClock::RTCinterrupt()
-      {
-      BinaryClock::RTCinterruptWasCalled = true;
-      }
-
    //################################################################################//
    // MAIN LOOP
    //################################################################################//
    void BinaryClock::loop()
       {
-      settingsMenu();
+      #if HARDWARE_DEBUG
+      checkHardwareDebugPin();
+      #endif
+
+      settingsMenu();   // Check if the settings menu is active and handle button presses
 
       if (BinaryClock::RTCinterruptWasCalled && (settingsOption == 0))   // Display time but not during settings
          {
          BinaryClock::RTCinterruptWasCalled = false;       // Clear the interrupt flag
          getAndDisplayTime();                              // Get time from RTC, convert to binary format and display on LEDs
-         serialTime();                                // Use serial monitor for showing current time 
+         
+         #if SERIAL_TIME
+         if (isSerialTime) { Serial << "Time: "; serialTime(); }               // Use serial monitor for showing current time 
+         #endif
 
          if ((RTC.alarm(DS3232RTC::ALARM_2)) & (alarmStatus == 2))
             {
             #if SERIAL_TIME
-            Serial << "   ALARM!\n";
+            if (isSerialTime) { Serial << "   ALARM!\n"; }
             #endif  
+
             playAlarm();
             }
          }
       }
 
+   //################################################################################//
+   /// @brief Default Constructor for the BinaryClock class.
+   /// This initializes the button states, settings options, and brightness.
+   /// It also assigns the melody and note durations arrays to the class members.
    BinaryClock::BinaryClock() :
-         countButtonPressed(0),                     // Initialize the button counter
-         S1state(LOW),                              // Initialize the S1 button state
-         S2state(LOW),                              // Initialize the S2 button state
-         S3state(LOW),                              // Initialize the S3 button state
-         lastreadS1(LOW),                           // Initialize the last read S1 button state
-         lastreadS2(LOW),                           // Initialize the last read S2 button state
-         lastreadS3(LOW),                           // Initialize the last read S3 button state
-         settingsOption(0),                          // Initialize the settings option
-         settingsLevel(0)                            // Initialize the settings level
+         countButtonPressed(0),                 // Initialize the button counter
+         settingsOption(0),                     // Initialize the settings option
+         settingsLevel(0),                      // Initialize the settings level
+         brightness(DEFAULT_BRIGHTNESS)         // Initialize the brightness
       {
-      melodyAlarm = (int*)MelodyAlarm;          // Assign the melody array to the pointer
+      melodyAlarm = (unsigned *)MelodyAlarm;    // Assign the melody array to the pointer
       melodySize = MelodySize;                  // Assign the size of the melody array
-      noteDurations = (byte*)NoteDurations;     // Assign the note durations array to the pointer
+      noteDurations = (byte *)NoteDurations;    // Assign the note durations array to the pointer
       noteDurationsSize = NoteDurationsSize;    // Assign the size of the note
-      assert(melodySize == noteDurationsSize);  // Ensure the melody and note durations arrays are the same size
+
+      #if HARDWARE_DEBUG
+      pinMode(DEBUG_PIN, INPUT_PULLUP);        // Set the debug pin as input with pull-up resistor
+      if (digitalRead(DEBUG_PIN) == CA_ON)     // If the debug pin is grounded
+         {
+         Serial.println("Debug pin is grounded. Serial setup and time will be enabled.");
+         isSerialSetup = true;                  // Enable serial setup
+         isSerialTime = true;                   // Enable serial time
+         }
+      #endif
       }
    
+   //################################################################################//
+   /// @brief Destructor for the BinaryClock class.
+   /// This destructor is empty as there is no dynamic memory allocation in this class.
    BinaryClock::~BinaryClock()
       {
       // Destructor
       // No dynamic memory allocation, nothing to clean up
       }
+
+   //################################################################################//
+   /// @brief Interrupt handler for the RTC. Just set a flag to indicate the interrupt was called.
+   /// This function is called when the RTC INT/SQW output goes low, indicating one second has passed.
+   void BinaryClock::RTCinterrupt()
+      {
+      BinaryClock::RTCinterruptWasCalled = true;
+      }
+
+   void BinaryClock::set_Time(tmElements_t& value)
+      {
+      RTC.write(value);    // Set the time in the RTC
+      }
+
+   tmElements_t& BinaryClock::get_Time()
+      {
+      if (RTC.read(tempTime) != 0) 
+         {
+         // Failure, return 0;
+         breakTime(0, tempTime);  
+         }
+   
+      return tempTime;
+      }
+
+   void BinaryClock::set_Alarm(AlarmTime& value)
+      {
+      // Set the alarm time and status in the RTC
+      RTC.setAlarm(DS3232RTC::ALM2_MATCH_HOURS, value.minute, value.hour, 0);
+      RTC.alarm(DS3232RTC::ALARM_2); // Clear the alarm status flag 'A2F'
+      RTC.alarmInterrupt(DS3232RTC::ALARM_2, (value.status == 1)); // Alarm ON/OFF
+      }
+
+   AlarmTime& BinaryClock::get_Alarm()
+      {
+      int status;
+      getAlarmTimeAndStatus(tempAlarmTime.hour, tempAlarmTime.minute, status);
+      tempAlarmTime.status = (alarmStatus - 1); // Convert, so 0 = inactive, 1 = active
+
+      return tempAlarmTime;
+      }
+
+   bool BinaryClock::get_isSerialSetup() const
+      {
+      #if SERIAL_SETUP
+      return isSerialSetup;
+      #else
+      return false;
+      #endif
+      }
+
+   void BinaryClock::set_isSerialSetup(bool value)
+      {
+      #if SERIAL_SETUP
+      isSerialSetup = value;
+      #endif
+      }
+
+   bool BinaryClock::get_isSerialTime() const
+      {
+      #if SERIAL_TIME
+      return isSerialTime;
+      #else
+      return false;
+      #endif
+      }
+
+   void BinaryClock::set_isSerialTime(bool value)
+      {
+      #if SERIAL_TIME
+      isSerialTime = value;
+      #endif
+      }
+
+   void BinaryClock::set_Brightness(byte value)
+      {
+      brightness = value;
+      FastLED.setBrightness(brightness); // Set the brightness of the LEDs
+      }
+
+   byte BinaryClock::get_Brightness() const
+      {
+      return brightness;
+      }
+
+   void BinaryClock::set_DebugOffDelay(unsigned long value)
+      {
+      debugDelay = value;
+      }
+
+   unsigned long BinaryClock::get_DebugOffDelay() const
+      {
+      return debugDelay;
+      }
+
 
    //################################################################################//
    // SETTINGS
@@ -254,30 +385,34 @@ namespace BinaryClockShield
    // +---------+-----------+---------------+---------------+
    //
    // The core of the settings menu
+   
+   /// @brief This function handles the settings menu for the Binary Clock.
+   /// It allows the user to set the time and alarm, modify the current value, and
+   /// save the modified value. The settings menu is navigated using the buttons S1, S2, and S3.
    void BinaryClock::settingsMenu()
       {
       // Main menu
       if ((settingsOption == 0) & (settingsLevel == 0))
          {
          // Time settings
-         if (checkS1() == HIGH)
+         if (isButtonOnNew(buttonS1))
             {
             t = RTC.get();                          // Read time from RTC 
             settingsOption = 1;                     // Set time option settings
             settingsLevel = 1;                      // Set hour level settings
             setCurrentModifiedValue();              // Assign hours for modify +/- 
-            serialSettings();                  // Use serial monitor for showing settings
+            if (isSerialSetup) { serialSettings(); }// Use serial monitor for showing settings
             displayCurrentModifiedValue();          // Display current hour on LEDs
             }
 
          // Alarm settings
-         if (checkS3() == HIGH)
+         if (isButtonOnNew(buttonS3))
             {
             getAlarmTimeAndStatus();                // Read alarm time and status from RTC
             settingsOption = 3;                     // Set Alarm time option settings
             settingsLevel = 1;                      // Set hour level settings
             setCurrentModifiedValue();              // Assign hours for modify +/-
-            serialSettings();                  // Use serial monitor for showing settings
+            if (isSerialSetup) { serialSettings(); }// Use serial monitor for showing settings
             displayCurrentModifiedValue();          // Display current alarm hour on LEDs 
             }
          }
@@ -285,52 +420,52 @@ namespace BinaryClockShield
       // Any settings option level except main menu
       if (settingsLevel != 0)
          {
-         // Decrement
-         if (checkS1() == HIGH)
+         // Decrement - if the buttonS1 was just pressed
+         if (isButtonOnNew(buttonS1))
             {
-            countButtonPressed--;                   // Decrement current value e.g. hour, minute, second, alarm status
-            checkCurrentModifiedValueFormat();      // Check if the value has exceeded the range e.g minute = 60 and correct
-            displayCurrentModifiedValue();          // Display current modified value on LEDs 
-            serialCurrentModifiedValue();      // Use serial monitor for showing settings
+            countButtonPressed--;                  // Decrement current value e.g. hour, minute, second, alarm status
+            checkCurrentModifiedValueFormat();     // Check if the value has exceeded the range e.g minute = 60 and correct
+            displayCurrentModifiedValue();         // Display current modified value on LEDs 
+            if (isSerialSetup) { serialCurrentModifiedValue(); }  // Use serial monitor for showing settings
             }
 
-         // Increment
-         if (checkS3() == HIGH)
+         // Increment - if the buttonS3 was just pressed
+         if (isButtonOnNew(buttonS3)) 
             {
-            countButtonPressed++;                   // Increment current value e.g. hour, minute, second, alarm status
-            checkCurrentModifiedValueFormat();      // Check if the value has exceeded the range e.g minute = 60 and correct
-            displayCurrentModifiedValue();          // Display current modified value on LEDs  
-            serialCurrentModifiedValue();      // Use serial monitor for showing settings 
+            countButtonPressed++;                  // Increment current value e.g. hour, minute, second, alarm status
+            checkCurrentModifiedValueFormat();     // Check if the value has exceeded the range e.g minute = 60 and correct
+            displayCurrentModifiedValue();         // Display current modified value on LEDs  
+            if (isSerialSetup) { serialCurrentModifiedValue(); }  // Use serial monitor for showing settings
             }
 
-         // Save
-         if (checkS2() == HIGH)
+         // Save if buttonS@ was just pressed
+         if (isButtonOnNew(buttonS2))
             {
-            saveCurrentModifiedValue();             // Save current value e.g. hour, minute, second, alarm status     
-            settingsLevel++;                        // Go to next settings level - hour => minute => second / alarm status 
+            saveCurrentModifiedValue();            // Save current value e.g. hour, minute, second, alarm status     
+            settingsLevel++;                       // Go to next settings level - hour => minute => second / alarm status 
 
-            if (settingsLevel > 3)                  // If escape from settings then return to main menu
+            if (settingsLevel > 3)                 // If escape from settings then return to main menu
                {
                if (settingsOption == 1)            // If you were in the process of setting the time:   
                   {
-                  setNewTime();                  // Save time to the RTC
+                  setNewTime();                    // Save time to the RTC
                   }
 
                if (settingsOption == 3)            // If you were in the process of setting the alarm: 
                   {
-                  setAlarmTimeAndStatus();        // Save time and alarm status to the RTC    
+                  setAlarmTimeAndStatus();         // Save time and alarm status to the RTC    
                   }
 
-               serialAlarmInfo();             // Show the time and alarm status info when you exit to the main menu
+               serialAlarmInfo();                  // Show the time and alarm status info when you exit to the main menu
                settingsLevel = 0;                  // Escape to main menu  
                settingsOption = 0;                 // Escape to main menu
                }
-            else                                    // If you do not go to the main menu yet
+            else                                   // If you do not go to the main menu yet
                {
                checkCurrentModifiedValueFormat();  // Check if the value has exceeded the range e.g minute = 60 and correct                  
                setCurrentModifiedValue();          // Assign next variable for modify +/- hour => minute => second / alarm status
                displayCurrentModifiedValue();      // Display current modified value on LEDs                
-               serialSettings();              // Use serial monitor for showing settings
+               if (isSerialSetup) { serialSettings(); }  // Use serial monitor for showing settings
                }
             }
          }
@@ -438,30 +573,33 @@ namespace BinaryClockShield
    // Get alarm time and convert it from BCD to DEC format
    // Get alarm status active/inactive
    ////////////////////////////////////////////////////////////////////////////////////
-   void BinaryClock::getAlarmTimeAndStatus()
+   void BinaryClock::getAlarmTimeAndStatus() { return getAlarmTimeAndStatus(hourAlarm, minuteAlarm, alarmStatus); }
+   ////////////////////////////////////////////////////////////////////////////////////
+   void BinaryClock::getAlarmTimeAndStatus(int &alarmHour, int &alarmMinute, int &alarmStatus)
       {
       // Alarm Time HH:MM
       // 0x0B - alarm2 minute register address - check DS3231 datasheet
       // minutes using 7 bits of that register 
-      minuteAlarm = RTC.readRTC(0x0B);
-      minuteAlarm = ((minuteAlarm & 0b01110000) >> 4) * 10 + (minuteAlarm & 0b00001111);
+      alarmMinute = RTC.readRTC(0x0B);
+      alarmMinute = ((alarmMinute & 0b01110000) >> 4) * 10 + (alarmMinute & 0b00001111);
 
       // 0x0C - alarm2 hour register address - check DS3231 datasheet 
       // hours using 6 bits of that register 
-      hourAlarm = RTC.readRTC(0x0C);
-      hourAlarm = ((hourAlarm & 0b00110000) >> 4) * 10 + (hourAlarm & 0b00001111);
+      alarmHour = RTC.readRTC(0x0C);
+      alarmHour = ((alarmHour & 0b00110000) >> 4) * 10 + (alarmHour & 0b00001111);
 
       // Alarm Status active/inactive
       // Check bit 2 of the control register - A2IE
       // if 1 - alarm active, if 0 - alarm inactive 
-      byte currentAlarmStatus = RTC.readRTC(0x0E) && 0b00000010;
+      byte currentAlarmStatus = RTC.readRTC(0x0E) & 0b00000010;
 
       // alarmStatus: 1 - alarm inactive, 2 - alarm active   
       // it is the simplest way to display alarm status on LEDs (bottom S-row)
       // because with 0 and 1 - for 0 no LEDs lit, and this could be misleading
-      if (currentAlarmStatus == 0) alarmStatus = 1;
-      else if (currentAlarmStatus == 1) alarmStatus = 2;
+      if (currentAlarmStatus == 0) { alarmStatus = 1; }
+      else if (currentAlarmStatus) { alarmStatus = 2; }
       }
+
    ////////////////////////////////////////////////////////////////////////////////////
    // Set alarm time and status
    ////////////////////////////////////////////////////////////////////////////////////
@@ -489,11 +627,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Write time to RTC
    ////////////////////////////////////////////////////////////////////////////////////
-   void BinaryClock::setNewTime()
-      {
-      // Save the time stored in tmElements_t tm structure
-      RTC.write(tm);
-      }
+   void BinaryClock::setNewTime() { set_Time(tm); }
 
    ////////////////////////////////////////////////////////////////////////////////////
    // Get time from RTC and convert to BIN format
@@ -501,9 +635,13 @@ namespace BinaryClockShield
    void BinaryClock::getAndDisplayTime()
       {
       // Read time from RTC  
-      t = RTC.get();
-      // Convert time to binary format and display     
-      convertDecToBinaryAndDisplay(hour(t), minute(t), second(t));
+      // t = RTC.get();
+      // // Convert time to binary format and display     
+      // convertDecToBinaryAndDisplay(hour(t), minute(t), second(t));
+      if (RTC.read(tm) == 0) 
+         { // Success
+         convertDecToBinaryAndDisplay(tm.Hour, tm.Minute, tm.Second);
+         } 
       }
 
    ////////////////////////////////////////////////////////////////////////////////////
@@ -511,7 +649,6 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow)
       {
-      bool oneBit;
       // A fast and efficient way to convert decimal to binary format and to set the individual LED colors
       // The original code ran in a hard-coded loop extracting on bit at a time from the decimal value
       // and setting the corresponding LED color based on whether the bit was 0 or 1
@@ -520,7 +657,7 @@ namespace BinaryClockShield
       // This results in a faster execution time and less code complexity, easier to maintain.
       // Using a MACRO to handle SERIAL_TIME compiles where the serial output is used, and 'binaryArray[]' is required.
       // Performing the assignment to 'binaryArray[]' then testing the result for non-zero to assign the colour
-      #ifdef SERIAL_TIME
+      #if SERIAL_TIME
       // If SERIAL_TIME is defined, we need to keep track of the binary representation of the time
       #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
             leds[led_num] = (binaryArray[led_num] = ((value) & (bitmask))) ? on_color : off_color;
@@ -564,52 +701,45 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::playAlarm()
       {
-      bool stopAlarm = LOW;
-      int howManyTimes = 0;
       unsigned long millis_time_now = 0;
+      unsigned long noteDuration;
 
-      // // Count how many notes are in the melody
-      // int allNotes = sizeof(NoteDurations);
-
-      while ((howManyTimes < alarmRepeatMax) & (stopAlarm == LOW))
+      for (int i = 0; i < alarmRepeatMax; i++)
          {
          for (int thisNote = 0; thisNote < noteDurationsSize; thisNote++)  // Changed from: allNotes
             {
-            // To calculate the note duration, take one second divided by the note type.
-            // e.g. quarter note = 1000 / 4, eighth note = 1000/8, etc.
-            int noteDuration = 1000 / pgm_read_byte(&noteDurations[thisNote]);
-            tone(PIEZO, pgm_read_word(&melodyAlarm[thisNote]), noteDuration);
+            noteDuration = noteDurations[thisNote];
+            // Create the tone with the note frequency and duration for the current note
+            tone(PIEZO, melodyAlarm[thisNote], noteDuration);
 
             // To distinguish the notes, set a minimum time between them.
-            // The note's duration + 30% seems to work well:
-            int pauseBetweenNotes = noteDuration * 1.30;
+            // The note's duration + 30% seems to work well; using 31.25% to remove floating point math (25% + 6.25%).
+            int pauseBetweenNotes = noteDuration + (noteDuration >> 2) + (noteDuration >> 4); // 1.3125 instead of 1.30;
 
-            // Millis time start
+            // Millis time start, time 0 for this note pause
             millis_time_now = millis();
 
             // Pause between notes
             while (millis() < millis_time_now + pauseBetweenNotes)
                {
                // Stop alarm melody and go to main menu
-               if (checkS2() == HIGH)
+               if (isButtonOnNew(buttonS2))
                   {
                   // Prepare for escape to main menu
                   settingsLevel = 0;
                   settingsOption = 0;
-                  stopAlarm = 1;
 
                   // Stop the tone playing
                   noTone(PIEZO);
+
+                  // Exit we are done. Escape to main menu
+                  return;
                   }
                }
 
-            // Escape to main menu
-            if (stopAlarm == 1) break;
-
-            // Stop the tone playing
+            // Stop the tone playing between notes
             noTone(PIEZO);
             }
-         howManyTimes++;
          }
       }
 
@@ -617,133 +747,50 @@ namespace BinaryClockShield
    // CHECK BUTTONS
    //################################################################################//
 
-   ////////////////////////////////////////////////////////////////////////////////////
-   // Check if the S1 button has been pressed
-   ////////////////////////////////////////////////////////////////////////////////////
-   int BinaryClock::checkS1()
+   bool BinaryClock::isButtonOnNew(ButtonState &button)
       {
+      bool result = false;
+
       // Read the state of the push button into a local variable:
-      bool currentreadS1 = digitalRead(S1);
+      int currentread = digitalRead(button.pin);
+      unsigned long currentReadTime = millis();
 
       // Check to see if you just pressed the button
       // (i.e. the input went from LOW to HIGH), and you've waited long enough
       // since the last press to ignore any noise:
 
       // Check if button changed, due to noise or pressing:
-      if (currentreadS1 != lastreadS1)
+      if (currentread != button.lastRead)
          {
          // Reset the debouncing timer
-         lastDebounceTime = millis();
+         button.lastDebounceTime = currentReadTime;
          }
 
-      if ((millis() - lastDebounceTime) > debounceDelay)
+      if ((currentReadTime - button.lastDebounceTime) > debounceDelay)
          {
          // Whatever the reading is at, it's been there for longer than the debounce
          // delay, so take it as the actual current state:
 
          // If the button state has changed:
-         if (currentreadS1 != S1state)
+         if (currentread != button.state)
             {
-            S1state = currentreadS1;
+            Serial << currentReadTime << " Button " << button.pin << " state changed from " 
+                   << button.state << " to " << currentread ; 
+            button.state = currentread;
+            button.lastReadTime = currentReadTime; // Save the time of the last state change
+            Serial << " at " << button.lastReadTime << endl;
 
             // Return 1 only if the new button state is HIGH
-            if (S1state == HIGH)
+            if (button.state == button.onValue)
                {
-               lastreadS1 = currentreadS1;
-               return 1;
+               result = true;
                }
             }
          }
 
       // Save S1 button state. Next time through the loop, it'll be the lastreadS2:
-      lastreadS1 = currentreadS1;
-      return 0;
-      }
-
-   ////////////////////////////////////////////////////////////////////////////////////
-   // Check if the S2 button has been pressed
-   ////////////////////////////////////////////////////////////////////////////////////
-   int BinaryClock::checkS2()
-      {
-      // Read the state of the push button into a local variable:
-      bool currentreadS2 = digitalRead(S2);
-
-      // Check to see if you just pressed the button
-      // (i.e. the input went from LOW to HIGH), and you've waited long enough
-      // since the last press to ignore any noise:
-
-      // Check if button changed, due to noise or pressing:
-      if (currentreadS2 != lastreadS2)
-         {
-         // Reset the debouncing timer
-         lastDebounceTime = millis();
-         }
-
-      if ((millis() - lastDebounceTime) > debounceDelay)
-         {
-         // Whatever the reading is at, it's been there for longer than the debounce
-         // delay, so take it as the actual current state:
-
-         // If the button state has changed:
-         if (currentreadS2 != S2state)
-            {
-            S2state = currentreadS2;
-
-            // Return 1 only if the new button state is HIGH
-            if (S2state == HIGH)
-               {
-               lastreadS2 = currentreadS2;
-               return 1;
-               }
-            }
-         }
-
-      // Save S2 button state. Next time through the loop, it'll be the lastreadS2:
-      lastreadS2 = currentreadS2;
-      return 0;
-      }
-
-   ////////////////////////////////////////////////////////////////////////////////////
-   // Check if the S3 button has been pressed
-   ////////////////////////////////////////////////////////////////////////////////////
-   int BinaryClock::checkS3()
-      {
-      // Read the state of the push button into a local variable:
-      bool currentreadS3 = digitalRead(S3);
-
-      // Check to see if you just pressed the button
-      // (i.e. the input went from LOW to HIGH), and you've waited long enough
-      // since the last press to ignore any noise:
-
-      // Check if button changed, due to noise or pressing:
-      if (currentreadS3 != lastreadS3)
-         {
-         // Reset the debouncing timer
-         lastDebounceTime = millis();
-         }
-
-      if ((millis() - lastDebounceTime) > debounceDelay)
-         {
-         // Whatever the reading is at, it's been there for longer than the debounce
-         // delay, so take it as the actual current state:
-
-         // If the button state has changed:
-         if (currentreadS3 != S3state)
-            {
-            S3state = currentreadS3;
-
-            // Return 1 only if the new button state is HIGH
-            if (S3state == HIGH)
-               {
-               lastreadS3 = currentreadS3;
-               return 1;
-               }
-            }
-         }
-
-      // Save S3 button state. Next time through the loop, it'll be the lastreadS3:
-      lastreadS3 = currentreadS3;
-      return 0;
+      button.lastRead = currentread;
+      return result;
       }
 
    //################################################################################//
@@ -753,30 +800,33 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Print Time in DEC & BIN format
    ////////////////////////////////////////////////////////////////////////////////////
+   #if SERIAL_TIME
    void BinaryClock::serialTime()
       {
-      #if SERIAL_TIME
-      Serial << ("DEC:");
-      Serial << ((hour(t) < 10) ? "0" : "") << _DEC(hour(t)) << (":");
-      Serial << ((minute(t) < 10) ? "0" : "") << _DEC(minute(t)) << (":");
-      Serial << ((second(t) < 10) ? "0" : "") << _DEC(second(t)) << ("  ");
+      Serial << ("Time DEC: ");
+      // Serial << ((hour(t) < 10) ? "0" : "") << _DEC(hour(t)) << (":");
+      // Serial << ((minute(t) < 10) ? "0" : "") << _DEC(minute(t)) << (":");
+      // Serial << ((second(t) < 10) ? "0" : "") << _DEC(second(t)) << ("  ");
+      Serial << ((tm.Hour   < 10) ? "0" : "") << _DEC(tm.Hour)   << (":");
+      Serial << ((tm.Minute < 10) ? "0" : "") << _DEC(tm.Minute) << (":");
+      Serial << ((tm.Second < 10) ? "0" : "") << _DEC(tm.Second) << ("  ");
 
-      Serial << ("BIN:");
+      Serial << ("BIN: ");
       for (int i = 16; i >= 0; i--)
          {
          if (i == 11 || i == 5) Serial << (" ");
          Serial << (binaryArray[i] ? "1" : "0"); // Print 1 or 0 for each LED
          }
       Serial << endl;
-      #endif 
       }
+   #endif 
 
+   #if SERIAL_SETUP
    ////////////////////////////////////////////////////////////////////////////////////
    // Show the Shield settings menu and alarm status
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::serialStartInfo()
       {
-      #if SERIAL_SETUP
       Serial << F("-------------------------------------") << endl;
       Serial << F("------- BINARY CLOCK SHIELD ---------") << endl;
       Serial << F("----------- FOR ARDUINO -------------") << endl;
@@ -800,7 +850,6 @@ namespace BinaryClockShield
          }
 
       Serial << endl << endl;
-      #endif  
       }
 
    ////////////////////////////////////////////////////////////////////////////////////
@@ -808,7 +857,6 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::serialSettings()
       {
-      #if SERIAL_SETUP
       if (settingsOption == 1)
          {
          Serial << endl << endl;
@@ -851,7 +899,6 @@ namespace BinaryClockShield
             Serial << (" ");
             }
          }
-      #endif       
       }
 
    ////////////////////////////////////////////////////////////////////////////////////
@@ -859,7 +906,6 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::serialAlarmInfo()
       {
-      #if SERIAL_SETUP
       Serial << endl << endl;
       Serial << F("-------------------------------------") << endl;
       Serial << F("---- Alarm Time: ");
@@ -874,7 +920,6 @@ namespace BinaryClockShield
       Serial << endl;
       Serial << F("-------------------------------------") << endl;
       Serial << endl;
-      #endif   
       }
 
    ////////////////////////////////////////////////////////////////////////////////////
@@ -882,7 +927,6 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    void BinaryClock::serialCurrentModifiedValue()
       {
-      #if SERIAL_SETUP
       if ((settingsLevel == 3) & (settingsOption == 3))
          {
          Serial << (countButtonPressed == 2 ? "ON" : "");
@@ -894,6 +938,29 @@ namespace BinaryClockShield
          }
 
       Serial << (" ");
-      #endif   
       }
-   }
+   #endif // SERIAL_SETUP
+   
+   #if HARDWARE_DEBUG
+   void BinaryClock::checkHardwareDebugPin()
+      {
+      // Check if the hardware debug pin is set
+      if (isButtonOnNew(buttonDebug)) 
+         {
+         set_isSerialSetup(true); // Set the serial setup flag to true
+         set_isSerialTime( true); // Set the serial time flag to true
+         // buttonDebug.lastReadTime = millis(); // Update the last debug time
+         Serial << F("Hardware debug pin is set. Serial output enabled.") << endl;
+         }
+      else if (isSerialSetup && !buttonDebug.isPressed() && ((millis() - buttonDebug.lastReadTime) > debugDelay)) 
+         {
+         set_isSerialSetup(false); // Reset the serial setup flag
+         set_isSerialTime( false); // Reset the serial time flag
+         Serial << F("Hardware debug pin is not set. Serial output disabled. ") << (millis() - buttonDebug.lastReadTime) 
+               << " millis: " << millis() << " Last Read: " << buttonDebug.lastReadTime << endl;
+         }
+      }
+   #endif
+   }  // END OF NAMESPACE BinaryClockShield && BINARY CLOCK CLASS code
+   //################################################################################//
+   
