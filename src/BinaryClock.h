@@ -155,7 +155,7 @@ namespace BinaryClockShield
    #define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
    #define COLOR_ORDER         GRB        // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
-   #define DEFAUT_DEBOUNCE_DELAY     50   // The default debounce delay in milliseconds for the buttons
+   #define DEFAULT_DEBOUNCE_DELAY    50   // The default debounce delay in milliseconds for the buttons
    #define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness 20-60
    #define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
    #define ALARM_1 1                      // Alarm 1
@@ -409,7 +409,7 @@ namespace BinaryClockShield
       int countButtonPressed;             // Counter for button pressed
       static volatile bool RTCinterruptWasCalled;   // Flag for RTC interrupt was called
 
-      unsigned long debounceDelay = DEFAUT_DEBOUNCE_DELAY; // The debounce time for a button press.
+      unsigned long debounceDelay = DEFAULT_DEBOUNCE_DELAY; // The debounce time for a button press.
 
       // Variables that store the current settings option
       int settingsOption = 0;               // Time = 1, Alarm = 3  
