@@ -69,7 +69,7 @@
 #define _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
 
 #include <FastLED.h>            // https://github.com/FastLED/FastLED
-#include <DS3232RTC.h>          // https://github.com/JChristensen/DS3232RTC
+#include <RTCLib.h>             // Adafruit RTC library: https://github.com/adafruit/RTClib
 #include <Streaming.h>          // https://github.com/janelia-arduino/Streaming                            
 #include "pitches.h"            // Need to create the pitches.h library: https://arduino.cc/en/Tutorial/ToneMelody
 
@@ -81,18 +81,21 @@ namespace BinaryClockShield
    //#define ATMELUNO           // If defined, the code will use ATMEL UNO board definitions
 
    // This determines if the menu and/or time are also displayed on the serial monitor.
-   // If SERIAL_SETUP is defined, code of the serial menu to display is included in the project.
-   // If SERIAL_TIME  is defined, code of the serial menu to display is included in the project.
-   // The SERIAL_ON   is used to determine if the serial messages are displayed by default or not.
+   // If SERIAL_SETUP is defined, code to display the serial menu is included in the project.
+   // If SERIAL_TIME  is defined, code to display the serial time, every second, is included in the project.
+   // The DEFAULT_SERIAL_SETUP and DEFAULT_SERIAL_TIME values are used to determine if the serial 
+   //                 Setup and/or Time messages are displayed initially or not.
    //                 use the public methods 'set_isSerialSetup()' and 'set_isSerialTime()' to
-   //                 enable/disable the serial output at runtime. SERIAL_ON only controls the initial state.
-   #define SERIAL_SETUP  1      // If 1 (true) - serial setup ON, if false serial setup OFF
-   #define SERIAL_TIME   1      // If 1 (true) - serial time  ON, if false serial time  OFF
-   #define SERIAL_ON     0      // If 1 (true) - The serial message(s) are on by default (if enabled above).
+   //                 enable/disable the serial output at runtime. H/W buttons, if defined, 
+   //                 can also be used to enable/disable the serial output at runtime.
+   #define SERIAL_SETUP  true         // If (true) - serial setup ON, if false serial setup OFF
+   #define SERIAL_TIME   true         // If (true) - serial time  ON, if false serial time  OFF
+   #define DEFAULT_SERIAL_SETUP  true // Initial serial setup display value (allow the setup)
+   #define DEFAULT_SERIAL_TIME  false // Initial serial time display value
 
    #if defined(ESP32_D1_R32) || defined(ESP32UNO) // ESP32 Wemos D1 R32 UNO board definitions
       // ESP32 UNO pin definitions
-      #define INT          25        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define RTC_INT      25        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
       #define PIEZO        23        // The number of the Piezo pin
       #define LED_PIN      32        // Data pin that LEDs data will be written out. Requires ESP32UNO board modification to use pin 32
                                      // If you use ESP32UNO board, you need to modify the ESP32UNO board by removing the connector at pin 34
@@ -103,24 +106,41 @@ namespace BinaryClockShield
       #define S2   4    
       #define S3   2 
 
-      // Debug PIN to print out over serial monitor if grounded at startup 
+      // Debug Time PIN to print out the current time over serial monitor (if grounded)
       // The SERIAL_MENU and/or SERIAL_TIME are defined (i.e. 1) in order
-      // to compile the code and make them available. 
-      #define DEBUG_PIN 27 // Set to 0 to disable the debug pin
+      // to compile the code and make them available. They can also be set
+      // in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
+      // 'void BinaryClock::set_isSerialTime(bool value)' methods.
+      // The debug time and setup pins are used to enable/disable the serial output at runtime.
+      // without the need to change the software. The Serial Time is a switch to enable/disable 
+      // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
+      // to toggle enable/disable the serial setup display. 
+      // When the PIN value is -1 (-ve) the associated code is removed.
+      #define DEBUG_TIME_PIN  27 // Set to -1 to disable the Serial Time display control by H/W
+      #define DEBUG_SETUP_PIN 16 // Set to -1 to disable the Serial Setup display control by H/W
 
    #elif defined(ATMELUNO)   // Standard Arduino UNO board definitions with the ATMEL chip
-      // Arduino UNO ATMEL pin definitions
-   #define INT           3         // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
-   #define PIEZO         11        // The number of the Piezo pin
-   #define LED_PIN       A3        // Data pin that LEDs data will be written out over
+      // Arduino UNO ATMEL 328 based pin definitions
+      #define RTC_INT        3        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define PIEZO         11        // The number of the Piezo pin
+      #define LED_PIN       A3        // Data pin that LEDs data will be written out over
 
-   #define S1  A2                  // Push buttons connected to the A0, A1, A2 Arduino pins
-   #define S2  A1    
-   #define S3  A0 
-      // Debug PIN to print out over serial monitor if grounded at startup 
+      #define S1  A2                  // Push buttons connected to the A0, A1, A2 Arduino pins
+      #define S2  A1    
+      #define S3  A0 
+
+      // Debug Time PIN to print out the current time over serial monitor (if grounded)
       // The SERIAL_MENU and/or SERIAL_TIME are defined (i.e. 1) in order
-      // to compile the code and make them available. 
-      #define DEBUG_PIN 0 // Set to 0 to disable the debug pin
+      // to compile the code and make them available. They can also be set
+      // in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
+      // 'void BinaryClock::set_isSerialTime(bool value)' methods.
+      // The debug time and setup pins are used to enable/disable the serial output at runtime.
+      // without the need to change the software. The Serial Time is a switch to enable/disable 
+      // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
+      // to toggle enable/disable the serial setup display. 
+      // When the PIN value is -1 (-ve) the associated code is removed.
+      #define DEBUG_TIME_PIN  6 // Set to -1 to disable the Serial Time display control by H/W
+      #define DEBUG_SETUP_PIN 5 // Set to -1 to disable the Serial Setup display control by H/W
 
    #else
       #error "Unsupported board. Please define the pin numbers for your board."
@@ -135,22 +155,28 @@ namespace BinaryClockShield
    #define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
    #define COLOR_ORDER         GRB        // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
+   #define DEFAUT_DEBOUNCE_DELAY     50   // The default debounce delay in milliseconds for the buttons
    #define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness 20-60
    #define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
+   #define ALARM_1 1                      // Alarm 1
+   #define ALARM_2 2                      // Alarm 2
+   
+   #define DEFAULT_DEBUG_SETUP true       // Initial debug serial setup display value (allow the setup)
+   #define DEFAULT_DEBUG_TIME false       // Initial debug serial time display value (don't display the time)
+   #define DEFAULT_DEBUG_OFF_DELAY 1024   // Default delay to turn off serial monitor after pin goes OFF
+   #define HARDWARE_DEBUG (DEBUG_TIME_PIN >= 0 || DEBUG_SETUP_PIN >= 0) && (SERIAL_TIME || SERIAL_SETUP) 
 
-   #define DEFAULT_DEBUG_OFF_DELAY 5000   // Default delay to turn off serial monitor after pin goes HIGH
-   #define HARDWARE_DEBUG (DEBUG_PIN > 0) && (SERIAL_TIME || SERIAL_SETUP)
+   #define CA_ON   LOW                    // The value when ON  for CA connections
+   #define CC_ON  HIGH                    // The value when ON  for CC connections
+   #define CA_OFF HIGH                    // The value when OFF for CA connections
+   #define CC_OFF  LOW                    // The value when OFF for CC connections
 
-   #define CA_ON LOW                      // The value when the button is pressed for CA connections
-   #define CC_ON HIGH                     // The value when the button is pressed for CC connections
-   #define CA_OFF HIGH                    // The value when the button is not pressed for CA connections
-   #define CC_OFF LOW                     // The value when the button is not pressed for CC connections
-   #define DEFAUT_DEBOUNCE_DELAY 50       // The default debounce delay in milliseconds for the buttons
    typedef struct alarmTime
       {
-      int hour;          // Hour of the alarm (0-23)
-      int minute;        // Minute of the alarm (0-59)
-      int status;        // Status of the alarm: 0 - inactive, 1 - active
+      int      number;        // The number of the alarm: 1 or 2
+      DateTime time;          // The time of the alarm as a DateTime object
+      int      melody;        // The melody to play when the alarm is triggered, 0 = internal melody
+      int      status;        // Status of the alarm: 0 - inactive, 1 - active
       } AlarmTime;
 
    /// @brief The structure that holds the state of a button.
@@ -160,14 +186,34 @@ namespace BinaryClockShield
    typedef struct buttonState
       {
       uint8_t pin;                     // The button pin number: e.g. S1, S2, S3, etc.
-      volatile int state;                       // The current state of the button: LOW or HIGH
-      volatile int lastRead;                    // The last read state of the button: LOW or HIGH
-      volatile unsigned long lastReadTime;      // The last time the button was read
-      volatile unsigned long lastDebounceTime;  // The last debounce time in milliseconds
+      int state;                       // The current state of the button: LOW or HIGH
+      int lastRead;                    // The last read state of the button: LOW or HIGH
+      unsigned long lastReadTime;      // The last time the button was read
+      unsigned long lastDebounceTime;  // The last debounce time in milliseconds
       int onValue;                     // The button value when pressed, HIGH (CC) or LOW (CA)
       bool isPressed() const           // True if the button is currently pressed, false otherwise
          { return (state == onValue); }  
       } ButtonState;
+
+   #define DS3231_CONTROL              0x0E  // Control register address for DS3231
+   #define DS3231_STATUS               0x0F  // Status register address for DS3231
+   #define DS3231_TEMP_MSB             0x11  // Temperature MSB register address for DS3231
+   #define DS3231_TEMP_LSB             0x12  // Temperature LSB register address for DS3231
+   #define DS3231_ALARM1               0x07  // Alarm 1 register address for DS3231
+   #define DS3231_ALARM2               0x0B  // Alarm 2 register address for DS3231
+   #define DS3231_ALARM1_MODE_MASK     0x0F  // Mask for Alarm 1 mode in control register
+   #define DS3231_ALARM2_MODE_MASK     0x0C  // Mask for Alarm 2 mode in control register
+   #define DS3231_ALARM1_STATUS_MASK   0x01  // Mask for Alarm 1 status in control register
+   #define DS3231_ALARM2_STATUS_MASK   0x02  // Mask for Alarm 2 status in control register
+
+   /// @brief The class that extends the RTCLib's RTC_DS3231 class to add raw read/write methods
+   /// @note  This class is a hack for now as the RTCLib does not provide a way to read/write raw registers.
+   class RTCLibPlusDS3231 : public RTC_DS3231
+      {
+   public:
+      uint8_t rawRead(uint8_t reg);
+      void rawWrite(uint8_t reg, uint8_t value);
+      };
 
    class BinaryClock
       {
@@ -238,12 +284,12 @@ namespace BinaryClockShield
       /// @brief The method called to set the current 'Time' property.
       /// @param tm The tmElements_t structure containing the current time.
       /// @note The tmElements_t structure is defined in the Arduino Time Library.
-      void set_Time(tmElements_t &value);
+      void set_Time(DateTime &value);
 
       /// @brief The method called to get the current 'Time' property.
       /// @return A reference to the tmElements_t structure containing the current time.
       /// @note The returned tmElements_t is overwritten on each call. Make a local copy if needed.
-      tmElements_t& get_Time();
+      DateTime get_Time();
 
       /// @brief The method called to set the current 'Alarm' property.
       /// @param alarmTime The AlarmTime structure containing the alarm time and status.
@@ -255,7 +301,7 @@ namespace BinaryClockShield
       /// @brief The method called to get the current 'Alarm' property
       /// @return A reference to the AlarmTime structure containing the alarm time and status.
       /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
-      AlarmTime& get_Alarm();
+      AlarmTime get_Alarm(int number = ALARM_2);
 
       /// @brief
       bool get_isSerialSetup() const;
@@ -264,7 +310,7 @@ namespace BinaryClockShield
       void set_isSerialTime(bool value);
 
       void set_Brightness(byte value); 
-      byte get_Brightness() const;
+      byte get_Brightness();
 
       void set_DebugOffDelay(unsigned long value);
       unsigned long get_DebugOffDelay() const;
@@ -331,17 +377,19 @@ namespace BinaryClockShield
       static CRGB OffColor[NUM_LEDS]     PROGMEM; // Colors for the LEDs when OFF
 
    protected:
-      DS3232RTC RTC;                               // Create RTC object
+      RTCLibPlusDS3231 RTC;                              // Create RTC object using Adafruit RTCLib library
 
       static CRGB leds[NUM_LEDS] PROGMEM;          // Array of LED colors to display the current time
       static bool binaryArray[NUM_LEDS] PROGMEM;   // Serial Debug: Array for binary representation of time
 
       // t variable for Arduino Time Library 
       time_t t;
-      tmElements_t tm;
+      // tmElements_t tm;
       // See the Arduino Time Library for details on the tmElements_t structure: 
       // http://playground.arduino.cc/Code/Time
       // https://github.com/PaulStoffregen/Time  
+      AlarmTime alarm1 = { .number = ALARM_1, .melody = 0, .status = 0 };
+      AlarmTime alarm2 = { .number = ALARM_2, .melody = 0, .status = 0 };
 
       // Note durations: 4 = quarter note, 8 = eighth note, etc.:
       // Some notes durations have been changed (1, 3, 6) to make them sound better
@@ -351,12 +399,14 @@ namespace BinaryClockShield
       static const int           NoteDurationsSize; // Size of the note durations array
 
    private:
-      ButtonState buttonS1    = { .pin = S1, .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = HIGH };
-      ButtonState buttonS2    = { .pin = S2, .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = HIGH };
-      ButtonState buttonS3    = { .pin = S3, .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = HIGH };
-      ButtonState buttonDebug = { .pin = DEBUG_PIN, .state = CA_OFF, .lastRead = CA_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CA_ON };
+      ButtonState buttonS1          = { .pin = S1,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
+      ButtonState buttonS2          = { .pin = S2,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
+      ButtonState buttonS3          = { .pin = S3,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
+      ButtonState buttonDebugTime   = { .pin = DEBUG_TIME_PIN,  .state = CA_OFF, .lastRead = CA_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CA_ON };
+      ButtonState buttonDebugSetup  = { .pin = DEBUG_SETUP_PIN, .state = CA_OFF, .lastRead = CA_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CA_ON };
 
-      int countButtonPressed;                // Counter for button pressed
+      DateTime time;                      // Current time from the RTC
+      int countButtonPressed;             // Counter for button pressed
       static volatile bool RTCinterruptWasCalled;   // Flag for RTC interrupt was called
 
       unsigned long debounceDelay = DEFAUT_DEBOUNCE_DELAY; // The debounce time for a button press.
@@ -365,19 +415,14 @@ namespace BinaryClockShield
       int settingsOption = 0;               // Time = 1, Alarm = 3  
       int settingsLevel = 0;                // Hours = 1, Minutes = 2, Seconds / On/Off Alarm = 3
 
-      // Variables that store the current alarm time and status
-      int hourAlarm = 0;
-      int minuteAlarm = 0;
-      int alarmStatus = 0;
-      AlarmTime tempAlarmTime = {0, 0, 0}; // Temporary alarm time 
-      tmElements_t tempTime = {0, 0, 0, 0, 0, 0, 0}; // Temporary time structure
-
       int alarmRepeatMax = DEFAULT_ALARM_REPEAT;   // Maximum alarm repeat count
       int alarmRepeatCount = 0;                    // Current alarm repeat count
       byte brightness = DEFAULT_BRIGHTNESS;        // Brightness of the LEDs, 0-255
 
-      bool isSerialSetup = (SERIAL_SETUP == 1) && (SERIAL_ON == 1); // Serial setup flag
-      bool isSerialTime  = (SERIAL_TIME  == 1) && (SERIAL_ON == 1); // Serial time flag   
+      char buffer[64] = { 0 };
+
+      bool isSerialSetup = (SERIAL_SETUP) && (DEFAULT_SERIAL_SETUP); // Serial setup flag
+      bool isSerialTime  = (SERIAL_TIME)  && (DEFAULT_SERIAL_TIME);  // Serial time flag   
 
       unsigned long debugDelay = DEFAULT_DEBUG_OFF_DELAY;
       };
