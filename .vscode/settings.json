@@ -1,3 +1,17 @@
 {
-    "idf.portWin": "COM9"
+   "idf.portWin": "COM9",
+   "cSpell.words": [
+      "Adafruit",
+      "ATMEL",
+      "ATMELUNO",
+      "Clib",
+      "EEPROM",
+      "espressif",
+      "FASTLED",
+      "INTCN",
+      "mikalhart",
+      "Milliamps",
+      "PIEZO",
+      "Wemos"
+   ]
 }

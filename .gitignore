@@ -1,3 +1,4 @@
 .pio
 .vscode
 *.code-workspace
+BinaryClock_ESP32.code-workspace
