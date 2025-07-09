@@ -21,6 +21,7 @@ void setup()
 
    // put your setup code here, to run once:
    BinaryClock::get_Instance().setup();
+   BinaryClock::get_Instance().set_Brightness(20);
    }
 
 void loop()
