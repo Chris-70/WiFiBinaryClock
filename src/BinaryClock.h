@@ -55,8 +55,8 @@
 // This file has been adapted from the original Example; "11-BinaryClock-24H-RTCInterruptAlarmButtons.ino" file as published
 // on the Binary Clock Shield for Arduino GitHub repository: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 // The original file was modified to be encapsulated in a class, BinaryClock. The class encapsulates all the functionality
-// of the "Binary Clock Shield for Arduino." Modifications were made to support the ESP32 UNO platform and to allow
-// greater flexibility by the user at runtime, such as the color selection and melodies used for the alarm.
+// of the "Binary Clock Shield for Arduino by Marcin Saj." Modifications were made to support the ESP32 UNO platform and to
+// allow greater flexibility by the user at runtime, such as the color selection and melodies used for the alarm.
 // 
 // The goal of using an ESP32 based UNO board was to allow the RTC to be connected to a NTP server over WiFi. The code
 // for the WiFi connection is encapsulated in its own class, WiFiClock, which is not included in this file. It uses 
@@ -103,8 +103,8 @@ namespace BinaryClockShield
       // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
       // to toggle enable/disable the serial setup display. 
       // When the PIN value is -1 (-ve) the associated code is removed.
-      #define DEBUG_SETUP_PIN 16 // Set to -1 to disable the Serial Setup display control by H/W (CC)
-      #define DEBUG_TIME_PIN  -1 // 27 // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN 16 // Set to -1 to disable the Serial Setup display control by H/W (CA)
+      #define DEBUG_TIME_PIN  27 // Set to -1 to disable the Serial Time display control by H/W (CA)
 
    #elif defined(ATMELUNO)   // Standard Arduino UNO board definitions with the ATMEL chip
       // Arduino UNO ATMEL 328 based pin definitions
@@ -145,8 +145,8 @@ namespace BinaryClockShield
    #define DEFAULT_DEBOUNCE_DELAY    50   // The default debounce delay in milliseconds for the buttons
    #define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness 20-60
    #define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
-   #define ALARM_1 1                      // Alarm 1
-   #define ALARM_2 2                      // Alarm 2
+   #define ALARM_1 1                      // Alarm 1 t, available on the RTC DS3231, adds seconds.
+   #define ALARM_2 2                      // Alarm 2, the default alarm used by the shield.
    
    #define CA_ON   LOW                    // The value when ON  for CA connections
    #define CC_ON  HIGH                    // The value when ON  for CC connections
@@ -173,6 +173,7 @@ namespace BinaryClockShield
 
    /// @brief The structure holds all the Alarm information used by the Binary Clock.
    /// @note  The 'melody' selection has not been implemented, it will always use the internal melody
+   /// @author Chris-80 (2025/07)
    typedef struct alarmTime
       {
       int      number;        // The number of the alarm: 1 or 2
@@ -185,6 +186,7 @@ namespace BinaryClockShield
    ///        It contains the pin number, current state, last read state, last read time
    ///        the onValue (the value when the button is pressed) for CC or CA connections.
    ///        The isPressed() method returns true if the button is currently pressed, false otherwise.
+   /// @author Chris-80 (2025/07)
    typedef struct buttonState
       {
       uint8_t pin;                     // The button pin number: e.g. S1, S2, S3, etc.
@@ -210,13 +212,40 @@ namespace BinaryClockShield
 
    /// @brief The class that extends the RTCLib's RTC_DS3231 class to add raw read/write methods
    /// @note  This class is a hack for now as the RTCLib does not provide a way to read/write raw registers.
+   /// @author Chris-80 (2025/07)
    class RTCLibPlusDS3231 : public RTC_DS3231
       {
    public:
+      /// @brief Wrapper for the 'RTC_I2C::read_register' method to read a register from the DS3231 RTC.
+      /// @details This method reads a single byte from the specified register of the DS3231
+      /// @param reg The DS3231 register number to read.
+      /// @return The register value that was read.
       uint8_t rawRead(uint8_t reg);
+
+      /// @brief Wrapper for the 'RTC_I2C::write_register' method to write a value to a register in the DS3231 RTC.
+      /// @details This method writes a single byte to the specified register of the DS3231
+      /// @param reg The DS3231 register number to write to.
+      /// @param value The value to write to the register.
       void rawWrite(uint8_t reg, uint8_t value);
       };
 
+   /// @brief The BinaryClock class encapsulates the functionality of the Binary Clock Shield for Arduino.
+   ///        It provides all the methods needed to initialize, set the date/time, set the alarm, and 
+   ///        change the brightness and LED colors in addition to handling the LED display.
+   /// @details The class has public methods to get/set the time, alarm, alarm melody, and brightness.
+   ///          It also has methods to handle the settings menu on a serial display. Refactoring the 
+   ///          original example code into a class was done to pair it with another class that handles
+   ///          the WiFi connection and allows the user to change the LED colors and melodies used for
+   ///          the alarm at runtime, without needing to recompile the code. The original code and shield design
+   ///          targeted an Arduino UNO board, this is designed for an ESP32 based UNO board, such as 
+   ///          the Wemos D1 R32 UNO or the new ESP32-S3 UNO. The ides is to connect to a NTP server over WiFi.
+   /// @remarks This class is designed to be used with the 'Binary Clock Shield for Arduino' by 
+   ///          Marcin Saj (available from: https://nixietester.com), original source code: 
+   ///          https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
+   ///          This classes uses the Adafruit RTCLib library for the RTC functionality 
+   ///          (https://github.com/adafruit/RTClib) in place of the original DS3232RTC library by 
+   ///          Jack Christensen (https://github.com/JChristensen/DS3232RTC) used in the original code.
+   /// @author  Chris-80 (2025/07)
    class BinaryClock
       {
    public:
@@ -275,22 +304,28 @@ namespace BinaryClockShield
       ///        The S1 button sets the Time, S3 sets the Alarm, S2 accepts
       ///        the current modified value and moves to the next line.
       ///        The S1 and S3 buttons increment/decrement the current modified value.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
+      /// @author Chris-80 (2025/07)
       void settingsMenu();
 
       /// @brief The method called to play the alarm melody.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       void playAlarm();
 
       //#################################################################################//
       // PROPERTIES
       //#################################################################################//
+
       /// @brief The method called to set the current 'Time' property.
-      /// @param tm The tmElements_t structure containing the current time.
-      /// @note The tmElements_t structure is defined in the Arduino Time Library.
+      /// @param value The DateTime object containing the current time to set.
+      /// @note The DateTime class is defiend in the RTCLib.h header file.
+      /// @author Chris-80 (2025/07)
       void set_Time(DateTime &value);
 
       /// @brief The method called to get the current 'Time' property.
-      /// @return A reference to the tmElements_t structure containing the current time.
-      /// @note The returned tmElements_t is overwritten on each call. Make a local copy if needed.
+      /// @return A DateTime object containing the current time.
+      /// @note The DateTime class is defiend in the RTCLib.h header file.
+      /// @author Chris-80 (2025/07)
       DateTime get_Time();
 
       /// @brief The method called to set the current 'Alarm' property.
@@ -298,37 +333,61 @@ namespace BinaryClockShield
       /// @note The AlarmTime structure contains the hour, minute, and status of the alarm
       ///       The status is 0 for inactive, 1 for active.
       ///       Hours are 0 to 23.
+      /// @author Chris-80 (2025/07)
       void set_Alarm(AlarmTime &value);
 
       /// @brief The method called to get the default 'Alarm' property
-      /// @return A reference to the AlarmTime structure containing the alarm time and status.
+      /// @return An AlarmTime structure containing the alarm time and status.
       /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
+      /// @author Chris-80 (2025/07)
       AlarmTime get_Alarm() { return getAlarm(ALARM_2); }
 
       /// @brief The method called to get the 'AlarmTime' for alarm 'number'
       /// @param number The alarm number: 1 or 2. Alarm 2 is the default alarm.
-      /// @return A reference to the AlarmTime structure containing the alarm time and status.
+      /// @return An AlarmTime structure containing the alarm time and status.
       /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
       /// @design This method was included as a workaround to allow the user to get alarm 1
-      ///         without breaking the property pattern for the Alarm.
+      ///         without breaking the property pattern for the Alarm, so no '_' after get....
+      /// @author Chris-80 (2025/07)
       AlarmTime getAlarm(int number);
 
-      /// @brief Property pattern for the 'isSerialSetup' property.
+      /// @brief Property pattern for the 'isSerialSetup' flag property.
+      ///        This property controls whether the serial setup menu is displayed or not.
+      /// @author Chris-80 (2025/07)
       void set_isSerialSetup(bool value);
       bool get_isSerialSetup() const;
 
-      /// @brief Property pattern for the 'isSerialTime' property.
+      /// @brief Property pattern for the 'isSerialTime' flag property.
+      ///        This property controls whether the serial time is displayed or not.
+      /// @author Chris-80 (2025/07)
       void set_isSerialTime(bool value);
       bool get_isSerialTime() const ;
 
-      /// @brief Property pattern for the 'Brightness' property.
+      /// @brief Property pattern for the LED 'Brightness' property.
+      ///        This property controls the brightness of the LEDs, 0-255, 20-30 is normal
+      /// @author Chris-80 (2025/07)
       void set_Brightness(byte value); 
       byte get_Brightness();
 
-      /// @brief Property pattern for the 'DebugOffDelay' property.
+      /// @brief Property pattern for the 'DebugOffDelay' property. This controls how fast 
+      ///        the serial time monitor is turned off after the debug pin goes OFF.
+      /// @author Chris-80 (2025/07)
       void set_DebugOffDelay(unsigned long value);
       unsigned long get_DebugOffDelay() const;
 
+      /// @brief Method to convert a DateTime value to a string inline. This method takes the format as a parameter
+      ///        and copies it to the buffer before calling DateTime.toString() and returning the result.
+      /// @note  The DateTime.toString(char *buffer) method reads the buffer parameter to extract the 
+      ///        formatting string before performing the conversion, placing the result back in the buffer and
+      ///        returning a pointer to the same buffer. This forces the developer to litter their code with 
+      ///        lines to initialize the buffer with the formatting string. This method changes that, you just 
+      ///        pass the format string as a parameter and it is copied to the buffer before calling DateTime.toString().
+      /// @param time The DateTime object to convert to a string.
+      /// @param buffer The buffer to store the resulting string. Size the buffer to hold the resulting string, the
+      ///               DateTime.toString() methods is vulnerable to buffer overrun.
+      /// @param size The size of the buffer, not including the null '\0' terminator.
+      /// @param format The format string to use for the conversion, default is "YYYY/MM/DD hh:mm:ss".
+      /// @author Chris-80 (2025/07)
       char* DateTimeToString(DateTime time, char* buffer, size_t size, const char* format = "YYYY/MM/DD hh:mm:ss") const
          {
          if (buffer == nullptr || size == 0)
@@ -338,7 +397,8 @@ namespace BinaryClockShield
          return time.toString(buffer);
          }
 
-      // Singleton pattern to ensure only one instance of BinaryClock
+      /// @brief Singleton pattern to ensure only one instance of BinaryClock
+      /// @author Chris-80 (2025/07)
       static BinaryClock& get_Instance()
          {
          static BinaryClock instance; // Guaranteed to be destroyed, instantiated on first use
@@ -346,45 +406,146 @@ namespace BinaryClockShield
          }
 
    protected:
-      BinaryClock();          // Constructor
-      virtual ~BinaryClock(); // Destructor
+      /// @brief Default Constructor for the BinaryClock class. This initializes the 
+      ///        button states, settings options, and brightness. It assigns the 
+      ///        melody and note durations arrays to the class members.
+      BinaryClock(); 
 
+      /// @brief Destructor for the BinaryClock class. This destructor is 
+      ///        empty as there is no dynamic memory allocation in this class.
+      virtual ~BinaryClock();
+
+      // Singleton pattern - Disable these constructors and assignment operators.
       BinaryClock (const BinaryClock&) = delete;            // Disable copy constructor
       BinaryClock& operator=(const BinaryClock&) = delete;  // Disable assignment operator
       BinaryClock (BinaryClock&&) = delete;                 // Disable move constructor
       BinaryClock& operator=(BinaryClock&&) = delete;       // Disable move assignment operator
 
+      /// @brief This method is to isolate the code needed to setup for the RTC.
+      /// @author Chris-80 (2025/07)
+      void setupRTC();
+
+      /// @brief This method is to isolate the code needed to setup the alarm.
+      /// @author Chris-80 (2025/07)
+      void setupAlarm();
+
+      /// @brief This method is to isolate the code needed to setup the FastLED library.
+      /// @author Chris-80 (2025/07)
+      void setupFastLED();
+
+      // ################################################################################
+      // ORIGINAL METHODS - 
+      // ################################################################################
+
+      /// @brief The method called when the RTC generates an interrupt on the 'RTC_INT' pin every second.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       void RTCinterrupt();
-      void getAlarmTimeAndStatus(int& alarmHour, int& alarmMinute, int& alarmStatus);
+
+      /// @brief The method called to read the alarm time status (ON/OFF), for the default alarm, from the RTC.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void getAlarmTimeAndStatus();
+
+      /// @brief The method called to write the alarm time status (ON/OFF), for the default alarm, from the RTC.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void setAlarmTimeAndStatus();
+
+      /// @brief The method called to read the current time from the RTC and update the LEDs.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void getAndDisplayTime();
-      void convertDecToBinaryAndDisplay(int bottomRow, int middleRow, int upperRow);
+
+      /// @brief The method called to convert the time to binary and update the LEDs.
+      /// @param hourRow The value for the top, to display the hour LEDs (16-12).
+      /// @param minuteRow The value for the middle, to display the minute LEDs (11-6).
+      /// @param secondRow The value for the bottom, to display the second LEDs (5-0).
+      /// @details This method converts the current time to binary and updates the LEDs 
+      ///          using the color values defined in the arrays 'OnColor' and 'OffColor'
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
+      void convertDecToBinaryAndDisplay(int hourRow, int minuteRow, int secondRow);
+
+      /// @brief The method called to set the time on the RTC from the value in the time field.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void setNewTime();
+
+      /// @brief This method is called when the user exceeds the current time element limits.
+      ///        The value is rolled over to the next valid value, e.g. 59  -> 0, or 0 -> 59.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void setCurrentModifiedValue();
+
+      /// @brief The method called to check the current modified value format to stay within limits,
+      ///        Hours 0 - 2; Minutes 0 - 59; Seconds 0 - 59, while the user is changing them.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void checkCurrentModifiedValueFormat();
+
+      /// @brief This method is used to save either the new time or alarm time set by the user.
+      /// @details This method is called when the user has set a new time or alarm time from
+      ///          the buttons on the Binary Clock Shield.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void saveCurrentModifiedValue();
+
+      /// @brief This method displays the value as the user is changing it. Only one row is
+      ///        displayed at a time while the time is being update.: Hours; Minutes; Seconds or Alarm ON/OFF.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void displayCurrentModifiedValue();
 
-      /// @brief Method to check if the button is pressed ON from OFF
-      /// @param button - The ButtonState structure containing the button state, pin, type, etc.
-      /// @return True if the button is pressed ON from OFF, false otherwise (button OFF or button ON and no change).
-      /// @note The method returns false if the button is ON but has not changed state since the last read.
-      ///       Check the button.isPressed() property to see if the button is currently pressed or not
-      bool isButtonOnNew(ButtonState& button);
-
       #if SERIAL_TIME_CODE
+      /// @brief The method called to display the current time, decimal and binary, over the serial monitor.
+      /// @details While this method can still be removed at compile time, it can also be controlled, at run-time, 
+      ///          in software and hardware. This method is called every second so being able to control the         
+      ///          output in software and hardware, by using a switch or jumper, can start/stop the serial time display.
+      /// @remarks This code was modified from the original Binary Clock Shield for Arduino by Marcin Saj.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
       void serialTime();
       #endif
 
+      // These methods are all part of the serial menu display and can be removed at compile time. They can be 
+      // can be controlled in both software and hardware. A momentary button is used to toggle the menu on/off.
       #if SERIAL_SETUP_CODE
+      /// @brief The method called to display the serial startup information.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
       void serialStartInfo();
+
+      /// @brief The method called to display the serial menu for setting the time and alarm.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       void serialSettings();
+
+      /// @brief The method called to display the alarm settings over the serial monitor.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       void serialAlarmInfo();
+
+      /// @brief The method called to display the current modified value over the serial monitor.
+      /// @details This method is called when the user is changing the time or alarm time.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       void serialCurrentModifiedValue();
       #endif
 
+      /// @brief Method to check if the button was pressed ON from OFF since the last call.
+      /// @param button - The ButtonState structure containing the button state, pin, type, etc.
+      /// @return True if the button is pressed ON from OFF, false otherwise (button OFF or button ON and no change).
+      /// @note The method returns false if the button is ON but has not changed state since the last read.
+      ///       Check the ButtonState::isPressed() property to see if the button is currently pressed or not. 
+      /// @details This method handles buttons that are wired either CC and CA where the concept of ON or PRESSED is
+      ///          defined by the way it is wired. As a result, the first time it called on a button, it will
+      ///          behave as if it had just transitioned from its opposite state to its current state. This fixes a
+      ///          bug with switches (or jumpers) that are wired ON at startup.
+      /// @remarks This code was adapted and modified from the methods: checkS1(); checkS2; and checkS3() in the 
+      ///          original Binary Clock Shield for Arduino by Marcin Saj.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
+      bool isButtonOnNew(ButtonState& button);
+
       #if HARDWARE_DEBUG
+      /// @brief This method is called to check the hardware debug buttons/switches and set the serial output level.
+      /// @author Chris-80 (2025/07)
       void checkHardwareDebugPin();
       #endif
 
@@ -400,19 +561,15 @@ namespace BinaryClockShield
       static CRGB OffColor[NUM_LEDS]     PROGMEM; // Colors for the LEDs when OFF
 
    protected:
-      RTCLibPlusDS3231 RTC;                              // Create RTC object using Adafruit RTCLib library
+      RTCLibPlusDS3231 RTC;                        // Create RTC object using Adafruit RTCLib library
 
       static CRGB leds[NUM_LEDS] PROGMEM;          // Array of LED colors to display the current time
       static bool binaryArray[NUM_LEDS] PROGMEM;   // Serial Debug: Array for binary representation of time
 
       // t variable for Arduino Time Library 
-      time_t t;
-      // tmElements_t tm;
-      // See the Arduino Time Library for details on the tmElements_t structure: 
-      // http://playground.arduino.cc/Code/Time
-      // https://github.com/PaulStoffregen/Time  
-      AlarmTime alarm1 = { .number = ALARM_1, .melody = 0, .status = 0 };
-      AlarmTime alarm2 = { .number = ALARM_2, .melody = 0, .status = 0 };
+      // time_t t;
+      AlarmTime alarm1 = { .number = ALARM_1, .melody = 0, .status = 0 };  // DS3232 alarm, includes seconds in alarm.
+      AlarmTime alarm2 = { .number = ALARM_2, .melody = 0, .status = 0 };  // Default alarm, seconds set at 00.
 
       // Note durations: 4 = quarter note, 8 = eighth note, etc.:
       // Some notes durations have been changed (1, 3, 6) to make them sound better
@@ -422,6 +579,7 @@ namespace BinaryClockShield
       static const int           NoteDurationsSize; // Size of the note durations array
 
    private:
+      // The 3 buttons used to control the Binary Clock Shield menu for setting the time and alarm.
       ButtonState buttonS1          = { .pin = S1,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
       ButtonState buttonS2          = { .pin = S2,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
       ButtonState buttonS3          = { .pin = S3,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
@@ -447,12 +605,15 @@ namespace BinaryClockShield
       int alarmRepeatCount = 0;                    // Current alarm repeat count
       byte brightness = DEFAULT_BRIGHTNESS;        // Brightness of the LEDs, 0-255
 
-      char buffer[64] = { 0 };
+      char buffer[64] = { 0 };                     // Buffer for the DateTime string conversion
 
       bool isSerialSetup = (SERIAL_SETUP_CODE) && (DEFAULT_SERIAL_SETUP); // Serial setup flag
       bool isSerialTime  = (SERIAL_TIME_CODE)  && (DEFAULT_SERIAL_TIME);  // Serial time flag   
 
-      unsigned long debugDelay = DEFAULT_DEBUG_OFF_DELAY;
+      // Time to wait after serial time button goes off before stopping the serial output.
+      // Set to a long delay if using a momentary button, keep short for a switch. This
+      // allows a button to be predded, released and you still get output for 'debugDelay' ms.
+      unsigned long debugDelay = DEFAULT_DEBUG_OFF_DELAY; 
       };
    }
 #endif
