@@ -98,11 +98,8 @@ namespace BinaryClockShield
    const int BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(BinaryClock::MelodyAlarm[0]); 
    const int BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(BinaryClock::NoteDurations[0]); 
    
-   CRGB BinaryClock::leds[NUM_LEDS] = {};        // Array of LED colors to display the current time
-   bool BinaryClock::binaryArray[NUM_LEDS] = {}; // Serial Debug: Array for binary representation of time
-
    // Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
-   CRGB BinaryClock::OnColor[NUM_LEDS] = 
+   UNO_ARRAY_STATIC_CONST CRGB BINARY_CLOCK_ARRAY_MEMBER OnColor[NUM_LEDS] =
          {
          CRGB::DarkRed,   CRGB::DarkRed,   CRGB::DarkRed,   CRGB::DarkRed,   CRGB::Red,   CRGB::Red,    // Seconds (0 - 5)  
          CRGB::DarkGreen, CRGB::DarkGreen, CRGB::DarkGreen, CRGB::DarkGreen, CRGB::Green, CRGB::Green,  // Minutes (6 - 11) 
@@ -111,7 +108,7 @@ namespace BinaryClockShield
 
    // Default: Colors for the hours LEDs when OFF (Usually Black or No Power (i.e. OFF), Seconds, Minutes and Hours)
    //    Note: Using any color other than Black means the LEDS will be consuming power at all times.
-   CRGB BinaryClock::OffColor[NUM_LEDS] = 
+   UNO_ARRAY_STATIC_CONST CRGB BINARY_CLOCK_ARRAY_MEMBER OffColor[NUM_LEDS] =
          {
          CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black,  // Seconds (0 - 5)
          CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black,  // Minutes (6 - 11)
@@ -155,9 +152,9 @@ namespace BinaryClockShield
       setupFastLED();
 
       // Initialize the buttons pins as an input
-      pinMode(buttonS1.pin, INPUT_PULLDOWN);
-      pinMode(buttonS2.pin, INPUT_PULLDOWN);
-      pinMode(buttonS3.pin, INPUT_PULLDOWN);
+      pinMode(buttonS1.pin, (HIGH == buttonS1.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
+      pinMode(buttonS2.pin, (HIGH == buttonS2.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
+      pinMode(buttonS3.pin, (HIGH == buttonS3.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
 
       // Delay the initial startup, show the serial output or just a small delay.
       if (isSerialSetup) 
@@ -229,8 +226,8 @@ namespace BinaryClockShield
       alarm2.time = RTC.getAlarm2();
 
       // Clear the alarm status flags 'A1F' and 'A2F' after reboot
-      uint8_t control = RTC.rawRead(DS3231_CONTROL);
-      uint8_t status = RTC.rawRead(DS3231_STATUS);
+      uint8_t control;
+      control = RTC.rawRead(DS3231_CONTROL);
 
       // Design: Alarm 1 and Alarm 2 status/control reflect the values in the RTC so
       //         we will reflect their stored values as the RTC is battery backed.
@@ -288,17 +285,27 @@ namespace BinaryClockShield
       noteDurations = (byte *)NoteDurations;    // Assign the note durations array to the pointer
       noteDurationsSize = NoteDurationsSize;    // Assign the size of the note
 
+      #pragma UNO required code. Compiler does not support C++ initialization of arrays, do it here.
+      memset(leds, 0, sizeof(leds)); // Clear the LED array
+      memset(binaryArray, 0, sizeof(binaryArray)); // Clear the binary array
+
+      alarm1.number = ALARM_1; 
+      alarm1.melody = 0; 
+      alarm1.status = 0;
+      alarm2.number = ALARM_2;
+      alarm2.melody = 0;
+      alarm2.status = 0;
+      #pragma endregion
+
       #if HW_DEBUG_SETUP
-      pinMode(DEBUG_SETUP_PIN, INPUT_PULLUP);  // Set the debug pin as input with pull-up resistor
-      if (get_isSerialSetup())                 // If the serial setup flag is set
-         {
-         isSerialSetup = true;                  // Enable serial setup
-         }
+      // Set the hardware Setup pin as input with pull-up/down based on the wiring (i.e. onValue)
+      pinMode(buttonDebugSetup.pin, (HIGH == buttonDebugSetup.onValue ? INPUT : INPUT_PULLUP));
       #endif
 
       #if HW_DEBUG_TIME
-      pinMode(DEBUG_TIME_PIN,  INPUT_PULLUP);  // Set the debug pin as input with pull-up resistor
-      if (digitalRead(DEBUG_TIME_PIN) == CA_ON)   // If the debug pin is grounded
+      // Set the hardware Time pin as input with pull-up/down based on the wiring (i.e. onValue)
+      pinMode(buttonDebugTime.pin, (HIGH == buttonDebugTime.onValue ? INPUT : INPUT_PULLUP));
+      if (digitalRead(buttonDebugTime.pin) == buttonDebugTime.onValue) // If the debug pin is ON.
          {
          isSerialTime = true;                   // Enable serial time
          }
@@ -494,7 +501,8 @@ namespace BinaryClockShield
          // Time settings
          if (isButtonOnNew(buttonS1))
             {
-            DateTime temp = RTC.now();              // Read time from RTC 
+            DateTime temp;
+            temp = RTC.now();              // Read time from RTC 
             // t = temp.secondstime();                 // Convert to time_t format
             settingsOption = 1;                     // Set time option settings
             settingsLevel = 1;                      // Set hour level settings
@@ -507,7 +515,8 @@ namespace BinaryClockShield
          if (isButtonOnNew(buttonS3))
             {
             getAlarmTimeAndStatus();                // Read alarm time and status from RTC
-            AlarmTime temp = get_Alarm();           // Get the default alarm time and status
+            AlarmTime temp;
+            temp = get_Alarm();           // Get the default alarm time and status
 
             settingsOption = 3;                     // Set Alarm time option settings
             settingsLevel = 1;                      // Set hour level settings
@@ -532,7 +541,6 @@ namespace BinaryClockShield
          // Increment - if the buttonS3 was just pressed
          if (isButtonOnNew(buttonS3)) 
             {
-            digitalWrite(BUILTIN_LED, HIGH); // Turn on the built-in LED to indicate settings mode
             countButtonPressed++;                  // Increment current value e.g. hour, minute, second, alarm status
             checkCurrentModifiedValueFormat();     // Check if the value has exceeded the range e.g minute = 60 and correct
             displayCurrentModifiedValue();         // Display current modified value on LEDs  
@@ -868,7 +876,7 @@ namespace BinaryClockShield
    #if SERIAL_TIME_CODE
    void BinaryClock::serialTime()
       {
-      Serial << ("Time DEC: ") << (DateTimeToString(time, buffer, sizeof(buffer), "hh:mm:ss  ") << ("BIN: ");
+      Serial << F("Time DEC: ") << DateTimeToString(time, buffer, sizeof(buffer), "hh:mm:ss  ") << F("BIN: ");
 
       for (int i = NUM_LEDS - 1; i >= 0; i--)
          {
@@ -1040,10 +1048,12 @@ namespace BinaryClockShield
       if (isButtonOnNew(buttonDebugTime)) 
          {
          set_isSerialTime(true); // Set the serial time flag to true
+         Serial << F(" Serial Time is: ON") << endl; // Debug: 
          }
       else if (isSerialTime && !buttonDebugTime.isPressed() && ((millis() - buttonDebugTime.lastReadTime) > get_DebugOffDelay()))
          {
          set_isSerialTime(false); // Reset the serial time flag
+         Serial << F(" Serial Time is: OFF") << endl;
          }
       #endif
       }
