@@ -76,11 +76,15 @@
 namespace BinaryClockShield
    {
    // This is a Binary Clock Shield for Arduino by Marcin Saj https://nixietester.com
-   //
-   #define ESP32UNO             // If defined, the code will use ESP32 UNO board definitions
-   //#define ATMELUNO           // If defined, the code will use ATMEL UNO board definitions
+   // 
+   // The following are defines for the currently supported boards. One must be selected.
+   // #define ESP32UNO           // If defined, the code will use ESP32 UNO board definitions
+   // #define ATMELUNO           // If defined, the code will use ATMEL UNO board definitions
 
    #if defined(ESP32_D1_R32) || defined(ESP32UNO) // ESP32 Wemos D1 R32 UNO board definitions
+      #ifndef ESP32UNO
+         #define ESP32UNO  // Define ESP32UNO if not already defined, this is the one we use in the code.
+      #endif
       // ESP32 UNO pin definitions
       #define RTC_INT      25        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
       #define PIEZO        23        // The number of the Piezo pin
@@ -106,6 +110,10 @@ namespace BinaryClockShield
       #define DEBUG_SETUP_PIN 16 // Set to -1 to disable the Serial Setup display control by H/W (CA)
       #define DEBUG_TIME_PIN  27 // Set to -1 to disable the Serial Time display control by H/W (CA)
 
+      #define UNO_ARRAY_STATIC_CONST
+      #define ESP32_INPUT_PULLDOWN INPUT_PULLDOWN
+      #define BINARY_CLOCK_ARRAY_MEMBER BinaryClock::
+
    #elif defined(ATMELUNO)   // Standard Arduino UNO board definitions with the ATMEL chip
       // Arduino UNO ATMEL 328 based pin definitions
       #define RTC_INT        3        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
@@ -128,6 +136,10 @@ namespace BinaryClockShield
       // When the PIN value is -1 (-ve) the associated code is removed.
       #define DEBUG_TIME_PIN  6 // Set to -1 to disable the Serial Time display control by H/W
       #define DEBUG_SETUP_PIN 5 // Set to -1 to disable the Serial Setup display control by H/W
+
+      #define UNO_ARRAY_STATIC_CONST static const
+      #define ESP32_INPUT_PULLDOWN INPUT
+      #define BINARY_CLOCK_ARRAY_MEMBER
 
    #else
       #error "Unsupported board. Please define the pin numbers for your board."
@@ -161,14 +173,17 @@ namespace BinaryClockShield
    //                 use the public methods 'set_isSerialSetup()' and 'set_isSerialTime()' to
    //                 enable/disable the serial output at runtime. H/W buttons, if defined, 
    //                 can also be used to enable/disable the serial output at runtime.
-   #define SERIAL_SETUP_CODE  true         // If (true) - serial setup ON, if false serial setup code removed
-   #define SERIAL_TIME_CODE  false         // If (true) - serial time  ON, if false serial time  code removed
-   #define DEFAULT_SERIAL_SETUP  true // Initial serial setup display value (allow the setup)
-   #define DEFAULT_SERIAL_TIME  false // Initial serial time display value
-
-   #define HW_DEBUG_SETUP (DEBUG_SETUP_PIN >= 0)   // Include code to support H/W to control setup display
-   #define HW_DEBUG_TIME  (DEBUG_TIME_PIN  >= 0)   // Include code to support H/W to control time  display
-   #define DEFAULT_DEBUG_OFF_DELAY 1024   // Default delay to turn off serial monitor after pin goes OFF
+   #define SERIAL_SETUP_CODE  true        // If (true) - serial setup code included, (false) - code removed
+   #define SERIAL_TIME_CODE   true        // If (true) - serial time  code included, (false) - code removed
+   #define DEFAULT_SERIAL_SETUP  true     // Initial serial setup display value (allow the setup)
+   #define DEFAULT_SERIAL_TIME  false     // Initial serial time display value
+   // This controls the inclusion/removal of the code to support hardware buttons/switches to also control the serial output.
+   // The serial output can always be controlled in software is the SERIAL_xxxx_CODE is defined (true).
+   #define HW_DEBUG_SETUP ((DEBUG_SETUP_PIN >= 0) && (SERIAL_SETUP_CODE))  // Include code to support H/W to control setup display
+   #define HW_DEBUG_TIME  ((DEBUG_TIME_PIN  >= 0) && (SERIAL_TIME_CODE))   // Include code to support H/W to control time  display
+   // The delay, in ms, is set to a high value when using a momentary button so the button can be release quickly and the use will
+   // still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
+   #define DEFAULT_DEBUG_OFF_DELAY 3000 
    #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME) && (SERIAL_TIME_CODE || SERIAL_SETUP_CODE) 
 
    /// @brief The structure holds all the Alarm information used by the Binary Clock.
@@ -238,7 +253,7 @@ namespace BinaryClockShield
    ///          the WiFi connection and allows the user to change the LED colors and melodies used for
    ///          the alarm at runtime, without needing to recompile the code. The original code and shield design
    ///          targeted an Arduino UNO board, this is designed for an ESP32 based UNO board, such as 
-   ///          the Wemos D1 R32 UNO or the new ESP32-S3 UNO. The ides is to connect to a NTP server over WiFi.
+   ///          the Wemos D1 R32 UNO or the new ESP32-S3 UNO. The idea is to connect to a NTP server over WiFi.
    /// @remarks This class is designed to be used with the 'Binary Clock Shield for Arduino' by 
    ///          Marcin Saj (available from: https://nixietester.com), original source code: 
    ///          https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
@@ -557,19 +572,19 @@ namespace BinaryClockShield
       byte       *noteDurations;       // Pointer to the note durations array
       int         noteDurationsSize;   // Size of the note durations array
 
+      #ifdef ESP32UNO
       static CRGB OnColor [NUM_LEDS]     PROGMEM; // Colors for the LEDs when ON
       static CRGB OffColor[NUM_LEDS]     PROGMEM; // Colors for the LEDs when OFF
+      #endif
 
    protected:
       RTCLibPlusDS3231 RTC;                        // Create RTC object using Adafruit RTCLib library
 
-      static CRGB leds[NUM_LEDS] PROGMEM;          // Array of LED colors to display the current time
-      static bool binaryArray[NUM_LEDS] PROGMEM;   // Serial Debug: Array for binary representation of time
+      CRGB leds[NUM_LEDS] PROGMEM;          // Array of LED colors to display the current time
+      bool binaryArray[NUM_LEDS] PROGMEM;   // Serial Debug: Array for binary representation of time
 
-      // t variable for Arduino Time Library 
-      // time_t t;
-      AlarmTime alarm1 = { .number = ALARM_1, .melody = 0, .status = 0 };  // DS3232 alarm, includes seconds in alarm.
-      AlarmTime alarm2 = { .number = ALARM_2, .melody = 0, .status = 0 };  // Default alarm, seconds set at 00.
+      AlarmTime alarm1; // = { .number = ALARM_1, .melody = 0, .status = 0 };  // DS3232 alarm, includes seconds in alarm.
+      AlarmTime alarm2; // = { .number = ALARM_2, .melody = 0, .status = 0 };  // Default alarm, seconds set at 00.
 
       // Note durations: 4 = quarter note, 8 = eighth note, etc.:
       // Some notes durations have been changed (1, 3, 6) to make them sound better
@@ -584,7 +599,7 @@ namespace BinaryClockShield
       ButtonState buttonS2          = { .pin = S2,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
       ButtonState buttonS3          = { .pin = S3,              .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
       #if HARDWARE_DEBUG && HW_DEBUG_SETUP
-      ButtonState buttonDebugSetup  = { .pin = DEBUG_SETUP_PIN, .state = CA_OFF, .lastRead = CA_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CA_ON };
+      ButtonState buttonDebugSetup  = { .pin = DEBUG_SETUP_PIN, .state = CC_OFF, .lastRead = CC_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CC_ON };
       #endif
       #if HARDWARE_DEBUG && HW_DEBUG_TIME
       ButtonState buttonDebugTime   = { .pin = DEBUG_TIME_PIN,  .state = CA_OFF, .lastRead = CA_OFF, .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = CA_ON };
@@ -612,7 +627,7 @@ namespace BinaryClockShield
 
       // Time to wait after serial time button goes off before stopping the serial output.
       // Set to a long delay if using a momentary button, keep short for a switch. This
-      // allows a button to be predded, released and you still get output for 'debugDelay' ms.
+      // allows a button to be pressed, released and you still get output for 'debugDelay' ms.
       unsigned long debugDelay = DEFAULT_DEBUG_OFF_DELAY; 
       };
    }
