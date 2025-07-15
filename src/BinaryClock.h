@@ -68,10 +68,15 @@
 #ifndef _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
 #define _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
 
-#include <FastLED.h>            // https://github.com/FastLED/FastLED
-#include <RTCLib.h>             // Adafruit RTC library: https://github.com/adafruit/RTClib
-#include <Streaming.h>          // https://github.com/janelia-arduino/Streaming                            
-#include "pitches.h"            // Need to create the pitches.h library: https://arduino.cc/en/Tutorial/ToneMelody
+#include <Arduino.h>            // Arduino core library
+#include <tuple>                 // Tuple library for C++11
+#include <cstdint>               // C++ standard library for fixed-width integer types
+
+
+#include <FastLED.h>          // https://github.com/FastLED/FastLED
+#include <RTCLib.h>           // Adafruit RTC library: https://github.com/adafruit/RTClib
+#include <Streaming.h>        // https://github.com/janelia-arduino/Streaming                            
+#include "pitches.h"          // Need to create the pitches.h library: https://arduino.cc/en/Tutorial/ToneMelody
 
 namespace BinaryClockShield
    {
@@ -235,13 +240,13 @@ namespace BinaryClockShield
       /// @details This method reads a single byte from the specified register of the DS3231
       /// @param reg The DS3231 register number to read.
       /// @return The register value that was read.
-      uint8_t rawRead(uint8_t reg);
+      uint8_t RawRead(uint8_t reg);
 
       /// @brief Wrapper for the 'RTC_I2C::write_register' method to write a value to a register in the DS3231 RTC.
       /// @details This method writes a single byte to the specified register of the DS3231
       /// @param reg The DS3231 register number to write to.
       /// @param value The value to write to the register.
-      void rawWrite(uint8_t reg, uint8_t value);
+      void RawWrite(uint8_t reg, uint8_t value);
       };
 
    /// @brief The BinaryClock class encapsulates the functionality of the Binary Clock Shield for Arduino.
@@ -355,7 +360,7 @@ namespace BinaryClockShield
       /// @return An AlarmTime structure containing the alarm time and status.
       /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
       /// @author Chris-80 (2025/07)
-      AlarmTime get_Alarm() { return getAlarm(ALARM_2); }
+      AlarmTime get_Alarm() { return GetAlarm(ALARM_2); }
 
       /// @brief The method called to get the 'AlarmTime' for alarm 'number'
       /// @param number The alarm number: 1 or 2. Alarm 2 is the default alarm.
@@ -364,7 +369,7 @@ namespace BinaryClockShield
       /// @design This method was included as a workaround to allow the user to get alarm 1
       ///         without breaking the property pattern for the Alarm, so no '_' after get....
       /// @author Chris-80 (2025/07)
-      AlarmTime getAlarm(int number);
+      AlarmTime GetAlarm(int number);
 
       /// @brief Property pattern for the 'isSerialSetup' flag property.
       ///        This property controls whether the serial setup menu is displayed or not.
@@ -389,6 +394,28 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void set_DebugOffDelay(unsigned long value);
       unsigned long get_DebugOffDelay() const;
+
+      /// @brief Method to change the alarm melody with a melody and note duration arrays.
+      /// @param melodyArray The array of melody notes to play, each note is a frequency in Hz.
+      /// @param melodySize The size (i.e. number of notes) of the melody array.
+      /// @param noteDurationArray The array of note durations in milliseconds, each note duration corresponds to a note in the melody.
+      /// @param noteDurationSize The size of the note duration array, must match the melodySize.
+      /// @return Flag: true - success, false - failure (e.g. if the arrays are null or sizes do not match).
+      /// @author Chris-70 (2025/07)
+      bool SetAlarmMelody(unsigned *melodyArray, size_t melodySize, unsigned long *noteDurationArray, size_t noteDurationSize)
+         {
+            bool result = false;
+         if (melodyArray != nullptr && noteDurationArray != nullptr && melodySize > 0 && noteDurationSize == melodySize)
+            {
+            this->melodyAlarm = melodyArray;
+            this->melodySize = melodySize;
+            this->noteDurations = noteDurationArray;
+            this->noteDurationsSize = noteDurationSize;
+            result = true;
+            }
+
+         return result;
+         }
 
       /// @brief Method to convert a DateTime value to a string inline. This method takes the format as a parameter
       ///        and copies it to the buffer before calling DateTime.toString() and returning the result.
@@ -435,6 +462,11 @@ namespace BinaryClockShield
       BinaryClock& operator=(const BinaryClock&) = delete;  // Disable assignment operator
       BinaryClock (BinaryClock&&) = delete;                 // Disable move constructor
       BinaryClock& operator=(BinaryClock&&) = delete;       // Disable move assignment operator
+
+      /// @brief This method is to isolate the code needed to initialize the Buttons.
+      ///        The 'ButtonState.onValue' determines the type: INPUT_PULLUP/DOWN.
+      /// @author Chris-70 (2025/07)
+      void initializeButtons();
 
       /// @brief This method is to isolate the code needed to setup for the RTC.
       /// @author Chris-80 (2025/07)
@@ -565,24 +597,18 @@ namespace BinaryClockShield
       #endif
 
    public:         
-      // These variables are initially set to the internal static melody and note durations arrays
-      // They can be changed to use different melodies and note durations in the ESP32 flash memory.
-      unsigned   *melodyAlarm;         // Pointer to the melody array
-      int         melodySize;          // Size of the melody array
-      byte       *noteDurations;       // Pointer to the note durations array
-      int         noteDurationsSize;   // Size of the note durations array
-
       #ifdef ESP32UNO
       static CRGB OnColor [NUM_LEDS]     PROGMEM; // Colors for the LEDs when ON
       static CRGB OffColor[NUM_LEDS]     PROGMEM; // Colors for the LEDs when OFF
       #endif
 
    protected:
-      RTCLibPlusDS3231 RTC;                        // Create RTC object using Adafruit RTCLib library
+      RTCLibPlusDS3231 RTC;                 // Create RTC object using Adafruit RTCLib library
 
       CRGB leds[NUM_LEDS] PROGMEM;          // Array of LED colors to display the current time
       bool binaryArray[NUM_LEDS] PROGMEM;   // Serial Debug: Array for binary representation of time
 
+      // The UNO Compiler doesn't support this C++ style object initialization, move it to the constructor.
       AlarmTime alarm1; // = { .number = ALARM_1, .melody = 0, .status = 0 };  // DS3232 alarm, includes seconds in alarm.
       AlarmTime alarm2; // = { .number = ALARM_2, .melody = 0, .status = 0 };  // Default alarm, seconds set at 00.
 
@@ -590,8 +616,15 @@ namespace BinaryClockShield
       // Some notes durations have been changed (1, 3, 6) to make them sound better
       static const unsigned long NoteDurations[] PROGMEM; // Note durations array, unsigned long array (64 bits)
       static const unsigned      MelodyAlarm[] PROGMEM;   // Melody for alarm, unsigned integer array (32 bits)
-      static const int           MelodySize; // Size of the melody array
-      static const int           NoteDurationsSize; // Size of the note durations array
+      static const size_t        MelodySize; // Size of the melody array
+      static const size_t        NoteDurationsSize; // Size of the note durations array
+
+      // These variables are initially set to the internal static melody and note durations arrays
+      // They can be changed to use different melodies and note durations in the ESP32 flash memory.
+      unsigned      *melodyAlarm;         // Pointer to the melody array
+      int            melodySize;          // Size of the melody array
+      unsigned long *noteDurations;       // Pointer to the note durations array
+      int            noteDurationsSize;   // Size of the note durations array
 
    private:
       // The 3 buttons used to control the Binary Clock Shield menu for setting the time and alarm.
