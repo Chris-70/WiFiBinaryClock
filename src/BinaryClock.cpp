@@ -95,8 +95,8 @@ namespace BinaryClockShield
          };
 
    // Calculate the number of elements in each array, then we validate they are the same size to catch definition errors.
-   const int BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(BinaryClock::MelodyAlarm[0]); 
-   const int BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(BinaryClock::NoteDurations[0]); 
+   const size_t BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(BinaryClock::MelodyAlarm[0]); 
+   const size_t BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(BinaryClock::NoteDurations[0]); 
    
    // Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
    UNO_ARRAY_STATIC_CONST CRGB BINARY_CLOCK_ARRAY_MEMBER OnColor[NUM_LEDS] =
@@ -151,11 +151,6 @@ namespace BinaryClockShield
       setupAlarm();
       setupFastLED();
 
-      // Initialize the buttons pins as an input
-      pinMode(buttonS1.pin, (HIGH == buttonS1.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
-      pinMode(buttonS2.pin, (HIGH == buttonS2.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
-      pinMode(buttonS3.pin, (HIGH == buttonS3.onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP));
-
       // Delay the initial startup, show the serial output or just a small delay.
       if (isSerialSetup) 
          { serialStartInfo(); }
@@ -175,7 +170,7 @@ namespace BinaryClockShield
 
       settingsMenu();   // Check if the settings menu is active and handle button presses
 
-      if (BinaryClock::RTCinterruptWasCalled && (settingsOption == 0))   // Display time but not during settings
+      if (RTCinterruptWasCalled && (settingsOption == 0))   // Display time but not during settings
          {
          BinaryClock::RTCinterruptWasCalled = false;       // Clear the interrupt flag
          getAndDisplayTime();                              // Get time from RTC, convert to binary format and display on LEDs
@@ -227,7 +222,7 @@ namespace BinaryClockShield
 
       // Clear the alarm status flags 'A1F' and 'A2F' after reboot
       uint8_t control;
-      control = RTC.rawRead(DS3231_CONTROL);
+      control = RTC.RawRead(DS3231_CONTROL);
 
       // Design: Alarm 1 and Alarm 2 status/control reflect the values in the RTC so
       //         we will reflect their stored values as the RTC is battery backed.
@@ -260,12 +255,12 @@ namespace BinaryClockShield
    // RTC LIBRARY PLUS - EXTENDED FUNCTIONALITY                                     #//
    //################################################################################//
 
-   uint8_t  RTCLibPlusDS3231::rawRead(uint8_t reg)
+   uint8_t  RTCLibPlusDS3231::RawRead(uint8_t reg)
       {
       return read_register(reg);  // Call the base class method to read a register
       }
 
-   void RTCLibPlusDS3231::rawWrite(uint8_t reg, uint8_t value)
+   void RTCLibPlusDS3231::RawWrite(uint8_t reg, uint8_t value)
       {
       write_register(reg, value);  // Call the base class method to write a register
       }
@@ -275,17 +270,17 @@ namespace BinaryClockShield
    //################################################################################//
 
    BinaryClock::BinaryClock() :
-         countButtonPressed(0),                 // Initialize the button counter
-         settingsOption(0),                     // Initialize the settings option
-         settingsLevel(0),                      // Initialize the settings level
-         brightness(DEFAULT_BRIGHTNESS)         // Initialize the brightness
+         countButtonPressed(0),
+         settingsOption(0),
+         settingsLevel(0),
+         brightness(DEFAULT_BRIGHTNESS)
       {
-      melodyAlarm = (unsigned *)MelodyAlarm;    // Assign the melody array to the pointer
-      melodySize = MelodySize;                  // Assign the size of the melody array
-      noteDurations = (byte *)NoteDurations;    // Assign the note durations array to the pointer
-      noteDurationsSize = NoteDurationsSize;    // Assign the size of the note
+      melodyAlarm = (unsigned *)MelodyAlarm;          // Assign the melody array to the pointer
+      melodySize = MelodySize;                        // Assign the size of the melody array
+      noteDurations = (unsigned long *)NoteDurations; // Assign the note durations array to the pointer
+      noteDurationsSize = NoteDurationsSize;          // Assign the size of the note
 
-      #pragma UNO required code. Compiler does not support C++ initialization of arrays, do it here.
+      #pragma UNO required code. UNO Compiler does not support C++ initialization of arrays, do it here.
       memset(leds, 0, sizeof(leds)); // Clear the LED array
       memset(binaryArray, 0, sizeof(binaryArray)); // Clear the binary array
 
@@ -297,15 +292,12 @@ namespace BinaryClockShield
       alarm2.status = 0;
       #pragma endregion
 
-      #if HW_DEBUG_SETUP
-      // Set the hardware Setup pin as input with pull-up/down based on the wiring (i.e. onValue)
-      pinMode(buttonDebugSetup.pin, (HIGH == buttonDebugSetup.onValue ? INPUT : INPUT_PULLUP));
-      #endif
+      initializeButtons();
 
       #if HW_DEBUG_TIME
-      // Set the hardware Time pin as input with pull-up/down based on the wiring (i.e. onValue)
-      pinMode(buttonDebugTime.pin, (HIGH == buttonDebugTime.onValue ? INPUT : INPUT_PULLUP));
-      if (digitalRead(buttonDebugTime.pin) == buttonDebugTime.onValue) // If the debug pin is ON.
+      // Set the 'isSerialTime' to true if the hardware Time button is ON 
+      // This is necessary if the button is actually a switch or is hardwired
+      if (digitalRead(buttonDebugTime.pin) == buttonDebugTime.onValue) 
          {
          isSerialTime = true;                   // Enable serial time
          }
@@ -324,6 +316,26 @@ namespace BinaryClockShield
       FastLED.setBrightness(0);
       FastLED.clear();  
       FastLED.show();
+      }
+
+   void BinaryClock::initializeButtons()
+      {
+      // Define a MACRO to write the button setup, reduce potential cut-n-paste errors.
+      #define INITIALIZE_BUTTON(BUTTON_OBJ) \
+            pinMode((BUTTON_OBJ).pin, (HIGH == (BUTTON_OBJ).onValue ? ESP32_INPUT_PULLDOWN : INPUT_PULLUP))
+
+      // Set the button pins as input with pull-up/down based on the wiring (i.e. onValue)
+      INITIALIZE_BUTTON(buttonS1);
+      INITIALIZE_BUTTON(buttonS2);
+      INITIALIZE_BUTTON(buttonS3);
+
+      #if HW_DEBUG_SETUP
+      INITIALIZE_BUTTON(buttonDebugSetup);
+      #endif
+
+      #if HW_DEBUG_TIME
+      INITIALIZE_BUTTON(buttonDebugTime);
+      #endif
       }
 
    void BinaryClock::RTCinterrupt()
@@ -374,19 +386,19 @@ namespace BinaryClockShield
       else { ; } // Ignore bad input status
       }
 
-   AlarmTime BinaryClock::getAlarm(int number)
+   AlarmTime BinaryClock::GetAlarm(int number)
       {
       AlarmTime result;
       if (number == ALARM_1)
          {
          alarm1.time = RTC.getAlarm1();
-         alarm1.status = RTC.rawRead(DS3231_CONTROL) & DS3231_ALARM1_STATUS_MASK;
+         alarm1.status = RTC.RawRead(DS3231_CONTROL) & DS3231_ALARM1_STATUS_MASK;
          result = alarm1;
          }
       if (number == ALARM_2) 
          {
          alarm2.time = RTC.getAlarm2();
-         alarm2.status = (RTC.rawRead(DS3231_CONTROL) & DS3231_ALARM2_STATUS_MASK) >> 1;
+         alarm2.status = (RTC.RawRead(DS3231_CONTROL) & DS3231_ALARM2_STATUS_MASK) >> 1;
          result = alarm2;
          }
 
