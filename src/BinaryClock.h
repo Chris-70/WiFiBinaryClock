@@ -82,73 +82,109 @@ namespace BinaryClockShield
    {
    // This is a Binary Clock Shield for Arduino by Marcin Saj https://nixietester.com
    // 
-   // The following are defines for the currently supported boards. One must be selected.
-   // #define ESP32UNO           // If defined, the code will use ESP32 UNO board definitions
-   // #define ATMELUNO           // If defined, the code will use ATMEL UNO board definitions
+   // The following are defines for the currently supported boards. One must be used to compile.
+   // Add you own UNO style board definitions below for a different UNO sized board you have.
+   //
+   // #define ESP32_D1_R32_UNO   // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions
+   // #define METRO_ESP32_S3     // If defined, the code will use Adafruit Metro ESP32-S3 board definitions 
+   // #define ESP32_S3_UNO       // If defined, the code will use ESP32-S3 UNO board definitions
+   // #define ATMEL_UNO_R3       // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions
+   // 
+   // Debug Time PIN to print out the current time over serial monitor (if grounded)
+   // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. 1) in order
+   // to compile the code and make them available. They can also be set
+   // in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
+   // 'void BinaryClock::set_isSerialTime(bool value)' methods.
+   // The debug time and setup pins are used to enable/disable the serial output at runtime.
+   // without the need to change the software. The Serial Time is a switch to enable/disable 
+   // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
+   // to toggle enable/disable the serial setup display. 
+   // When the PIN value is -1 (-ve) the associated code is removed.
 
-   #if defined(ESP32_D1_R32) || defined(ESP32UNO) // ESP32 Wemos D1 R32 UNO board definitions
-      #ifndef ESP32UNO
-         #define ESP32UNO  // Define ESP32UNO if not already defined, this is the one we use in the code.
-      #endif
+   //################################################################################//
+   //             Defines for the different UNO sized boards                         //
+   //################################################################################//
+   // Generic AliExpress copy of Wemos D1 R32 ESP32 based UNO board (validate against the board you receive)
+   #if defined(ESP32_D1_R32_UNO)     // ESP32 Wemos D1 R32 UNO board definitions
+      #define ESP32UNO               // Define ESP32UNO as a common base architecture for ESP32 UNO boards
+
       // ESP32 UNO pin definitions
-      #define RTC_INT      25        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
-      #define PIEZO        23        // The number of the Piezo pin
-      #define LED_PIN      32        // Data pin that LEDs data will be written out. Requires ESP32UNO board modification to use pin 32
+      #define RTC_INT           25   // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define PIEZO             23   // The number of the Piezo pin
+      #define LED_PIN           15   // Data pin that LEDs data will be written out. Requires ESP32UNO board modification to use pin 32
                                      // If you use ESP32UNO board, you need to modify the ESP32UNO board by removing the connector at pin 34
                                      // Solder a jumper wire from PIN 32 to the LED pin on the shield. 
                                      // ESP32UNO PIN 34 is Read-Only and cannot be used for output.
 
-      #define S1  35                 // Push buttons connected to the A0, A1, A2 Arduino pins (CC)
-      #define S2   4    
-      #define S3   2 
+      #define S1                35   // Push buttons connected to the A2, A1, A0 Arduino pins (CC)
+      #define S2                 4    
+      #define S3                 2 
 
-      // Debug Time PIN to print out the current time over serial monitor (if grounded)
-      // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. 1) in order
-      // to compile the code and make them available. They can also be set
-      // in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
-      // 'void BinaryClock::set_isSerialTime(bool value)' methods.
-      // The debug time and setup pins are used to enable/disable the serial output at runtime.
-      // without the need to change the software. The Serial Time is a switch to enable/disable 
-      // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
-      // to toggle enable/disable the serial setup display. 
-      // When the PIN value is -1 (-ve) the associated code is removed.
-      #define DEBUG_SETUP_PIN 16 // Set to -1 to disable the Serial Setup display control by H/W (CA)
-      #define DEBUG_TIME_PIN  27 // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CA)
+      #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
 
-      #define UNO_ARRAY_STATIC_CONST
-      #define ESP32_INPUT_PULLDOWN INPUT_PULLDOWN
-      #define BINARY_CLOCK_ARRAY_MEMBER BinaryClock::
+   // Adafruit Metro ESP32-S3 board (https://learn.adafruit.com/adafruit-metro-esp32-s3)
+   #elif defined(METRO_ESP32_S3)
+      #define ESP32UNO
 
-   #elif defined(ATMELUNO)   // Standard Arduino UNO board definitions with the ATMEL chip
+      // Adafruit Metro ESP32-S3 pin definitions
+      #define RTC_INT            3   // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define PIEZO             11   // The number of the Piezo pin
+      #define LED_PIN           A3   // Data pin that LEDs data will be written out.
+
+      #define S1                A2   // Push buttons connected to the A2, A1, A0 Arduino pins (CC)
+      #define S2                A1    
+      #define S3                A0 
+
+      #define DEBUG_SETUP_PIN    5   // Set to -1 to disable the Serial Setup display control by H/W (CA)
+      #define DEBUG_TIME_PIN     6   // Set to -1 to disable the Serial Time display control by H/W (CA)
+
+   // Generic AliExpress ESP32-S3 UNO board definitions (validate against the board you receive)
+   #elif defined(ESP32_S3_UNO)
+      #define ESP32UNO
+
+      // AliExpress ESP32-S3 UNO pin definitions
+      #define RTC_INT           17   // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define PIEZO             11   // The number of the Piezo pin
+      #define LED_PIN            6   // Data pin that LEDs data will be written out.
+
+      #define S1                 7   // Push buttons connected to the A2, A1, A0 Arduino pins (CC)
+      #define S2                 1    
+      #define S3                 2 
+
+      #define DEBUG_SETUP_PIN   10   // Set to -1 to disable the Serial Setup display control by H/W (CA)
+      #define DEBUG_TIME_PIN    11   // Set to -1 to disable the Serial Time display control by H/W (CA)
+
+   #elif defined(ATMEL_UNO_R3)   // Standard Arduino UNO R3 board definitions using the ATMEL 328 chip
       // Arduino UNO ATMEL 328 based pin definitions
-      #define RTC_INT        3        // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
-      #define PIEZO         11        // The number of the Piezo pin
-      #define LED_PIN       A3        // Data pin that LEDs data will be written out over
+      #define RTC_INT            3   // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+      #define PIEZO             11   // The number of the Piezo pin
+      #define LED_PIN           A3   // Data pin that LEDs data will be written out over
 
-      #define S1  A2                  // Push buttons connected to the A0, A1, A2 Arduino pins
-      #define S2  A1    
-      #define S3  A0 
+      #define S1                A2   // Push buttons connected to the A2, A1, A0 Arduino pins
+      #define S2                A1    
+      #define S3                A0 
 
-      // Debug Time PIN to print out the current time over serial monitor (if grounded)
-      // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. 1) in order
-      // to compile the code and make them available. They can also be set
-      // in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
-      // 'void BinaryClock::set_isSerialTime(bool value)' methods.
-      // The debug time and setup pins are used to enable/disable the serial output at runtime.
-      // without the need to change the software. The Serial Time is a switch to enable/disable 
-      // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
-      // to toggle enable/disable the serial setup display. 
-      // When the PIN value is -1 (-ve) the associated code is removed.
-      #define DEBUG_TIME_PIN  6 // Set to -1 to disable the Serial Time display control by H/W
-      #define DEBUG_SETUP_PIN 5 // Set to -1 to disable the Serial Setup display control by H/W
+      #define DEBUG_SETUP_PIN    5  // Set to -1 to disable the Serial Setup display control by H/W
+      #define DEBUG_TIME_PIN     6  // Set to -1 to disable the Serial Time display control by H/W
 
-      #define UNO_ARRAY_STATIC_CONST static const
-      #define ESP32_INPUT_PULLDOWN INPUT
+      // These defines are used in the code to satisfy the UNO compiler
+      #define UNO_ARRAY_STATIC_CONST      static const
+      #define ESP32_INPUT_PULLDOWN        INPUT
       #define BINARY_CLOCK_ARRAY_MEMBER
 
    #else
       #error "Unsupported board. Please define the pin numbers for your board."
    #endif
+
+   #ifdef ESP32UNO
+      // These defines are used to enable redefinition when compiling for UNO R3
+      // These are the definitions used with a standard C++ compiler.
+      #define UNO_ARRAY_STATIC_CONST
+      #define ESP32_INPUT_PULLDOWN        INPUT_PULLDOWN
+      #define BINARY_CLOCK_ARRAY_MEMBER   BinaryClock::
+   #endif 
+   //################################################################################//
 
    // The physical layout of the LEDs on the shield, one row each.
    #define NUM_HOUR_LEDS   5
@@ -159,7 +195,7 @@ namespace BinaryClockShield
    #define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
    #define COLOR_ORDER         GRB        // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
-   #define DEFAULT_DEBOUNCE_DELAY    50   // The default debounce delay in milliseconds for the buttons
+   #define DEFAULT_DEBOUNCE_DELAY    75   // The default debounce delay in milliseconds for the buttons
    #define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness 20-60
    #define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
    #define ALARM_1 1                      // Alarm 1 t, available on the RTC DS3231, adds seconds.
@@ -479,6 +515,11 @@ namespace BinaryClockShield
       /// @brief This method is to isolate the code needed to setup the FastLED library.
       /// @author Chris-80 (2025/07)
       void setupFastLED();
+
+      /// @brief Property: 'DebounceDelay' time (ms) for the buttons. Initially set to  DEFAULT_DEBOUNCE_DELAY.
+      /// @author Chris-70 (2025/07)
+      void set_DebounceDelay(unsigned long value);
+      unsigned long get_DebounceDelay() const;
 
       // ################################################################################
       // ORIGINAL METHODS - 

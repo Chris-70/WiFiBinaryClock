@@ -172,7 +172,7 @@ namespace BinaryClockShield
 
       if (RTCinterruptWasCalled && (settingsOption == 0))   // Display time but not during settings
          {
-         BinaryClock::RTCinterruptWasCalled = false;       // Clear the interrupt flag
+         RTCinterruptWasCalled = false;                    // Clear the interrupt flag
          getAndDisplayTime();                              // Get time from RTC, convert to binary format and display on LEDs
          
          #if SERIAL_TIME_CODE
@@ -204,7 +204,7 @@ namespace BinaryClockShield
       attachInterrupt(
             digitalPinToInterrupt(RTC_INT),
             []() { BinaryClock::get_Instance().RTCinterrupt(); },
-            FALLING);
+            FALLING); // FALLING; 1 Hz is driven LOW
 
       // Enable 1 Hz square wave RTC SQW output
       RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_SquareWave1Hz);
@@ -459,6 +459,16 @@ namespace BinaryClockShield
       return debugDelay;
       }
 
+   void BinaryClock::set_DebounceDelay(unsigned long value)
+      {
+      debounceDelay = value;
+      }
+
+   unsigned long BinaryClock::get_DebounceDelay() const
+      {
+      return debounceDelay;
+      }
+   
 
    //################################################################################//
    // SETTINGS
@@ -570,14 +580,30 @@ namespace BinaryClockShield
                if (settingsOption == 1)            // If you were in the process of setting the time:   
                   {
                   setNewTime();                    // Save time to the RTC
+                  #if SERIAL_TIME_CODE
+                  if (isSerialSetup)
+                     {
+                     Serial << F("\n-------------------------------------") << endl;
+                     Serial << F("---- Current Time: ");
+                     Serial << (DateTimeToString(RTC.now(), buffer, sizeof(buffer), "hh:mm:ss")) << endl;
+                     Serial << F("-------------------------------------") << endl;
+                     }
+                  #endif
                   }
 
                if (settingsOption == 3)            // If you were in the process of setting the alarm: 
                   {
                   setAlarmTimeAndStatus();         // Save time and alarm status to the RTC    
+                  #if SERIAL_TIME_CODE
+                  if (isSerialSetup)
+                     {
+                     Serial << endl;               // New line for the setting display above.
+                     }
+                  #endif
+
+                  serialAlarmInfo();               // Show the time and alarm status info when you exit to the main menu
                   }
 
-               serialAlarmInfo();                  // Show the time and alarm status info when you exit to the main menu
                settingsLevel = 0;                  // Escape to main menu  
                settingsOption = 0;                 // Escape to main menu
                }
