@@ -75,6 +75,7 @@
 // and melodies used for the alarm at runtime, without needing to recompile the code. 
 //
 
+#pragma once
 #ifndef _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
 #define _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
 
@@ -98,6 +99,14 @@ namespace BinaryClockShield
       DateTime time;          // The time of the alarm as a DateTime object
       int      melody;        // The melody to play when the alarm is triggered, 0 = internal melody
       int      status;        // Status of the alarm: 0 - inactive, 1 - active
+      bool     fired;         // The alarm has fired (e.g. alarm is 'ringing').
+      void clear()
+         {
+         time = DateTime();   // 00:00:00 (2000-01-01)
+         melody = 0;          // Internal melody
+         status = 0;          // OFF, alarm is not set.
+         fired = false;       // Alarm is not ringing (OFF)
+         }
       } AlarmTime;
 
    /// @brief The structure that holds the state of a button.
@@ -163,7 +172,9 @@ namespace BinaryClockShield
       /// @brief The method called to initialize the Binary Clock.
       ///        This has the same functionality of the Arduino setup() method.
       ///        Call this method before using the BinaryClock class.
-      void setup();
+      /// @param testLeds Flag - Show the test patterns at startup.
+      void setup(bool testLeds);
+      void setup() { setup(false); };
 
       /// @brief The method called to run the Binary Clock.
       ///        This has the same functionality of the Arduino loop() method.
@@ -249,14 +260,12 @@ namespace BinaryClockShield
 
       /// @brief The method called to get the default 'Alarm' property
       /// @return An AlarmTime structure containing the alarm time and status.
-      /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
       /// @author Chris-80 (2025/07)
       AlarmTime get_Alarm() { return GetAlarm(ALARM_2); }
 
       /// @brief The method called to get the 'AlarmTime' for alarm 'number'
       /// @param number The alarm number: 1 or 2. Alarm 2 is the default alarm.
       /// @return An AlarmTime structure containing the alarm time and status.
-      /// @note The returned AlarmTime is overwritten on each call. Make a local copy if needed.
       /// @design This method was included as a workaround to allow the user to get alarm 1
       ///         without breaking the property pattern for the Alarm, so no '_' after get....
       /// @author Chris-80 (2025/07)
@@ -286,6 +295,8 @@ namespace BinaryClockShield
       void set_DebugOffDelay(unsigned long value);
       unsigned long get_DebugOffDelay() const;
 
+      static int BuiltinLED;
+
       //#################################################################################//
       // Public METHODS
       //#################################################################################//
@@ -314,7 +325,7 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/07)
       bool SetAlarmMelody(unsigned *melodyArray, size_t melodySize, unsigned long *noteDurationArray, size_t noteDurationSize)
          {
-            bool result = false;
+         bool result = false;
          if (melodyArray != nullptr && noteDurationArray != nullptr && melodySize > 0 && noteDurationSize == melodySize)
             {
             this->melodyAlarm = melodyArray;
@@ -357,6 +368,17 @@ namespace BinaryClockShield
          return instance;
          }
 
+      /// @brief Method to flash the 'ledNum' ON/OFF for ~(1 sec / frequency). with an ON/OFF 'dutyCycle' 0-100
+      /// @param ledNum The output pin number to flash ON/OFF (HIGH/LOW).
+      /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).{1}
+      /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.       {50}
+      /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.       {1}
+      /// @note The LED must be wired CC, where the LED is on when the pin goes HIGH.
+      ///       The LED is in the OFF (LOW) state when this method returns.
+      /// @remarks A duty cycle outside of the range 10 - 90 or a frequency > 10 will not 
+      ///          appear to be flashing. Use a duty cycle between 25 - 75 and a frequency between 1 - 5
+      void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1);
+
    protected:
       /// @brief Default Constructor for the BinaryClock class. This initializes the 
       ///        button states, settings options, and brightness. It assigns the 
@@ -387,13 +409,29 @@ namespace BinaryClockShield
       void setupAlarm();
 
       /// @brief This method is to isolate the code needed to setup the FastLED library.
+      /// @param testLEDs - Flag: Display the LED test patterns.
       /// @author Chris-80 (2025/07)
-      void setupFastLED();
+      void setupFastLED(bool testLEDs);
 
       /// @brief Property: 'DebounceDelay' time (ms) for the buttons. Initially set to  DEFAULT_DEBOUNCE_DELAY.
       /// @author Chris-70 (2025/07)
       void set_DebounceDelay(unsigned long value);
       unsigned long get_DebounceDelay() const;
+
+      /// @brief This method runs the task to handle the RTC time and alarm. It waits for the 
+      ///        1 Hz RTC Interrupt, calls the 'timeDispatch()' method to read the RTC time and
+      ///        check if the alarm has fired. 
+      /// @note  This method isn't used on boards that don't run FreeRTOS, they just call the
+      ///        'timeDispatch()' method from within the 'loop()' method.
+      void timeTask();
+      
+      /// @brief This method handles the reading of the time from the RTC and checks if the 
+      ///        alarm has been triggered (when set). 
+      /// @returns bool - Flag indicating the interrupt had fired and time was read from the RTC.
+      /// @design - This method exists to be called by boards that don't have FreeRTOS.
+      ///           Instead of executing the code in 'timeTask()' the code is encompassed in 
+      ///           this method so that it can be called from within the 'loop()' method.
+      bool timeDispatch();
 
       // ################################################################################
       // ORIGINAL METHODS - 
@@ -418,10 +456,19 @@ namespace BinaryClockShield
       /// @param minuteRow The value for the middle, to display the minute LEDs (11-6).
       /// @param secondRow The value for the bottom, to display the second LEDs (5-0).
       /// @details This method converts the current time to binary and updates the LEDs 
-      ///          using the color values defined in the arrays 'OnColor' and 'OffColor'
+      ///          using the color values defined in the arrays 'OnColors' and 'OffColor'
+      /// @see FastLED.setBrightness() for the brightness of the LEDs.
+      /// @see displayLedBuffer() for displaying the full LED buffer as defined.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
-      void convertDecToBinaryAndDisplay(int hourRow, int minuteRow, int secondRow);
+      void convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow);
+
+      /// @brief The method called to display the LED buffer on the LEDs.
+      /// @param ledBuffer The buffer containing the LED colors to display.
+      /// @param size The size of the LED buffer from 'ledBuffer' to the end, e.g. 17.
+      /// @details This method just copies the given 'ledBuffer' contents directly to the 
+      // /         FastLED buffer and displays it.
+      void displayLedBuffer(const CRGB* ledBuffer, int size);
 
       /// @brief The method called to set the time on the RTC from the value in the time field.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
@@ -505,14 +552,34 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void checkHardwareDebugPin();
 
+      /// @brief This method is called to service the user callback function with the associated time.
+      /// @param triggerFlag The flag that indicates if the callback was fired.
+      /// @param time The associated DateTime object to pass to the callback function (e.g. alarm time / current time).
+      /// @param callback The user callback function to call with the associated DateTime.
+      /// @details This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
       void callbackFtn(volatile bool &triggerFlag, DateTime time, void (*callback)(DateTime));
+
+      /// @brief This method is called to dispatch the callback functions for the alarm and time.
+      /// @details This method calls the 'callbackFtn()' when the associated trigger is set and
+      ///          the user has registered a callback function for the trigger.
+      void callbackDispatch();
+
+      /// @brief This method is called to run the callback task in a separate thread.
+      /// @details This method is called in a separate thread on UNO boards that run FreeRTOS.
+      ///          This task just calls 'callbackDispatch()' and briefly pauses execution in a loop.
       void callbackTask();
+
+      /// @brief This method is called when the BinaryClock has died. It signals S.O.S. on the builtin led forever.
+      ///        It turns off the the LEDs on the shield and goes in a loop forever signaling SOS on the builtin LED.
+      ///        This is called for a catastrophic failure such as missing/failed RTC chip.
       void purgatoryTask(const char* message = nullptr);
       #endif
 
    public:         
       static CRGB OnColor [NUM_LEDS];     // Colors for the LEDs when ON
       static CRGB OffColor[NUM_LEDS];     // Colors for the LEDs when OFF
+      static CRGB PmColor;                // Color for the PM indicator LED, e.g. Gold.
+      static CRGB AmColor;                // Color for the AM indicator (Usually Black/OFF).
 
    protected:
       RTCLibPlusDS3231 RTC;               // Create RTC object using Adafruit RTCLib library
@@ -531,6 +598,12 @@ namespace BinaryClockShield
       static const unsigned      MelodyAlarm[] PROGMEM;   // Melody for alarm, unsigned integer array (32 bits)
       static const size_t        MelodySize; // Size of the melody array
       static const size_t        NoteDurationsSize; // Size of the note durations array
+
+      static CRGB DrawBuffer[NUM_LEDS];   // Buffer for drawing the LEDs, used for static symbol display.
+      static const CRGB OnText[NUM_LEDS]; // A big       Green 'O'   (for On)
+      static const CRGB OffTxt[NUM_LEDS]; // A sideways  Red   'F'   (for oFF)
+      static const CRGB XAbort[NUM_LEDS]; // A big       Pink  'X'   (for Abort/Cancel)
+      static const CRGB OkText[NUM_LEDS]; // A big       Lime  tick  (for Okay/Good)
 
    private:
       // These variables are initially set to the internal static melody and note durations arrays
@@ -571,8 +644,9 @@ namespace BinaryClockShield
       #endif
       #undef DECLARE_BUTTON   // Undefine, we only needed it here to write the declarations without errors.
 
-      DateTime time;                         // Current time from the RTC
-      DateTime tempTime;                     // Temporary time variable
+      DateTime time;                         // Current time from the RTC, updated every second.
+      DateTime tempTime;                     // Temporary time variable used when setting the time.
+      AlarmTime tempAlarm;                   // Temporary Alarm used when setting the alarm.
       int countButtonPressed;                // Counter for button pressed during time/alarm settings
       bool callbackAlarmEnabled = false;     // Flag: The 'Alarm' callback is enabled (i.e. is not nullptr) or not.
       bool callbackTimeEnabled  = false;     // Flag: The 'Time'  callback is enabled (i.e. is not nullptr) or not.
@@ -581,6 +655,7 @@ namespace BinaryClockShield
       void (*timeCallback)(DateTime)  = nullptr; // Callback function for time trigger (1 Hz frequency).
 
       unsigned long debounceDelay = DEFAULT_DEBOUNCE_DELAY; // The debounce time for a button press.
+      bool pixelsPresent = false;            // Flag: Indicates if the shield is attached (or just a dev. board).
 
       // Variables that store the current settings option
       int settingsOption = 0;               // Time = 1, Alarm = 3  
