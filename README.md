@@ -31,7 +31,7 @@ The user needs to define the target board being used for this code to compile. T
 5.   **UNO\_R4\_MINIMA** \- The no WiFi [R4 Minima](https://store.arduino.cc/products/uno-r4-minima) board.
 6.   **UNO\_R3** \-  The original [Arduino UNO R3](https://store.arduino.cc/products/arduino-uno-rev3) board.
 
-Add one of these defines to the compiler options (e.g. `-DMETRO_ESP32_S3`) or include a preprocessor definition in your code (e.g. `#define METRO_ESP32_S3`). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield.
+Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition in your code (e.g. `#define METRO_ESP32_S3`). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield.
 
 The code was developed using the excellent [PlatformIO IDE](https://platformio.org/) extension for the [VSCode](https://code.visualstudio.com/) editor. The file, `platformio.ini`, includes the setup for each of the supported boards so all you need to do is specify which one you're using.
 
