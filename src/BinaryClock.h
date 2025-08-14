@@ -13,7 +13,7 @@
 // http://www.arduino.cc/en/Tutorial/Tone
 //
 // A falling edge at the RTC INT/SQW output causes an interrupt, 
-// which is uses for regular - 1 per second - reading time from RTC and 
+// which it uses for regular - 1 per second - reading time from RTC and 
 // checking alarm status flag 'A2F'. Since we use RTC INT/SQW output for
 // regular reading current time - square wave output SQW option, 
 // global interrupt flag INTCN is set to 0, this disables the interrupts from both RTC alarms.
@@ -39,10 +39,12 @@
 // S2 button connected to: Arduino pin  A1      ; Metro ESP32-S3  A1 ; ESP32_D1-R32  4  ; ESP32-S3 UNO  1
 // S1 button connected to: Arduino pin  A2      ; Metro ESP32-S3  A2 ; ESP32_D1-R32 35  ; ESP32-S3 UNO  7
 // LEDs      connected to: Arduino pin  A3      ; Metro ESP32-S3  A3 ; ESP32_D1-R32 15* ; ESP32-S3 UNO  6
-// RTC SDA   connected to: Arduino pin PC4  SDA ; Metro ESP32-S3  47 ; ESP32_D1-R32 36  ; ESP32-S3 UNO  8
-// RTC SCL   connected to: Arduino pin PC5  SCL ; Metro ESP32-S3  48 ; ESP32_D1-R32 39  ; ESP32-S3 UNO  9
+// RTC SDA** connected to: Arduino pin PC4  SDA ; Metro ESP32-S3  47 ; ESP32_D1-R32 36  ; ESP32-S3 UNO  8
+// RTC SCL** connected to: Arduino pin PC5  SCL ; Metro ESP32-S3  48 ; ESP32_D1-R32 39  ; ESP32-S3 UNO  9
 //
-// * (Requires hardware board modification to use LED output pin)
+//  * (Requires hardware board modification to use LED output pin)
+// ** (The shield is connected to and uses the alternate SDA (A4) and SCL (A5) pins: PC4; and PC5.
+//    These pins are located just below the RESET button and above the AREF pin)
 //
 //                        +------+       +------+       +------+       +------+       +------+
 //                        |LED 16|---<---|LED 15|---<---|LED 14|---<---|LED 13|---<---|LED 12|--<-+
@@ -69,8 +71,8 @@
 // allow greater flexibility by the user at runtime, such as the color selection and melodies used for the alarm.
 // 
 // The goal of using an ESP32 based UNO board was to allow the RTC to be connected to a NTP server over WiFi. The code
-// for the WiFi connection is encapsulated in its own class, WiFiClock, which is not included in this file. It uses 
-// WPS to connect to a WiFi network and stores the credentials in the ESP32 flash memory so future connections are
+// for the WiFi connection is encapsulated in its own class, 'BinaryClock_NTP', which is not included in this file. 
+// It uses WPS to connect to a WiFi network and stores the credentials in the ESP32 flash memory so future connections are
 // made automatically without user intervention. The WiFi connection also allows the user to change the LED colors
 // and melodies used for the alarm at runtime, without needing to recompile the code. 
 //
@@ -85,9 +87,16 @@
 #include <RTClib.h>              // Adafruit RTC library: https://github.com/adafruit/RTClib
 #include <Streaming.h>           // https://github.com/janelia-arduino/Streaming                            
 
-#include "BinaryClock.Defines.h" // Include the Binary Clock definitions file
-#include "pitches.h"             // Need to create the pitches.h library: https://arduino.cc/en/Tutorial/ToneMelody
+#include "BinaryClock.Defines.h" // Include the Binary Clock definitions for the boards, and hard constants.
+#include "pitches.h"             // Need to create the pitches library: https://arduino.cc/en/Tutorial/ToneMelody
 
+#ifdef TESTING                   // Changes needed for unit testing of this code.
+   #define TEST_VIRTUAL virtual
+   #define PRIVATE protected
+#else
+   #define TEST_VIRTUAL
+   #define PRIVATE private
+#endif
 namespace BinaryClockShield
    {
    /// @brief The structure holds all the Alarm information used by the Binary Clock.
@@ -95,12 +104,12 @@ namespace BinaryClockShield
    /// @author Chris-80 (2025/07)
    typedef struct alarmTime
       {
-      int      number;        // The number of the alarm: 1 or 2
+      uint8_t  number;        // The number of the alarm: 1 or 2
       DateTime time;          // The time of the alarm as a DateTime object
-      int      melody;        // The melody to play when the alarm is triggered, 0 = internal melody
-      int      status;        // Status of the alarm: 0 - inactive, 1 - active
+      uint8_t  melody;        // The melody to play when the alarm is triggered, 0 = internal melody
+      uint8_t  status;        // Status of the alarm: 0 - inactive, 1 - active
       bool     fired;         // The alarm has fired (e.g. alarm is 'ringing').
-      void clear()
+      void clear()            /// Clear all data except the alarm 'number'
          {
          time = DateTime();   // 00:00:00 (2000-01-01)
          melody = 0;          // Internal melody
@@ -111,19 +120,27 @@ namespace BinaryClockShield
 
    /// @brief The structure that holds the state of a button.
    ///        It contains the pin number, current state, last read state, last read time
-   ///        the onValue (the value when the button is pressed) for CC or CA connections.
-   ///        The isPressed() method returns true if the button is currently pressed, false otherwise.
+   ///        the onValue (the value when the button is pressed) for CC (HIGH) or CA (LOW) connections.
+   ///        The isPressed() method returns true if the button state is ON (pressed), false otherwise.
+   ///        The read() method reads the current button pin state without debouncing. True: ON, False: OFF.
+   ///        The value() method reads the current raw pin value without debouncing, returns HIGH/LOW.
    /// @author Chris-80 (2025/07)
    typedef struct buttonState
       {
-      uint8_t pin;                     // The button pin number: e.g. S1, S2, S3, etc.
-      int state;                       // The current state of the button: LOW or HIGH
-      int lastRead;                    // The last read state of the button: LOW or HIGH
-      unsigned long lastReadTime;      // The last time the button was read
-      unsigned long lastDebounceTime;  // The last debounce time in milliseconds
-      int onValue;                     // The button value when pressed, HIGH (CC) or LOW (CA)
-      bool isPressed() const           // True if the button is currently pressed, false otherwise
-         { return (state == onValue); }  
+      uint8_t pin;                     /// The button pin number: e.g. S1; S2; S3, etc. (defined in 'BinaryClock.Defines.h')
+      uint8_t state;                   /// The current state of the button: LOW or HIGH
+      uint8_t lastRead;                /// The last read state of the button: LOW or HIGH
+      unsigned long lastReadTime;      /// The last time the button was read
+      unsigned long lastDebounceTime;  /// The last debounce time in milliseconds
+      uint8_t onValue;                 /// The button value when pressed, HIGH (CC) or LOW (CA)
+      TEST_VIRTUAL bool isPressed(int value) const  /// True if the 'value' is currently ON (pressed), false otherwise
+         { return (value == onValue); }  
+      TEST_VIRTUAL bool isPressed() const /// True if the button 'state' is currently 'ON' (pressed), false otherwise
+         { return isPressed(state); }  
+      TEST_VIRTUAL bool read()            /// Read and the current button H/W state: ON/OFF (no debounce done).
+         { return isPressed(value()); }
+      TEST_VIRTUAL int value()            /// Read the current raw pin value (no debounce), return HIGH/LOW.
+         { return digitalRead(pin); }
       } ButtonState;
 
    /// @brief The class that extends the RTCLib's RTC_DS3231 class to add raw read/write methods
@@ -132,13 +149,13 @@ namespace BinaryClockShield
    class RTCLibPlusDS3231 : public RTC_DS3231
       {
    public:
-      /// @brief Wrapper for the 'RTC_I2C::read_register' method to read a register from the DS3231 RTC.
+      /// @brief Wrapper for the 'RTC_I2C::read_register' public method to read a register from the DS3231 RTC.
       /// @details This method reads a single byte from the specified register of the DS3231
       /// @param reg The DS3231 register number to read.
       /// @return The register value that was read.
       uint8_t RawRead(uint8_t reg);
 
-      /// @brief Wrapper for the 'RTC_I2C::write_register' method to write a value to a register in the DS3231 RTC.
+      /// @brief Wrapper for the 'RTC_I2C::write_register' public method to write a value to a register in the DS3231 RTC.
       /// @details This method writes a single byte to the specified register of the DS3231
       /// @param reg The DS3231 register number to write to.
       /// @param value The value to write to the register.
@@ -185,47 +202,81 @@ namespace BinaryClockShield
       //################################################################################//
       // SETTINGS
       //################################################################################//
-      //
-      //                       +-------------------------------+
-      //                       |           SETTINGS            |
-      //           +-----------+-------------------------------+
-      //           |  BUTTONS  |    S3   |     S2    |   S1    |
-      // +---------+-----------+---------+-----------+---------+
-      // |         |           |         |   ALARM   |         |
-      // |         |     0     |  ALARM  |   MELODY  |  TIME   |
-      // |   S     |           |         |   STOP    |         |
-      // +   E L   +-----------+---------+-----------+---------+
-      // |   T E   | ROW H = 1 |    +    |   SAVE    |    -    |
-      // |   T V   |           |         | LEVEL = 2 |         |
-      // +   I E   +-----------+---------+-----------+---------+
-      // |   N L   | ROW M = 2 |    +    |   SAVE    |    -    |
-      // |   G     |           |         | LEVEL = 3 |         |
-      // +   S     +-----------+---------+-----------+---------+
-      // |         | ROW S = 3 |    +    |   SAVE    |    -    |
-      // |         |           |         | LEVEL = 0 |         |
-      // +---------+-----------+---------+-----------+---------+
-      //
-      //                       +-------------------------------+
-      //                       |        SETTINGS OPTION        |
-      //                       +---------------+---------------+
-      //                       |   ALARM = 3   |   TIME = 1    |
-      // +---------------------+---------------+---------------+
-      // |   S     | ROW H = 1 |     3/1       |     1/1       |
-      // |   E L   |           |     HOUR      |     HOUR      |
-      // +   T E   +-----------+---------------+---------------+
-      // |   T V   | ROW M = 2 |     3/2       |     1/2       |
-      // |   I E   |           |    MINUTE     |    MINUTE     |
-      // +   N L   +-----------+---------------+---------------+
-      // |   G     | ROW S = 3 |     3/3       |     1/3       |
-      // |   S     |           | ALARM STATUS  |    SECOND     |
-      // +---------+-----------+---------------+---------------+
-      //
-      // The core of the settings menu
+      /// @verbatim
+      ///
+      ///                       +-------------------------------+
+      ///                       |           SETTINGS            |
+      ///           +-----------+-------------------------------+
+      ///           |  BUTTONS  |    S3   |     S2    |   S1    |
+      /// +---------+-----------+---------+-----------+---------+
+      /// |         |           |   SET   |   ALARM   |  SET    |
+      /// |         | Level = 0 |  ALARM  |   MELODY  |  TIME   |
+      /// |   S     |           |         |   STOP    |         |
+      /// +   E L   +-----------+---------+-----------+---------+
+      /// |   T E   | Level = 1 |    +    |   SAVE    |    -    |
+      /// |   T V   |           |         | LEVEL = 2 |         |
+      /// +   I E   +-----------+---------+-----------+---------+
+      /// |   N L   | Level = 2 |    +    |   SAVE    |    -    |
+      /// |   G     |           |         | LEVEL = 3 |         |
+      /// +   S     +-----------+---------+-----------+---------+
+      /// |         | Level = 3 |    +    |   SAVE    |    -    |
+      /// |         |           |         | LEVEL 0/4 |         |
+      /// +         +-----------+---------+-----------+---------+
+      /// |         | Level = 4 |    +    |   SAVE    |    -    |
+      /// |         |           |         | LEVEL = 0 |         |
+      /// +---------+-----------+---------+-----------+---------+
+      ///
+      /// @endverbatim
+      /// When setting Time, the first option is to select the 
+      /// Display mode: 12 Hr; 24 Hr; or Abort time setting.
+      /// When setting Alarm, the first option is to select the
+      /// Alarm state: ON; OFF; or Abort the alarm setting.
+      //// @verbatim
+      /// 
+      ///                       +-------------------------------+
+      ///                       |        SETTINGS OPTION        |
+      ///                       +---------------+---------------+
+      ///                       |   ALARM = 3   |   TIME = 1    |
+      /// +---------------------+---------------+---------------+
+      /// |         | Level = 1 |     3/1       | 1/1   Abort / |  
+      /// |         |           | On/Off/Abort  | 12 Hr/ 24 Hr  |  
+      /// |   S     |           |  (Row: All)   |   (Row: H)    |
+      /// +   E L   +-----------+---------------+---------------+
+      /// |   T E   | Level = 2 |     3/2       |     1/2       |
+      /// |   T V   |           |     HOUR      |     HOUR      |
+      /// |   I E   |           |   (Row: H)    |   (Row: H)    |
+      /// +   N L   +-----------+---------------+---------------+
+      /// |   G     | Level = 3 |     3/3       |     1/3       |
+      /// |   S     |           |    MINUTE     |    MINUTE     |
+      /// |         |           |   (Row: M)    |   (Row: M)    |
+      /// +         +-----------+---------------+---------------+
+      /// |         | Level = 4 |     N/A       |     1/4       |
+      /// |         |           |               |    SECOND     |
+      /// |         |           |               |   (Row: S)    |
+      /// +---------+-----------+---------------+---------------+
+      ///
+      /// @endverbatim
 
       /// @brief The method called to set the time and/or alarm from the shield
-      ///        The S1 button sets the Time, S3 sets the Alarm, S2 accepts
-      ///        the current modified value and moves to the next line.
-      ///        The S1 and S3 buttons increment/decrement the current modified value.
+      ///          The S1 button sets the Time, S3 sets the Alarm, S2 accepts
+      ///          the current modified value and moves to the next line.
+      ///          The S3 and S1 buttons increment/decrement the current modified value.
+      /// @details The 'settingsMenu()' method displays the settings menu on the shield LEDs.
+      ///          The user can navigate through the menu using the S1, S2, and S3 buttons.
+      /// @verbatim
+      ///          To enter the Alarm settings, the user presses the S3 button.
+      ///          To enter the Time  settings, the user presses the S1 button.
+      ///          The first selection (i.e. Level 1) is for the state or mode:
+      ///              Alarm: ON; OFF; or Abort the alarm setting.
+      ///              Time: 12 Hr; 24 Hr; or Abort the time setting.
+      ///          The second selection (i.e. Level 2) is for the hour.
+      ///          The third  selection (i.e. Level 3) is for the minute.
+      ///          The fourth selection (i.e. Level 4) is for the second (Time only)
+      /// @endverbatim
+      ///          When the final selection is made the 'Rainbow' pattern is displayed
+      ///          to indicate to the user the changes are over and the settings are 
+      ///          either being saved, indicated by the Green check mark, or the 
+      ///          changes have been discarded, indicated by the Pink 'X' on the shield.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       /// @author Chris-80 (2025/07)
       void settingsMenu();
@@ -233,6 +284,8 @@ namespace BinaryClockShield
       /// @brief The method called to play the alarm melody.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       void playAlarm();
+
+      DateTime ReadTime();
 
       //#################################################################################//
       // Public PROPERTIES
@@ -248,7 +301,7 @@ namespace BinaryClockShield
       /// @return A DateTime object containing the current time.
       /// @note The DateTime class is defiend in the RTCLib.h header file.
       /// @author Chris-80 (2025/07)
-      DateTime get_Time();
+      DateTime get_Time() const;
 
       /// @brief The method called to set the current 'Alarm' property.
       /// @param alarmTime The AlarmTime structure containing the alarm time and status.
@@ -277,7 +330,14 @@ namespace BinaryClockShield
       void set_Brightness(byte value);
       byte get_Brightness();
 
-      /// @brief Property pattern for the 'isSerialSetup' flag property.
+      /// @brief Property pattern for the 'is12HourFormat' flag property.
+      ///        This property controls whether the time is displayed in 
+      ///        12-hour or 24-hour format.
+      /// @author Chris-70 (2025-07)
+      void set_Is12HourFormat(bool value);
+      bool get_Is12HourFormat() const;
+
+      /// @brief Property pattern for the 'isSerialSetup' flag property. 
       ///        This property controls whether the serial setup menu is displayed or not.
       /// @author Chris-80 (2025/07)
       void set_isSerialSetup(bool value);
@@ -289,13 +349,15 @@ namespace BinaryClockShield
       void set_isSerialTime(bool value);
       bool get_isSerialTime() const ;
 
+      #if HW_DEBUG_TIME
       /// @brief Property pattern for the 'DebugOffDelay' property. This controls how fast 
       ///        the serial time monitor is turned off after the debug pin goes OFF.
       /// @author Chris-80 (2025/07)
       void set_DebugOffDelay(unsigned long value);
       unsigned long get_DebugOffDelay() const;
+      #endif
 
-      static int BuiltinLED;
+      static uint8_t BuiltinLED;
 
       //#################################################################################//
       // Public METHODS
@@ -380,6 +442,8 @@ namespace BinaryClockShield
       void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1);
 
    protected:
+      enum SettingsType { Undefined, TimeOptions, Hours, Minutes, Seconds, AlarmStatus };
+
       /// @brief Default Constructor for the BinaryClock class. This initializes the 
       ///        button states, settings options, and brightness. It assigns the 
       ///        melody and note durations arrays to the class members.
@@ -418,12 +482,14 @@ namespace BinaryClockShield
       void set_DebounceDelay(unsigned long value);
       unsigned long get_DebounceDelay() const;
 
+      #if FREE_RTOS
       /// @brief This method runs the task to handle the RTC time and alarm. It waits for the 
       ///        1 Hz RTC Interrupt, calls the 'timeDispatch()' method to read the RTC time and
       ///        check if the alarm has fired. 
       /// @note  This method isn't used on boards that don't run FreeRTOS, they just call the
       ///        'timeDispatch()' method from within the 'loop()' method.
       void timeTask();
+      #endif
       
       /// @brief This method handles the reading of the time from the RTC and checks if the 
       ///        alarm has been triggered (when set). 
@@ -432,6 +498,8 @@ namespace BinaryClockShield
       ///           Instead of executing the code in 'timeTask()' the code is encompassed in 
       ///           this method so that it can be called from within the 'loop()' method.
       bool timeDispatch();
+
+      SettingsType GetSettingsType(int options, int level);
 
       // ################################################################################
       // ORIGINAL METHODS - 
@@ -455,19 +523,21 @@ namespace BinaryClockShield
       /// @param hourRow The value for the top, to display the hour LEDs (16-12).
       /// @param minuteRow The value for the middle, to display the minute LEDs (11-6).
       /// @param secondRow The value for the bottom, to display the second LEDs (5-0).
+      /// @param use12HourMode Flag indicating whether to use 12-hour format.
       /// @details This method converts the current time to binary and updates the LEDs 
-      ///          using the color values defined in the arrays 'OnColors' and 'OffColor'
-      /// @see FastLED.setBrightness() for the brightness of the LEDs.
+      ///          using the color values defined in the arrays 'OnColor' and 'OffColor'
+      /// @see set_Brightness() for the brightness of the LEDs.
       /// @see displayLedBuffer() for displaying the full LED buffer as defined.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
-      void convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow);
+      void convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode = false);
 
       /// @brief The method called to display the LED buffer on the LEDs.
       /// @param ledBuffer The buffer containing the LED colors to display.
       /// @param size The size of the LED buffer from 'ledBuffer' to the end, e.g. 17.
       /// @details This method just copies the given 'ledBuffer' contents directly to the 
-      // /         FastLED buffer and displays it.
+      ///          FastLED buffer and displays it.
+      /// @author Chris-70 (2025/07)
       void displayLedBuffer(const CRGB* ledBuffer, int size);
 
       /// @brief The method called to set the time on the RTC from the value in the time field.
@@ -530,6 +600,8 @@ namespace BinaryClockShield
       /// @details This method is called when the user is changing the time or alarm time.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       void serialCurrentModifiedValue();
+
+      char* formatHour(int hour24, bool is12HourFormat, char* buffer, size_t size);
       #endif
 
       /// @brief Method to check if the button was pressed ON from OFF since the last call.
@@ -551,29 +623,36 @@ namespace BinaryClockShield
       /// @brief This method is called to check the hardware debug buttons/switches and set the serial output level.
       /// @author Chris-80 (2025/07)
       void checkHardwareDebugPin();
+      #endif
 
       /// @brief This method is called to service the user callback function with the associated time.
       /// @param triggerFlag The flag that indicates if the callback was fired.
       /// @param time The associated DateTime object to pass to the callback function (e.g. alarm time / current time).
       /// @param callback The user callback function to call with the associated DateTime.
       /// @details This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
+      /// @author Chris-70 (2025/07)
       void callbackFtn(volatile bool &triggerFlag, DateTime time, void (*callback)(DateTime));
 
       /// @brief This method is called to dispatch the callback functions for the alarm and time.
       /// @details This method calls the 'callbackFtn()' when the associated trigger is set and
       ///          the user has registered a callback function for the trigger.
+      /// @author Chris-70 (2025/07)
       void callbackDispatch();
 
+      #if FREE_RTOS
       /// @brief This method is called to run the callback task in a separate thread.
       /// @details This method is called in a separate thread on UNO boards that run FreeRTOS.
       ///          This task just calls 'callbackDispatch()' and briefly pauses execution in a loop.
+      /// @author Chris-70 (2025/07)
       void callbackTask();
+      #endif
 
       /// @brief This method is called when the BinaryClock has died. It signals S.O.S. on the builtin led forever.
       ///        It turns off the the LEDs on the shield and goes in a loop forever signaling SOS on the builtin LED.
-      ///        This is called for a catastrophic failure such as missing/failed RTC chip.
+      ///        This is called for a catastrophic failure such as missing/failed RTC chip. A reboot is required
+      ///        T.his is where the BinaryClock software goes to die.
+      /// @author Chris-70 (2025/07)
       void purgatoryTask(const char* message = nullptr);
-      #endif
 
    public:         
       static CRGB OnColor [NUM_LEDS];     // Colors for the LEDs when ON
@@ -592,6 +671,13 @@ namespace BinaryClockShield
       volatile bool CallbackAlarmTriggered;  // Flag: The 'Alarm' callback needs to be called.
       volatile bool CallbackTimeTriggered;   // Flag: The 'Time'  callback needs to be called.
 
+      const char* timeFormat24 = "hh:mm:ss";
+      const char* timeFormat12 = "HH:mm:ss AP";
+      const char* timeFormat = timeFormat24;
+      const char* alarmFormat24 = "hh:mm";
+      const char* alarmFormat12 = "HH:mm AP";
+      const char* alarmFormat = alarmFormat24;
+
       // Note durations: 4 = quarter note, 8 = eighth note, etc.:
       // Some notes durations have been changed (1, 3, 6) to make them sound better
       static const unsigned long NoteDurations[] PROGMEM; // Note durations array, unsigned long array (64 bits)
@@ -599,13 +685,15 @@ namespace BinaryClockShield
       static const size_t        MelodySize; // Size of the melody array
       static const size_t        NoteDurationsSize; // Size of the note durations array
 
-      static CRGB DrawBuffer[NUM_LEDS];   // Buffer for drawing the LEDs, used for static symbol display.
-      static const CRGB OnText[NUM_LEDS]; // A big       Green 'O'   (for On)
-      static const CRGB OffTxt[NUM_LEDS]; // A sideways  Red   'F'   (for oFF)
-      static const CRGB XAbort[NUM_LEDS]; // A big       Pink  'X'   (for Abort/Cancel)
-      static const CRGB OkText[NUM_LEDS]; // A big       Lime  tick  (for Okay/Good)
+      static CRGB DrawBuffer   [NUM_LEDS];   // Buffer for drawing the LEDs, used for static symbol display.
+      static const CRGB OnText [NUM_LEDS];   // A big       Green 'O'   (for On)
+      static const CRGB OffTxt [NUM_LEDS];   // A sideways  Red   'F'   (for oFF)
+      static const CRGB XAbort [NUM_LEDS];   // A big       Pink  'X'   (for abaort/cancel)   /
+      static const CRGB OkText [NUM_LEDS];   // A big       Lime  tick  (for okay/good)     \/
+      static const CRGB Rainbow[NUM_LEDS];   // Colours of the rainbow.
 
-   private:
+  PRIVATE:
+  public:   // *** DEBUG ***
       // These variables are initially set to the internal static melody and note durations arrays
       // They can be changed to use different melodies and note durations in the ESP32 flash memory.
       unsigned      *melodyAlarm;         // Pointer to the melody array
@@ -624,30 +712,36 @@ namespace BinaryClockShield
       //      LOW  (i.e. CA_ON, button connects to ground when pressed).
       // 'NAME' - The suffix to add to 'button' to create the ButtonState object.
       // 'PIN' - The pin number that the button is connected to.
-      // 'TYPE_CC_CA' - 'CC' when the OFF state is LOW  (pulled HIGH when pressed), 
-      //              - 'CA' when the OFF state is HIGH (pulled LOW  when pressed)..
+      // 'TYPE_CC_CA' - 'CC' when the OFF state is LOW  (i.e. pulled HIGH when pressed), 
+      //              - 'CA' when the OFF state is HIGH (i.e. pulled LOW  when pressed)..
       #define DECLARE_BUTTON(NAME, PIN, TYPE_CC_CA) \
             ButtonState button##NAME = { .pin = PIN, .state = TYPE_CC_CA##_OFF, .lastRead = TYPE_CC_CA##_OFF, \
                                          .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = TYPE_CC_CA##_ON }
 
       // The 3 buttons used to control the Binary Clock Shield menu for setting the time and alarm.
-      DECLARE_BUTTON(S1, S1, CC);         // Declare 'ButtonState buttonS1'
-      DECLARE_BUTTON(S2, S2, CC);         // Declare 'ButtonState buttonS2'
-      DECLARE_BUTTON(S3, S3, CC);         // Declare 'ButtonState buttonS3'
+      DECLARE_BUTTON(S1, S1, CC);         // Declare 'ButtonState::buttonS1'
+      DECLARE_BUTTON(S2, S2, CC);         // Declare 'ButtonState::buttonS2'
+      DECLARE_BUTTON(S3, S3, CC);         // Declare 'ButtonState::buttonS3'
+
+      #if DEV_BOARD
+      DECLARE_BUTTON(DOut, 17, CC); // *** DEBUG ***
+      #endif
             
       #if HW_DEBUG_SETUP
-      DECLARE_BUTTON(DebugSetup, DEBUG_SETUP_PIN, CC);   // Declare 'ButtonState buttonDebugSetup'
+      DECLARE_BUTTON(DebugSetup, DEBUG_SETUP_PIN, CC);   // Declare 'ButtonState::buttonDebugSetup'
       #endif
 
       #if HW_DEBUG_TIME
-      DECLARE_BUTTON(DebugTime, DEBUG_TIME_PIN, CA);     // Declare 'ButtonState buttonDebugTime'
+      DECLARE_BUTTON(DebugTime, DEBUG_TIME_PIN, CA);     // Declare 'ButtonState::buttonDebugTime'
       #endif
       #undef DECLARE_BUTTON   // Undefine, we only needed it here to write the declarations without errors.
 
       DateTime time;                         // Current time from the RTC, updated every second.
       DateTime tempTime;                     // Temporary time variable used when setting the time.
       AlarmTime tempAlarm;                   // Temporary Alarm used when setting the alarm.
-      int countButtonPressed;                // Counter for button pressed during time/alarm settings
+      bool tempAmPm = false;                 // Temporary flag for 12/24 Hr. mode when setting time.
+      bool amPmMode = false;                 // Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
+      int countButtonPressed = 0;            // Counter for button pressed during time/alarm settings
       bool callbackAlarmEnabled = false;     // Flag: The 'Alarm' callback is enabled (i.e. is not nullptr) or not.
       bool callbackTimeEnabled  = false;     // Flag: The 'Time'  callback is enabled (i.e. is not nullptr) or not.
       bool rtcValid             = false;     // Flag: The RTC was found and initialized.
@@ -668,7 +762,7 @@ namespace BinaryClockShield
       char buffer[64] = { 0 };                     // Buffer for the DateTime string conversions
 
       bool isSerialSetup = (SERIAL_SETUP_CODE) && (DEFAULT_SERIAL_SETUP); // Serial setup flag
-      bool isSerialTime  = (SERIAL_TIME_CODE)  && (DEFAULT_SERIAL_TIME);  // Serial time flag   
+      bool isSerialTime  = (SERIAL_TIME_CODE)  && (DEFAULT_SERIAL_TIME);  // Serial time  flag   
 
       // Time to wait after serial time button goes off before stopping the serial output.
       // Set to a long delay if using a momentary button, keep short for a switch. This

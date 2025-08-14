@@ -97,22 +97,26 @@ const uint8_t daysInMonth[] PROGMEM = {31, 28, 31, 30, 31, 30,
 /**************************************************************************/
 /*!
     @brief  Given a date, return number of days since 2000/01/01,
-            valid for 2000--2099
-    @param y Year
+            valid for 2000-2199
+    @param y Year (2000-2199) or (0-199)
     @param m Month
     @param d Day
     @return Number of days
 */
 /**************************************************************************/
 static uint16_t date2days(uint16_t y, uint8_t m, uint8_t d) {
-  if (y >= 2000U)
+  if (y >= 2000U && y < 2200)
     y -= 2000U;
+  // Validate the date, especialy a month > 12 as it could read arbitrary memory. 
+  if ((y >= 200) || (m > 12) || (d > 31)) {
+    return 0; // Invalid date
+  }
   uint16_t days = d;
   for (uint8_t i = 1; i < m; ++i)
     days += pgm_read_byte(daysInMonth + i - 1);
   if (m > 2 && y % 4 == 0)
     ++days;
-  return days + 365 * y + (y + 3) / 4 - 1;
+  return days + 365 * y + (y + 3) / 4 -  (y < 100? 1 : 2); // 2100 is NOT a leap year
 }
 
 /**************************************************************************/
@@ -149,6 +153,7 @@ static uint32_t time2ulong(uint16_t days, uint8_t h, uint8_t m, uint8_t s) {
        this constructor takes an unsigned argument. Because of this, it does
        _not_ suffer from the
        [year 2038 problem](https://en.wikipedia.org/wiki/Year_2038_problem).
+       which becomes a 2106 problem instead.
 
     If called without argument, it returns the earliest time representable
     by this class: 2000-01-01 00:00:00.
@@ -174,6 +179,9 @@ DateTime::DateTime(uint32_t t) {
       break;
     days -= 365 + leap;
   }
+  if (yOff >= 100) {
+    days++; // 2100 is not a leap year, so we need to add one day for the extra leap day we subtracted.
+  }
   for (m = 1; m < 12; ++m) {
     uint8_t daysPerMonth = pgm_read_byte(daysInMonth + m - 1);
     if (leap && m == 2)
@@ -192,8 +200,8 @@ DateTime::DateTime(uint32_t t) {
            the constructed DateTime will be invalid.
     @see   The `isValid()` method can be used to test whether the
            constructed DateTime is valid.
-    @param year Either the full year (range: 2000--2099) or the offset from
-        year 2000 (range: 0--99).
+    @param year Either the full year (range: 2000--2199) or the offset from
+                year 2000 (range: 0--199).
     @param month Month number (1--12).
     @param day Day of the month (1--31).
     @param hour,min,sec Hour (0--23), minute (0--59) and second (0--59).
@@ -202,13 +210,13 @@ DateTime::DateTime(uint32_t t) {
 DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
                    uint8_t min, uint8_t sec) {
   if (year >= 2000U)
-    year -= 2000U;
+    year = (year - 2000U) % 200U;
   yOff = year;
-  m = month;
-  d = day;
-  hh = hour;
-  mm = min;
-  ss = sec;
+  m = month % 12;
+  d = day % 31;
+  hh = hour % 24;
+  mm = min % 60;
+  ss = sec % 60;
 }
 
 /**************************************************************************/
@@ -223,17 +231,21 @@ DateTime::DateTime(const DateTime &copy)
 
 /**************************************************************************/
 /*!
-    @brief  Convert a string containing two digits to uint8_t, e.g. "09" returns
-   9
+    @brief  Convert a string containing two digits to uint8_t, 
+            e.g. "09" returns 9
     @param p Pointer to a string containing two digits
+    @return The converted value (0 - 99), or 255 if the string is not valid
 */
 /**************************************************************************/
 static uint8_t conv2d(const char *p) {
   uint8_t v = 0;
   if ('0' <= *p && *p <= '9')
     v = *p - '0';
-  return 10 * v + *++p - '0';
-}
+   if ('0' <= *++p && *p <= '9')
+     return 10 * v + *p - '0';
+   else
+     return v;
+}     
 
 /**************************************************************************/
 /*!
@@ -384,7 +396,7 @@ DateTime::DateTime(const char *iso8601dateTime) {
 */
 /**************************************************************************/
 bool DateTime::isValid() const {
-  if (yOff >= 100)
+  if (yOff >= 200)
     return false;
   DateTime other(unixtime());
   return yOff == other.yOff && m == other.m && d == other.d && hh == other.hh &&
@@ -409,7 +421,8 @@ bool DateTime::isValid() const {
     | DDD       | the abbreviated English day of the week ("Mon"--"Sun") |
     | AP        | either "AM" or "PM"                                    |
     | ap        | either "am" or "pm"                                    |
-    | hh        | the hour as a 2-digit number (00--23 or 01--12)        |
+    | hh        | the hour as a   2-digit number       (00--23 / 01--12) |
+    | HH        | the hour as a 1/2-digit number/space (_0--23 / _1--12) |
     | mm        | the minute as a 2-digit number (00--59)                |
     | ss        | the second as a 2-digit number (00--59)                |
 
@@ -459,12 +472,13 @@ char *DateTime::toString(char *buffer) const {
   }
 
   for (size_t i = 0; i < strlen(buffer) - 1; i++) {
-    if (buffer[i] == 'h' && buffer[i + 1] == 'h') {
+    if ((buffer[i]     == 'h' || buffer[i]     == 'H') &&
+        (buffer[i + 1] == 'h' || buffer[i + 1] == 'H')) {
       if (!apTag) { // 24 Hour Mode
-        buffer[i] = '0' + hh / 10;
+        buffer[i] = (hh < 10 ? (buffer[i] == 'H' ? ' ' : '0') : '0' + hh / 10);
         buffer[i + 1] = '0' + hh % 10;
       } else { // 12 Hour Mode
-        buffer[i] = '0' + hourReformatted / 10;
+        buffer[i] = (hourReformatted < 10 ? (buffer[i] == 'H' ? ' ' : '0') : '0' + hourReformatted / 10);
         buffer[i + 1] = '0' + hourReformatted % 10;
       }
     }
@@ -552,7 +566,7 @@ char* DateTime::toString(char* buffer, size_t size, const char* format) const {
     return nullptr;
   }
   strncpy(buffer, format, size - 1);
-  buffer[size - 1] = '\0'; // ensure null termination
+  buffer[size - 1] = '\0'; // ensure a null termination
   return toString(buffer);
 }
 
@@ -563,24 +577,27 @@ char* DateTime::toString(char* buffer, size_t size, const char* format) const {
 */
 /**************************************************************************/
 uint8_t DateTime::twelveHour() const {
-  if (hh == 0 || hh == 12) { // midnight or noon
+  if (hh == 0) { // midnight
     return 12;
-  } else if (hh > 12) { // 1 o'clock or later
+  } else if (hh > 12) { // 1 o'clock PM or later
     return hh - 12;
-  } else { // morning
+  } else { // morning or noon
     return hh;
   }
 }
 
 /**************************************************************************/
 /*!
-    @brief  Return the day of the week.
-    @return Day of week as an integer from 0 (Sunday) to 6 (Saturday).
+    @brief  Return the day of the week using WeekdayEpoch as the starting Day of Week.
+    @return Day of week as an integer from 0 (WeekdayEpoch's Day of the Week) to 6
+    @remarks  The day of the week that 'WeekdayEpoch' falls on is the start of the week.
+              The first month in 2000 where the 1st fell on the weekday to be
+              considered the start of the week is selected as the WeekdayEpoch.
 */
 /**************************************************************************/
 uint8_t DateTime::dayOfTheWeek() const {
-  uint16_t day = date2days(yOff, m, d);
-  return (day + 6) % 7; // Jan 1, 2000 is a Saturday, i.e. returns 6
+   uint16_t days = date2days(yOff, m, d) - date2days(WeekdayEpoch.yOff, WeekdayEpoch.m, WeekdayEpoch.d);
+   return (uint8_t)(days % 7); // Numeric Day of Week offset (0 - 6)
 }
 
 /**************************************************************************/

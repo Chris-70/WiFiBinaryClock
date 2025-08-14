@@ -2,18 +2,21 @@
 #ifndef _BinaryClock_Defines_h_
 #define _BinaryClock_Defines_h_
 
+//################################################################################//
 // This is a Binary Clock Shield for Arduino by Marcin Saj https://nixietester.com
 // 
 // The following are defines for the currently supported boards. One must be used to compile.
-// Add you own UNO style board definitions below for any different UNO style board you have.
+// Add your own UNO style board definitions below for any different UNO style board you have.
 //
 // #define ESP32_D1_R32_UNO   // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions     (ESP32 WiFi)
 // #define METRO_ESP32_S3     // If defined, the code will use Adafruit Metro ESP32-S3 board definitions    (ESP32 WiFi)
 // #define ESP32_S3_UNO       // If defined, the code will use generic ESP32-S3 UNO board definitions       (ESP32 WiFi)
 // #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (ESP32 WiFi)
-// #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
 // #define UNO_R4_MINIMA      // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
+// #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
 // 
+//################################################################################//
+
 // Debug Time PIN to print out the current time over serial monitor (if ON)
 // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
 // to compile the code and make them available. They can also be set
@@ -30,7 +33,7 @@
 //################################################################################//
 // Generic AliExpress copy of Wemos D1 R32 ESP32 based UNO board (validate against the board you receive)
 // NOTE: This requires a hardware modification to the board to use the LED pin 15 instead of pin A3/34.
-//       see the readme.md file for details: https://github.com/Chris-70/WiFiBinaryClock.
+//       see the 'readme.md' file on GitHub for details: https://github.com/Chris-70/WiFiBinaryClock.
 #if defined(ESP32_D1_R32_UNO)     // ESP32 Wemos D1 R32 UNO board definitions
    #define ESP32UNO               // Define ESP32UNO as a common base architecture for ESP32 UNO boards
 
@@ -121,10 +124,32 @@
 
 #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
    // These defines are used in the code to satisfy the UNO R3 compiler target board
-   #define ESP32_WIFI         false
+   #define ESP32_WIFI false
+   #define FREE_RTOS  false
+   #if defined(UNO_R3)
+      #ifdef DEV_BOARD
+      #undef DEV_BOARD
+      #endif
+      // The UNO R3 board doesn't have the resources to support the code for an
+      // OLED display (on the development board) in addition to this Binary Clock Shield.
+      #define DEV_BOARD false
+   #endif
 #else
-   #define ESP32_WIFI         true
+   #define ESP32_WIFI true
+   #define FREE_RTOS  true
 #endif 
+
+#ifndef DEV_BOARD
+   #define DEV_BOARD false    // If DEV_BOARD hasn't been defined, don't include code for the development board
+   #warning "DEV_BOARD is not defined, setting to false. No development board code will be compiled."
+#endif
+
+#if !(DEV_BOARD)
+   #undef DEBUG_SETUP_PIN
+   #undef DEBUG_TIME_PIN
+   #define DEBUG_SETUP_PIN   -1   // No development board, so no H/W debug setup
+   #define DEBUG_TIME_PIN    -1   // No development board, so no H/W debug time
+#endif
 //################################################################################//
 
 // The physical layout of the LEDs on the shield, one row each.
@@ -137,7 +162,7 @@
 #define COLOR_ORDER          GRB       // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
 #define DEFAULT_DEBOUNCE_DELAY    75   // The default debounce delay in milliseconds for the buttons
-#define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness 20-60
+#define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness range: 20-60
 #define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
 #define ALARM_1                    1   // Alarm 1. available on the RTC DS3231, adds seconds.
 #define ALARM_2                    2   // Alarm 2, the default alarm used by the shield.
@@ -155,16 +180,20 @@
 //                 use the public methods 'set_isSerialSetup()' and 'set_isSerialTime()' to
 //                 enable/disable the serial output at runtime. H/W buttons, if defined, 
 //                 can also be used to enable/disable the serial output at runtime.
+#ifndef SERIAL_SETUP_CODE
 #define SERIAL_SETUP_CODE       true   // If (true) - serial setup code included, (false) - code removed
+#endif
+#ifndef SERIAL_TIME_CODE
 #define SERIAL_TIME_CODE        true   // If (true) - serial time  code included, (false) - code removed
+#endif
 #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) // If (true) - Allow serial output messages.
 #define DEFAULT_SERIAL_SETUP    true   // Initial serial setup display value (e.g. allow the serial setup display).
 #define DEFAULT_SERIAL_TIME    false   // Initial serial time display value  (e.g. no serial time display at startup).
 // This controls the inclusion/removal of the code to support hardware buttons/switches to also control the serial output.
-// The serial output can always be controlled in software is the SERIAL_xxxx_CODE is defined (true).
+// The serial output can always be controlled in software if the SERIAL_xxxx_CODE is defined (true).
 #define HW_DEBUG_SETUP ((DEBUG_SETUP_PIN >= 0) && (SERIAL_SETUP_CODE))  // Include code to support H/W to control setup display
 #define HW_DEBUG_TIME  ((DEBUG_TIME_PIN  >= 0) && (SERIAL_TIME_CODE))   // Include code to support H/W to control time  display
-// The delay, in ms, is set to a high value when using a momentary button so the button can be release quickly and the use will
+// The delay, in ms, is set to a high value when using a momentary button so the button can be release quickly and the user will
 // still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
 #define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
@@ -172,8 +201,10 @@
 #define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
 
 // Bit numbers for DS3231 RTC registers and register numbers
+// Registers:
 #define DS3231_CONTROL              0x0E  // Control register address for DS3231
 #define DS3231_STATUS               0x0F  // Status register address for DS3231
+// Bit Numbers and Masks:
 #define DS3231_TEMP_MSB             0x11  // Temperature MSB register address for DS3231
 #define DS3231_TEMP_LSB             0x12  // Temperature LSB register address for DS3231
 #define DS3231_ALARM1               0x07  // Alarm 1 register address for DS3231
