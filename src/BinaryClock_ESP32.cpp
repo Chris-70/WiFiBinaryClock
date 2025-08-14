@@ -2,7 +2,8 @@
 
 #include "BinaryClock.h"
 
-// #include <Wire.h>
+#define DEV_BOARD true
+#if DEV_BOARD
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
 
@@ -14,25 +15,39 @@
 #define SCREEN_WIDTH 128 // OLED display width, in pixels
 #define SCREEN_HEIGHT 32 // OLED display height, in pixels
 #define OLED_RESET    -1 // / QT-PY  XIAO
-#define OLED_IIC_ADDR 0x3c
 #define I2C_ADDRESS 0x3c //initialize with the I2C addr 0x3C Typically eBay OLED's
                        // e.g. the one with GM12864-77 written on it
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET, 100000UL, 100000UL);
 #define BEGIN(ADDR,RESET) display.begin(SSD1306_SWITCHCAPVCC, (ADDR), (RESET), true)
+#else
+#define BEGIN(ADDR, RESET)
+#endif
+
 #define I2C_SIZE     16
 #define RTC_ADDR     0x68
 #define RTC_EEPROM   0x57
+#define OLED_IIC_ADDR 0x3c
 #ifndef LED_HEART
 #define LED_HEART LED_BUILTIN    // Heartbeat LED
 #endif
 
 using namespace BinaryClockShield;
 #define BINARYCLOCK  BinaryClock::get_Instance()
+
 // put function declarations here:
+void TimeAlert(DateTime time);
+void setup();
+void loop();
+bool checkWatchdog();
 int ScanI2C(byte* addrList, size_t listSize);
 
+#if DEV_BOARD
 char buffer[32] = {0};
+const char *format12 = { "HH:mm:ss AP " }; // 12 Hour time format
+const char *format24 = { "hh:mm:ss " };    // 24 Hour time format
+const char *timeFormat = format24;
 char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
+#endif 
 
 BinaryClock& binClock = BinaryClock::get_Instance(); // Get the singleton instance of BinaryClock
 static long watchdogTimeout = 2100; 
@@ -45,8 +60,15 @@ bool rtcValid = false;
 bool eepromValid = false;
 int heartbeat = LOW;             // Heartbeat LED state.
 byte i2cList[I2C_SIZE] = { 0 };
+int BuiltinLED = LED_BUILTIN;
 
-#define DISPLAY(CMD) if (oledValid) { display.CMD; }
+#if DEV_BOARD
+// Wrap the OLED display in a MACRO to first test if the display is available.
+#define OLED_DISPLAY(CMD) if (oledValid) { display.CMD; }
+#else
+// Removes OLED_DISPLAY() code from compilation, replaced with whitespace.
+#define OLED_DISPLAY(CMD) 
+#endif
 
 void TimeAlert(DateTime time)
    {
@@ -56,23 +78,45 @@ void TimeAlert(DateTime time)
       {
       wdtFault = false;
       heartbeat = HIGH;
-      DISPLAY(clearDisplay())
+      OLED_DISPLAY(clearDisplay())
       }
 
    digitalWrite(LED_HEART, heartbeat);
-   
-   DISPLAY(setCursor(0, 0))
-   DISPLAY(setTextSize(2))
-   DISPLAY(write(time.toString(buffer, sizeof(buffer), "hh:mm:ss")))
-   DISPLAY(setTextSize(1))
-   DISPLAY(setCursor(0, 16))
-   DISPLAY(write(daysOfTheWeek[time.dayOfTheWeek()]))
-   DISPLAY(setCursor(0, 24))
-   DISPLAY(write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD")))
-   DISPLAY(display())
-   }
 
-int BuiltinLED = LED_BUILTIN;
+   #if DEV_BOARD
+   timeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
+   
+   OLED_DISPLAY(setCursor(0, 0))
+   OLED_DISPLAY(setTextSize(2))
+   char timeBuf[32] = { 0 };
+   char *timeStr = timeBuf;
+   strncpy (timeBuf, time.toString(buffer, sizeof(buffer), timeFormat), 32);
+   if (timeStr[0] == ' ') { timeStr++; }
+   char* spaceAP = strchr(timeStr, ' ');
+   if (spaceAP) 
+      { 
+      *spaceAP = '\0'; // Split the string at the space before AM/PM
+      spaceAP++;       // set pointer to AM/PM
+      }
+   OLED_DISPLAY(write(timeStr)) // Write just the numbers in size 2
+   OLED_DISPLAY(write(" "))     // Add a space after the time in all cases
+   OLED_DISPLAY(setTextSize(1))
+   if (spaceAP) 
+      { 
+      OLED_DISPLAY(setCursor((strlen(timeStr) + 1) * 12, 8))   // Position at the end of the space.
+      OLED_DISPLAY(write(spaceAP)) 
+      }
+
+   OLED_DISPLAY(setCursor(0, 16))
+   OLED_DISPLAY(write(daysOfTheWeek[time.dayOfTheWeek() % 7]))
+   OLED_DISPLAY(setCursor(0, 24))
+   OLED_DISPLAY(write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD")))
+   OLED_DISPLAY(display())
+
+   // Serial.printf("%s %s\n%s %d\n==================\n", timeStr, (spaceAP? spaceAP : " "),   // *** DEBUG ***
+   //       daysOfTheWeek[time.dayOfTheWeek() % 7], time.dayOfTheWeek());
+   #endif   // DEV_BOARD
+   }
 
 void setup()
    {
@@ -85,15 +129,18 @@ void setup()
 
    Wire.begin();
    int i2cDevices = ScanI2C(i2cList, I2C_SIZE);
+   #if DEV_BOARD
    Serial << endl << "Found: " << i2cDevices << " I2C Devices." << endl << "  Known devices are:" << endl;   // *** DEBUG ***
+   #endif
    for (int i = 0; i < i2cDevices; i++)
       {
-      if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; Serial << "  - OLED display is present." << endl; } // *** DEBUG *** Serial...
-      if (i2cList[i] == RTC_ADDR)       { rtcValid = true; Serial << "  - RTC is present." << endl;}           // *** DEBUG *** Serial...
-      if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; Serial << "  - RTC EEPROM is present." << endl; }   // *** DEBUG *** Serial...
+      if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; /* Serial << "  - OLED display is present." << endl; */ } // *** DEBUG *** Serial...
+      if (i2cList[i] == RTC_ADDR)       { rtcValid = true; /* Serial << "  - RTC is present." << endl; */ }           // *** DEBUG *** Serial...
+      if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; /* Serial << "  - RTC EEPROM is present." << endl; */ }   // *** DEBUG *** Serial...
       }
-   delay(2500);
+   delay(500);
 
+   #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
    // display.begin(SSD1306_SWITCHCAPVCC, OLED_IIC_ADDR);  // initialize with the I2C addr 0x3C (for the 128x32)
    bool displayResult = false;
@@ -102,29 +149,31 @@ void setup()
       displayResult = BEGIN(I2C_ADDRESS, true);
       oledValid = displayResult;
       }
-   DISPLAY(setTextColor(WHITE, BLACK))
-   DISPLAY(setTextSize(1))
-   DISPLAY(setTextWrap(false))
-   DISPLAY(display())
+   OLED_DISPLAY(setTextColor(WHITE, BLACK))
+   OLED_DISPLAY(setTextSize(1))
+   OLED_DISPLAY(setTextWrap(false))
+   OLED_DISPLAY(display())
    delay(500);
+   #else
+   #define displayResult false
+   #endif
 
-   Serial << "OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") << "Clear Display." << endl; // *** DEBUG ***
-   DISPLAY(clearDisplay())
-   DISPLAY(print("BinaryClock Setup\n"))
-   DISPLAY(display())
-   Serial << "Starting the BinaryClock Setup" << endl;
+   #if DEV_BOARD
+   Serial << "OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") 
+          << " Clear Display: " << (oledValid? "YES" : "NO") << endl; // *** DEBUG ***
+   Serial << "Starting the BinaryClock Setup" << endl; // *** DEBUG ***
+   #endif
 
    binClock.setup(!oledValid);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);
 
    binClock.registerTimeCallback(&TimeAlert);
    delay(250);
-   DISPLAY(setCursor(0, 8))
-   DISPLAY(println("Entering Loop() now"))
    Serial << "Entering Loop() now" << endl;
-   DISPLAY(display())
    delay(250);
-   DISPLAY(clearDisplay())
+   OLED_DISPLAY(clearDisplay())
+
+   // binClock.set_isSerialTime(!binClock.buttonDebugTime.read()); // *** DEBUG ***
    timeWatchdog = millis();   // Reset the Watchdog Timer.
    }
 
@@ -137,11 +186,11 @@ bool checkWatchdog()
    if (deltaMillis > watchdogTimeout)
       {
       wdtFault = true;
-      DISPLAY(clearDisplay())
-      DISPLAY(setCursor(0, 0))
-      DISPLAY(setTextSize(4))
-      DISPLAY(write("Fault"))
-      DISPLAY(display())
+      OLED_DISPLAY(clearDisplay())
+      OLED_DISPLAY(setCursor(0, 0))
+      OLED_DISPLAY(setTextSize(4))
+      OLED_DISPLAY(write("Fault"))
+      OLED_DISPLAY(display())
       wdtResult = false;
       digitalWrite(LED_HEART, LOW);
       }
@@ -162,7 +211,7 @@ void loop()
    else if (!wdtError) // Display just once per WDT fault
       {
       wdtError = true;
-      Serial << "Watchdog Timer Triggered after " << deltaMillis / 1000.0 << "seconds. " << endl;
+      Serial << F("Watchdog Timer Triggered after ") << deltaMillis / 1000.0 << F("seconds. ") << endl;
       }
    }
 
@@ -170,22 +219,27 @@ int ScanI2C(byte *addrList, size_t listSize)
    {
    bool saveList = (addrList != nullptr) && (listSize > 0);
    byte error, address;
-   int nDevices = 0;
+   size_t nDevices = 0;
 
-   vTaskDelay(pdMS_TO_TICKS(500));
+   Wire.begin();
+   delay(500); // vTaskDelay(pdMS_TO_TICKS(500));
 
-   Serial.println("Scanning for I2C devices ...");
+   Serial.println(F("Scanning for I2C devices ..."));
    for (address = 0x01; address < 0x7f; address++)
       {
       Wire.beginTransmission(address);
       error = Wire.endTransmission();
       if (error == 0)
          {
-         Serial.printf("I2C device found at address 0x%02X\n", address);
+         #if DEV_BOARD
+         Serial << nDevices+1 << F(") I2C device found at address: ") << String(address, HEX) << endl; // *** DEBUG ***
+         #endif
          if (OLED_IIC_ADDR == address)
             {
             oledValid = true;   // Found the OLED address.
-            Serial.printf("Success: I2C OLED Address 0x%02X has been found.\n", address);
+            #if DEV_BOARD
+            Serial << F("    I2C OLED Display Address 0x") << String(address, HEX) << F(" has been found.") << endl; // *** DEBUG ***
+            #endif
             }
 
          if (saveList && nDevices < listSize)
@@ -197,16 +251,20 @@ int ScanI2C(byte *addrList, size_t listSize)
          }
       else if (error != 2)
          {
-         Serial.printf("Error %d at address 0x%02X\n", error, address);
+         #if DEV_BOARD
+         Serial << F("Error ") << error << F(" at address 0x") << String(address, HEX) << endl; // *** DEBUG ***
+         #endif
          }
       }
 
    if (nDevices == 0)
       {
-      Serial.println("No I2C devices found");
+      Serial.println(F("No I2C devices were found"));
       }
 
-   vTaskDelay(pdMS_TO_TICKS(500));
    return nDevices;
    }
 
+#if DEV_BOARD   
+   #undef OLED_DISPLAY
+#endif

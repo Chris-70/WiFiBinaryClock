@@ -124,6 +124,24 @@ enum Pcf8563SqwPinMode {
   PCF8563_SquareWave32kHz = 0x80 /**< 32kHz square wave */
 };
 
+// On the first week of May 2000, the day-of-the-week (Monday) number 1 (1 - 7) or 0 (0 - 6)
+// matches the date number 1. For other starting days:
+// Use  (5) May       2000, 1 for Monday    and 7 for Sunday.
+// Use (10) October   2000, 1 for Sunday    and 7 for Saturday.
+// Use  (1) January   2000, 1 for Saturday  and 7 for Friday.
+// Use  (9) September 2000, 1 for Friday    and 7 for Thursday.
+// Use  (6) June      2000, 1 for Thursday  and 7 for Wednesday.
+// Use  (3) March     2000, 1 for Wednesday and 7 for Tuesday.
+// Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
+#define DAY_1_IS_MONDAY    5  ///< The first day of the week (1) is Monday    in May       2000
+#define DAY_1_IS_SUNDAY   10  ///< The first day of the week (1) is Sunday    in October   2000
+#define DAY_1_IS_SATURDAY  1  ///< The first day of the week (1) is Saturday  in January   2000
+#define DAY_1_IS_FRIDAY    9  ///< The first day of the week (1) is Friday    in September 2000
+#define DAY_1_IS_THURSDAY  6  ///< The first day of the week (1) is Thursday  in June      2000
+#define DAY_1_IS_WEDNESDAY 3  ///< The first day of the week (1) is Wednesday in March     2000
+#define DAY_1_IS_TUESDAY   2  ///< The first day of the week (1) is Tuesday   in February  2000
+#define FIRST_WEEK_DAY_MONTH DAY_1_IS_MONDAY ///< The first day of the week (1) is Monday in May 2000
+
 /**************************************************************************/
 /*!
     @brief  Simple general-purpose date/time class (no TZ / DST / leap
@@ -136,7 +154,7 @@ enum Pcf8563SqwPinMode {
     [leap seconds](http://en.wikipedia.org/wiki/Leap_second): time is stored
     in whatever time zone the user chooses to use.
 
-    The class supports dates in the range from 1 Jan 2000 to 31 Dec 2099
+    The class supports dates in the range from 1 Jan 2000 to 31 Dec 2199
     inclusive.
 */
 /**************************************************************************/
@@ -155,7 +173,7 @@ public:
 
   /*!
       @brief  Return the year.
-      @return Year (range: 2000--2099).
+      @return Year (range: 2000--2199).
   */
   uint16_t year() const { return 2000U + yOff; }
   /*!
@@ -260,13 +278,23 @@ public:
   bool operator!=(const DateTime &right) const { return !(*this == right); }
 
 protected:
-  uint8_t yOff; ///< Year offset from 2000
+  uint8_t yOff; ///< Year offset from 2000 (0-199)
   uint8_t m;    ///< Month 1-12
   uint8_t d;    ///< Day 1-31
   uint8_t hh;   ///< Hours 0-23
   uint8_t mm;   ///< Minutes 0-59
   uint8_t ss;   ///< Seconds 0-59
 };
+
+// Month in 2000 where the 1st of the month falls on the selected starting day of week.
+// The user / developer can decide which is the first day of the week (e.g. Monday, Sunday, etc.)
+// This date is then used to calculate which day of the week a given date is starting from
+// Their selected first day of the week. For example May 1, 2000 was a Monday, so 
+// Monday would be the first day of the week. If you want Sunday as the first day of the
+// week you'd choose October 1st, 2000, which was a Sunday.
+// So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
+static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEK_DAY_MONTH, 1, 0, 0, 0);
+
 
 /**************************************************************************/
 /*!
@@ -391,12 +419,12 @@ public:
   float getTemperature(); // in Celsius degree
   /*!
       @brief  Convert the day of the week to a representation suitable for
-              storing in the DS3231: from 1 (Monday) to 7 (Sunday).
+              storing in the DS3231: from 1 (WeekdayEpoch.dayOfTheWeek() + 1) to 7.
       @param  d Day of the week as represented by the library:
-              from 0 (Sunday) to 6 (Saturday).
+              from 0 (WeekdayEpoch.dayOfTheWeek()) to 6 (WeekdayEpoch.dayOfTheWeek() + 6).
       @return the converted value
   */
-  static uint8_t dowToDS3231(uint8_t d) { return d == 0 ? 7 : d; }
+  static uint8_t dowToDS3231(uint8_t d) { return d + 1; }
 };
 
 /**************************************************************************/
