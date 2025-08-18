@@ -2,9 +2,21 @@
 #ifndef _BinaryClock_Defines_h_
 #define _BinaryClock_Defines_h_
 
+#if __has_include("board_select.h")
+   #include "board_select.h"  // Include the user defined board selection file if it exists
+#endif
+
 //################################################################################//
-// This is a Binary Clock Shield for Arduino by Marcin Saj https://nixietester.com
+// This is a 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
+//           (https://nixietester.com/products/binary-clock-shield-for-arduino/)
 // 
+// Create/modify the file: 
+//                         "board_select.h"
+//
+// to include the define that identifies the target board for your project.
+// You can add additional defines here for the project if needed.
+// Below are the contents of the "board_select.h" file:
+//
 // The following are defines for the currently supported boards. One must be used to compile.
 // Add your own UNO style board definitions below for any different UNO style board you have.
 //
@@ -17,22 +29,35 @@
 // 
 //################################################################################//
 
-// Debug Time PIN to print out the current time over serial monitor (if ON)
-// The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
-// to compile the code and make them available. They can also be set
-// in the software: 'void BinaryClock::set_isSerialSetup(bool value)' and
-// 'void BinaryClock::set_isSerialTime(bool value)' methods.
+// A Binary Clock Shield Development Board was used in the development and testing of this software.
+// It has an OLED display and additional buttons to control the software.
+// The development board is not part of the Binary Clock Shield, but used to develop and test the code.
+// The development board replaces the Binary Clock Shield during development. Additional code is included
+// to support the development board, e.g. OLED display, additional buttons, etc. during development
+// DEVELOPMENT; DEV_CODE; and DEV_BOARD are used to control the inclusion of the development code.
+// When compiled for the" Binary Clock Shield" the development code is not included.
+// The Debug Time PIN is used to print out the current time over serial monitor (if ON)
 // The debug time and setup pins are used to enable/disable the serial output at runtime.
 // without the need to change the software. The Serial Time is a switch to enable/disable 
 // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
 // to toggle enable/disable the serial setup display. 
 // When the PIN value is -1 (-ve) the associated code is removed.
+//
+// ================================================================================
+// The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
+// to compile the code and make them available. They can each be set in the
+// software: 'void BinaryClock::set_isSerialSetup(bool value)' and
+// 'void BinaryClock::set_isSerialTime(bool value)' methods.
+// The SERIAL_MENU_CODE is used to control the display of the serial menu to 
+// change the settings of the Binary Clock Shield for Time and Alarm.
+// This can be helpful to users who are just learning how to set the Binary Clock Shield
+// time or alarm settings. 
 
 //################################################################################//
 //             Defines for the different UNO sized boards                         //
 //################################################################################//
 // Generic AliExpress copy of Wemos D1 R32 ESP32 based UNO board (validate against the board you receive)
-// NOTE: This requires a hardware modification to the board to use the LED pin 15 instead of pin A3/34.
+// NOTE: This requires a hardware modification to the board to use the LED on pin 15 instead of pin A3/34.
 //       see the 'readme.md' file on GitHub for details: https://github.com/Chris-70/WiFiBinaryClock.
 #if defined(ESP32_D1_R32_UNO)     // ESP32 Wemos D1 R32 UNO board definitions
    #define ESP32UNO               // Define ESP32UNO as a common base architecture for ESP32 UNO boards
@@ -49,10 +74,18 @@
    #define S2                 4   // A1
    #define S3                 2   // A0
 
-   #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CA)
-   #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN
+   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
+   #if DEV_BOARD
+   #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #define LED_HEART         19   // Heartbeat LED to show working software (Dev+H/W)
+   #else
+   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #endif
+
+//================================================================================//
 // Adafruit Metro ESP32-S3 board (https://www.adafruit.com/product/5500)
 //          A very capable UNO style board. See: https://learn.adafruit.com/adafruit-metro-esp32-s3
 #elif defined(METRO_ESP32_S3)
@@ -67,10 +100,18 @@
    #define S2                A1   // A1
    #define S3                A0   // A0
 
-   #define DEBUG_SETUP_PIN    5   // Set to -1 to disable the Serial Setup display control by H/W (CA)
-   #define DEBUG_TIME_PIN     6   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN
+   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
+   #if DEV_BOARD
+   #define DEBUG_SETUP_PIN    5   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN     6   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
+   #else
+   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #endif
+
+//================================================================================//
 // Generic AliExpress ESP32-S3 UNO board definitions (validate against the board you receive)
 // These boards use the ESP32-S3 DevKitC-1 pinout definitions, e.g. SDA is pin 8; SCL is pin 9; LED is pin 48, etc.
 // See: https://docs.espressif.com/projects/esp-dev-kits/en/latest/esp32s3/esp32-s3-devkitc-1/user_guide_v1.1.html#hardware-reference
@@ -86,10 +127,18 @@
    #define S2                 1    
    #define S3                 2 
 
-   #define DEBUG_SETUP_PIN   20   // Set to -1 to disable the Serial Setup display control by H/W (CA)
-   #define DEBUG_TIME_PIN     3   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN
+   #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
+   #if DEV_BOARD
+   #define DEBUG_SETUP_PIN   20   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN     3   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #define LED_HEART         13   // Heartbeat LED to show working software (Dev+H/W)
+   #else
+   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #endif
+
+//================================================================================//
 // Standard Arduino UNO  board definitions for: 
 //    UNO R3         (https://store.arduino.cc/products/arduino-uno-rev3)
 //    UNO R4 WiFi    (https://store.arduino.cc/products/uno-r4-wifi)
@@ -99,17 +148,23 @@
    #define RTC_INT            3   // Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
    #define PIEZO             11   // The number of the Piezo pin
    #define LED_PIN           A3   // Data pin that LEDs data will be written out over
-   #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
 
    #define S1                A2   // Push buttons connected to the A2, A1, A0 Arduino pins
    #define S2                A1   // A1
    #define S3                A0   // A0
 
-   #define DEBUG_SETUP_PIN    5  // Set to -1 to disable the Serial Setup display control by H/W
-   #define DEBUG_TIME_PIN     6  // Set to -1 to disable the Serial Time display control by H/W
-   #define ESP32_INPUT_PULLDOWN  INPUT
+   #define ESP32_INPUT_PULLDOWN  INPUT   // Define for INPUT without an internal pull-down resistor
 
-#else
+   #if DEV_BOARD && !defined(UNO_R3)
+   #define DEBUG_SETUP_PIN    5  // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN     6  // Set to -1 to disable the Serial Time display control by H/W  (CA)
+   #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
+   #else
+   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+   #endif
+
+#elif !(CUSTOM_UNO)
    #pragma message "No supported board defined. Supported boards are:"
    #pragma message "  ESP32_D1_R32_UNO  - generic Wemos D1 R32 UNO with ESP32"
    #pragma message "  METRO_ESP32_S3    - Adafruit Metro ESP32-S3 board"
@@ -123,34 +178,42 @@
 #endif
 
 #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
-   // These defines are used in the code to satisfy the UNO R3 compiler target board
+   // These defines are used for boards without WiFi and the FreeRTOS library.
    #define ESP32_WIFI false
    #define FREE_RTOS  false
    #if defined(UNO_R3)
+      // Not enough resources on the UNO R3 board to use the development board code.
+      // The UNO R3 board doesn't have the resources to include the code for an
+      // OLED display (on the development board) in addition to the code for the 
+      // Binary Clock Shield.
       #ifdef DEV_BOARD
-      #undef DEV_BOARD
+         #undef DEV_BOARD
       #endif
-      // The UNO R3 board doesn't have the resources to support the code for an
-      // OLED display (on the development board) in addition to this Binary Clock Shield.
-      #define DEV_BOARD false
    #endif
 #else
-   #define ESP32_WIFI true
-   #define FREE_RTOS  true
+   #define ESP32_WIFI false
+   #define FREE_RTOS  false
 #endif 
 
 #ifndef DEV_BOARD
    #define DEV_BOARD false    // If DEV_BOARD hasn't been defined, don't include code for the development board
-   #warning "DEV_BOARD is not defined, setting to false. No development board code will be compiled."
+#endif
+#ifndef DEV_CODE
+   #define DEV_CODE false     // If DEV_CODE hasn't been defined, don't include the development code
 #endif
 
-#if !(DEV_BOARD)
+#if DEV_BOARD
+   #define SERIAL_SETUP_CODE       true
+   #define SERIAL_TIME_CODE        true
+#else     // else #if !(DEV_BOARD)
    #undef DEBUG_SETUP_PIN
    #undef DEBUG_TIME_PIN
    #define DEBUG_SETUP_PIN   -1   // No development board, so no H/W debug setup
    #define DEBUG_TIME_PIN    -1   // No development board, so no H/W debug time
 #endif
 //################################################################################//
+
+#define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
 
 // The physical layout of the LEDs on the shield, one row each.
 #define NUM_HOUR_LEDS   5
@@ -184,11 +247,13 @@
 #define SERIAL_SETUP_CODE       true   // If (true) - serial setup code included, (false) - code removed
 #endif
 #ifndef SERIAL_TIME_CODE
-#define SERIAL_TIME_CODE        true   // If (true) - serial time  code included, (false) - code removed
+#define SERIAL_TIME_CODE       false   // If (true) - serial time  code included, (false) - code removed
 #endif
 #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) // If (true) - Allow serial output messages.
 #define DEFAULT_SERIAL_SETUP    true   // Initial serial setup display value (e.g. allow the serial setup display).
 #define DEFAULT_SERIAL_TIME    false   // Initial serial time display value  (e.g. no serial time display at startup).
+
+// Defines for the hardware development board to control software output from the hardware.
 // This controls the inclusion/removal of the code to support hardware buttons/switches to also control the serial output.
 // The serial output can always be controlled in software if the SERIAL_xxxx_CODE is defined (true).
 #define HW_DEBUG_SETUP ((DEBUG_SETUP_PIN >= 0) && (SERIAL_SETUP_CODE))  // Include code to support H/W to control setup display
@@ -197,22 +262,91 @@
 // still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
 #define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
+#define DEVELOPMENT_BOARD (DEV_BOARD || DEV_CODE) 
 
-#define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
-
+//#####################################################################################//
 // Bit numbers for DS3231 RTC registers and register numbers
-// Registers:
-#define DS3231_CONTROL              0x0E  // Control register address for DS3231
-#define DS3231_STATUS               0x0F  // Status register address for DS3231
-// Bit Numbers and Masks:
-#define DS3231_TEMP_MSB             0x11  // Temperature MSB register address for DS3231
-#define DS3231_TEMP_LSB             0x12  // Temperature LSB register address for DS3231
-#define DS3231_ALARM1               0x07  // Alarm 1 register address for DS3231
-#define DS3231_ALARM2               0x0B  // Alarm 2 register address for DS3231
-#define DS3231_ALARM1_MODE_MASK     0x0F  // Mask for Alarm 1 mode in control register
-#define DS3231_ALARM2_MODE_MASK     0x0C  // Mask for Alarm 2 mode in control register
-#define DS3231_ALARM1_STATUS_MASK   0x01  // Mask for Alarm 1 status in control register
-#define DS3231_ALARM2_STATUS_MASK   0x02  // Mask for Alarm 2 status in control register
-#define DS3231_ALARM1_FLAG_MASK     0x01  // Mask for Alarm 1 alarm triggered flag in status register
-#define DS3231_ALARM2_FLAG_MASK     0x02  // Mask for Alarm 1 alarm triggered flag in status register
+// ----------------------------------------------------------------------------------- //
+// The DS3231 & DS3232 are very similar, so we can use the same code for both.
+// The #defines that start with DS3232_ are for the DS3232 chip only and have the
+// bit values set to 0 on the DS3231 chip. The OSF bit on the DS3231 is a status bit
+// to signal the oscillator has stopped and can only be cleared, while on the DS3232 
+// it is a control bit to enable/disable the oscillator. The DS3232 has a selectable
+// temperature conversion rate, while the DS3231 has a fixed 10 seconds conversion rate.
+// while on battery. On VCC, both chips have a 1 second conversion rate.
+// From: (https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf)
+//       (https://www.analog.com/media/en/technical-documentation/data-sheets/DS3232.pdf)
+//=====================================================================================//
+// DS3231 RTC register numbers:
+#define DS3231_TIME                 0x00  ///< Time register start (0x00 - 0x06)
+#define DS3231_SECONDS              0x00  ///< Seconds register address for DS3231
+#define DS3231_MINUTES              0x01  ///< Minutes register address for DS3231
+#define DS3231_HOUR                 0x02  ///< Hour register address for DS3231
+#define DS3231_DAY                  0x03  ///< Day register address for DS3231
+#define DS3231_DATE                 0x04  ///< Date register address for DS3231
+#define DS3231_MONTH                0x05  ///< Month register address for DS3231
+#define DS3231_YEAR                 0x06  ///< Year register address for DS3231
+#define DS3231_ALARM1               0x07  ///< Alarm 1 register start (0x07 - 0x0A)
+#define DS3231_ALARM1_SECONDS       0x07  ///< Alarm 1 seconds register address for DS3231
+#define DS3231_ALARM1_MINUTES       0x08  ///< Alarm 1 minutes register address for DS3231
+#define DS3231_ALARM1_HOUR          0x09  ///< Alarm 1 hour register address for DS3231
+#define DS3231_ALARM1_DAY_DATE      0x0A  ///< Alarm 1 day/date register address for DS3231
+#define DS3231_ALARM2               0x0B  ///< Alarm 2 register start (0x0B - 0x0E)
+#define DS3231_ALARM2_MINUTES       0x0B  ///< Alarm 2 minutes register address for DS3231
+#define DS3231_ALARM2_HOUR          0x0C  ///< Alarm 2 hour register address for DS3231
+#define DS3231_ALARM2_DAY_DATE      0x0D  ///< Alarm 2 day/date register address for DS3231
+#define DS3231_CONTROL              0x0E  ///< Control register
+#define DS3231_STATUSREG            0x0F  ///< Status register
+#define DS3231_AGING_OFFSET         0x10  ///< Aging offset register
+#define DS3231_TEMPERATUREREG       0x11  ///< Temperature register start (0x11 MSB) - 0x12 (LSB)); scaled(2) 10 bit 2's complement
+#define DS3231_TEMPERATURE_MSB      0x11  ///< Temperature MSB register, integer part (-128->+127 C), integer  8 bit 2's complement,
+#define DS3231_TEMPERATURE_LSB      0x12  ///< Temperature LSB register, Fractional part (bits 7, 6): 0.00; 0.25; 0.50; 0.75;
+// DS3231 Bit Numbers and Masks:
+#define DS3231_CONTROL_A1IE_MASK    0x01  ///< Bit 0: Alarm 1 Interrupt Enable bit in control register
+#define DS3231_CONTROL_A2IE_MASK    0x02  ///< Bit 1: Alarm 2 Interrupt Enable bit in control register
+#define DS3231_CONTROL_INTCN_MASK   0x04  ///< Bit 2: Interrupt Control bit in control register
+#define DS3231_CONTROL_RS1_MASK     0x08  ///< Bit 3: Rate Select bit 1 in control register (1 Hz; 1K)
+#define DS3231_CONTROL_RS2_MASK     0x10  ///< Bit 4: Rate Select bit 2 in control register (4K  ; 8K)
+#define DS3231_CONTROL_RATE_MASK    0x18  ///< Bits 3-4: Rate Select bits in control register (1 Hz; 1K; 4K; 8K)
+#define DS3231_CONTROL_CONV_MASK    0x20  ///< Bit 5: Force Temperature Conversion (STATUS BSY flag must be 0)
+#define DS3231_CONTROL_BBSQW_MASK   0x40  ///< Bit 6: Battery Backed Square Wave bit in control register
+#define DS3231_CONTROL_EOSC_MASK    0x80  ///< Bit 7: Enable Oscillator bit in control register
+#define DS3231_CONTROL_SQWMODE_MASK 0x1C  ///< Bits 2-4: Square Wave output mode bits in control register
+#define DS3231_STATUS_A1F_MASK      0x01  ///< Bit 0: Alarm 1 Flag bit in status register
+#define DS3231_STATUS_A2F_MASK      0x02  ///< Bit 1: Alarm 2 Flag bit in status register
+#define DS3231_STATUS_BSY_MASK      0x04  ///< Bit 2: Busy Flag bit, temperature conversion (TCXO), in status register
+#define DS3231_STATUS_EN32KHZ_MASK  0x08  ///< Bit 3: Enable 32kHz output bit in status register
+#define DS3232_STATUS_CRATE0_MASK   0x10  ///< Bit 4: DS3232: Conversion Rate Select bit 0 (64,  256) in status register
+#define DS3232_STATUS_CRATE1_MASK   0x20  ///< Bit 5: DS3232: Conversion Rate Select bit 1 (128, 512) in status register
+#define DS3232_STATUS_BB32KHZ_MASK  0x40  ///< Bit 6: DS3232: Battery Backed 32kHz output bit in status register
+#define DS3231_STATUS_OSF_MASK      0x80  ///< Bit 7: DS3231: Oscillator Stopped Flag bit in status register
+#define DS3232_STATUS_EOSF_MASK     0x80  ///< Bit 7: DS3232: Enable Oscillator bit in status register
+#define DS3231_ALARM1_STATUS_MASK   0x01  ///< Bit 1: Alarm 1 status Flag mask in control register
+#define DS3231_ALARM2_STATUS_MASK   0x02  ///< Bit 2: Alarm 2 status Flag mask in control register
+#define DS3231_ALARM1_FLAG_MASK     0x01  ///< Bit 1: Alarm 1 alarm triggered Mask in status register
+#define DS3231_ALARM2_FLAG_MASK     0x02  ///< Bit 2: Alarm 2 alarm triggered Mask in status register
+#define DS3231_ALARM1_DAY_DATE_MASK 0x80  ///< Bit 7: Alarm 1 day/date Flag bit in alarm register DAY/Date (0x0A)
+#define DS3231_ALARM2_DAY_DATE_MASK 0x80  ///< Bit 7: Alarm 2 day/date Flag bit in alarm register DAY/Date (0x0D)
+#define DS3231_ALARM1_A1M1_MASK     0x80  ///< Bit 7: Alarm 1 A1M1 Flag bit in alarm 1 register Seconds (0x07)
+#define DS3231_ALARM1_A1M2_MASK     0x80  ///< Bit 7: Alarm 1 A1M2 Flag bit in alarm 1 register Minutes (0x08)
+#define DS3231_ALARM1_A1M3_MASK     0x80  ///< Bit 7: Alarm 1 A1M3 Flag bit in alarm 1 register Hours (0x09)
+#define DS3231_ALARM1_A1M4_MASK     0x80  ///< Bit 7: Alarm 1 A1M4 Flag bit in alarm 1 register Day (0x0A)
+#define DS3231_ALARM1_A2M2_MASK     0x80  ///< Bit 7: Alarm 2 A2M2 Flag bit in alarm 2 register Minutes (0x0B)
+#define DS3231_ALARM1_A2M3_MASK     0x80  ///< Bit 7: Alarm 2 A2M3 Flag bit in alarm 2 register Hours (0x0C)
+#define DS3231_ALARM1_A2M4_MASK     0x80  ///< Bit 7: Alarm 2 A2M4 Flag bit in alarm 2 register Day (0x0D)
+#define DS3231_CENTURY_MASK         0x80  ///< Bit 7: Century bit in month register (0x05)
+#define DS3231_TEMP_LSB_MASK        0xC0  ///< Bit 7-6: Temperature LSB mask for DS3231, fractional part.
+// Time reading masks for DS chips:
+#define DS_SECONDS_MASK             0x7F  ///< Mask for seconds registers (0x00; 0x07)
+#define DS_MINUTES_MASK             0x7F  ///< Mask for minutes registers (0x01; 0x08; 0x0B)
+#define DS_HOUR_REG_MASK            0x7F  ///< Mask for all hour bits reg.(0x02; 0x09; 0x0C)
+#define DS_HOUR_12_24_MASK          0x40  ///< Bit 6: 12/24 hour mode bit in hour registers
+#define DS_HOUR_PM_MASK             0x20  ///< Bit 5: PM bit in hour registers (0x02; 0x09; 0x0C)
+#define DS_HOUR24_MASK              0x3F  ///< Mask for 24 hours value    (0x02; 0x09; 0x0C) - 24 hour mode
+#define DS_HOUR12_MASK              0x1F  ///< Mask for 12 hours value    (0x02; 0x09; 0x0C) - 12 hour mode
+#define DS_DAY_MASK                 0x07  ///< Mask for day registers     (0x03; 0x0A; 0x0D)
+#define DS_DATE_MASK                0x3F  ///< Mask for date registers    (0x04; 0x0A; 0x0D)
+#define DS_MONTH_MASK               0x1F  ///< Mask for month registers   (0x05)
+#define DS_YEAR_MASK                0xFF  ///< Mask for year registers    (0x06)
+
 #endif // _BinaryClock_Defines_h_

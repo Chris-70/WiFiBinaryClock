@@ -186,7 +186,11 @@ namespace BinaryClockShield
    class BinaryClock
       {
    public:
-      /// @brief The method called to initialize the Binary Clock.
+      #if DEV_BOARD
+      void DisplayAllRegisters();   /// *** DEBUG ***
+      #endif
+
+      /// @brief The method called to initialize the Binary Clock Shield.
       ///        This has the same functionality of the Arduino setup() method.
       ///        Call this method before using the BinaryClock class.
       /// @param testLeds Flag - Show the test patterns at startup.
@@ -357,7 +361,9 @@ namespace BinaryClockShield
       unsigned long get_DebugOffDelay() const;
       #endif
 
-      static uint8_t BuiltinLED;
+      /// @brief The pin number to use for the heartbeat (if enabled) or to signal errors.
+      /// @note  The LED must be wired CC, the pin will go HIGH to turn it ON.
+      static uint8_t HeartbeatLED;
 
       //#################################################################################//
       // Public METHODS
@@ -654,6 +660,12 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/07)
       void purgatoryTask(const char* message = nullptr);
 
+      /// @brief This method is called to reset the BinaryClock and restart the program.
+      /// @details This method is called when the BinaryClock needs to be reset, e.g. after a fatal error.
+      ///          It calls the reset function at address 0, which is the start of the program.
+      /// @author Chris-70 (2025/08)
+      void(* resetBoard) (void) = 0; // Declare reset function at address 0
+         
    public:         
       static CRGB OnColor [NUM_LEDS];     // Colors for the LEDs when ON
       static CRGB OffColor[NUM_LEDS];     // Colors for the LEDs when OFF

@@ -2,7 +2,9 @@
 
 #include "BinaryClock.h"
 
-#define DEV_BOARD true
+// Development board specific; has additional hardware buttons and OLED display.
+// Not part of the Binary Clock Shield, but used to develop and test the code.
+// This board replaces the Binary Clock Shield during development.
 #if DEV_BOARD
 #include <Adafruit_GFX.h>
 #include <Adafruit_SSD1306.h>
@@ -20,6 +22,7 @@
 Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET, 100000UL, 100000UL);
 #define BEGIN(ADDR,RESET) display.begin(SSD1306_SWITCHCAPVCC, (ADDR), (RESET), true)
 #else
+// Removes the code from compilation, replaced with whitespace.
 #define BEGIN(ADDR, RESET)
 #endif
 
@@ -28,7 +31,8 @@ Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, 
 #define RTC_EEPROM   0x57
 #define OLED_IIC_ADDR 0x3c
 #ifndef LED_HEART
-#define LED_HEART LED_BUILTIN    // Heartbeat LED
+// LED used to communicate errors.
+#define LED_HEART LED_BUILTIN 
 #endif
 
 using namespace BinaryClockShield;
@@ -58,9 +62,9 @@ long deltaMillis = 0;
 bool oledValid = false;
 bool rtcValid = false;
 bool eepromValid = false;
-int heartbeat = LOW;             // Heartbeat LED state.
+int heartbeat = LOW;             // Heartbeat LED state: OFF
 byte i2cList[I2C_SIZE] = { 0 };
-int BuiltinLED = LED_BUILTIN;
+int HeartbeatLED = LED_HEART;
 
 #if DEV_BOARD
 // Wrap the OLED display in a MACRO to first test if the display is available.
@@ -81,7 +85,7 @@ void TimeAlert(DateTime time)
       OLED_DISPLAY(clearDisplay())
       }
 
-   digitalWrite(LED_HEART, heartbeat);
+   digitalWrite(HeartbeatLED, heartbeat);
 
    #if DEV_BOARD
    timeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
@@ -112,9 +116,6 @@ void TimeAlert(DateTime time)
    OLED_DISPLAY(setCursor(0, 24))
    OLED_DISPLAY(write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD")))
    OLED_DISPLAY(display())
-
-   // Serial.printf("%s %s\n%s %d\n==================\n", timeStr, (spaceAP? spaceAP : " "),   // *** DEBUG ***
-   //       daysOfTheWeek[time.dayOfTheWeek() % 7], time.dayOfTheWeek());
    #endif   // DEV_BOARD
    }
 
@@ -122,10 +123,8 @@ void setup()
    {
    Serial.begin(115200); // Start the serial communication at 115200 baud rate
 
-   pinMode(BuiltinLED, OUTPUT);
-   digitalWrite(BuiltinLED, HIGH);
-   pinMode(LED_HEART, OUTPUT);
-   digitalWrite(LED_HEART, LOW);
+   pinMode(HeartbeatLED, OUTPUT);
+   digitalWrite(HeartbeatLED, LOW);
 
    Wire.begin();
    int i2cDevices = ScanI2C(i2cList, I2C_SIZE);
@@ -134,9 +133,9 @@ void setup()
    #endif
    for (int i = 0; i < i2cDevices; i++)
       {
-      if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; /* Serial << "  - OLED display is present." << endl; */ } // *** DEBUG *** Serial...
-      if (i2cList[i] == RTC_ADDR)       { rtcValid = true; /* Serial << "  - RTC is present." << endl; */ }           // *** DEBUG *** Serial...
-      if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; /* Serial << "  - RTC EEPROM is present." << endl; */ }   // *** DEBUG *** Serial...
+      if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; Serial << "  - OLED display is present." << endl; /* */ } // *** DEBUG *** Serial...
+      if (i2cList[i] == RTC_ADDR)       { rtcValid = true; Serial << "  - RTC is present." << endl;          /* */ } // *** DEBUG *** Serial...
+      if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; Serial << "  - RTC EEPROM is present." << endl;   /* */ } // *** DEBUG *** Serial...
       }
    delay(500);
 
@@ -192,7 +191,7 @@ bool checkWatchdog()
       OLED_DISPLAY(write("Fault"))
       OLED_DISPLAY(display())
       wdtResult = false;
-      digitalWrite(LED_HEART, LOW);
+      digitalWrite(HeartbeatLED, LOW);
       }
 
    return wdtResult;
