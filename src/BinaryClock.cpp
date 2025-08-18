@@ -23,8 +23,13 @@
 // Check RTC datasheet page 11-13 http://bit.ly/DS3231-RTC
 //
 // Hardware:
-// Arduino Uno style board; Binary Clock Shield for Arduino
-// Battery CR1216/CR1220 
+// ---------
+// - Binary Clock Shield for Arduino (https://nixietester.com/products/binary-clock-shield-for-arduino/)
+// - Arduino Uno style board;        (https://www.adafruit.com/product/5500)
+// - Battery CR1216/CR1220 
+// 
+// Pinouts for the shield:
+// -----------------------
 // INT/SQW   connected to: Arduino pin  3 INT1 ; METRO-S3  3 ; ESP32_D1-R32 UNO 25 ; ESP32-S3_UNO 17
 // PIEZO     connected to: Arduino pin 11  PWM ; METRO-S3 11 ; ESP32_D1-R32 UNO 23 ; ESP32-S3_UNO 11
 // S3 button connected to: Arduino pin A0      ; METRO-S3 A0 ; ESP32_D1-R32 UNO  2 ; ESP32-S3_UNO  2
@@ -61,7 +66,7 @@
 
 namespace BinaryClockShield
    {
-   // This is a 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
+   // Software for the 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
    //
 
    // Notes in the melody: (70)
@@ -158,26 +163,71 @@ namespace BinaryClockShield
    //       Setting this pin HIGH (ON) for more than 'bounceDelay' (e.g. 75) ms will trigger the alarm setup
    //       routine to be called, requiring the user to go through the alarm setup steps to exit 
    //       which can only happen while the LED is LOW (OFF).
-   uint8_t BinaryClock::BuiltinLED = LED_BUILTIN;
+   #if defined(LED_HEART) && LED_HEART >= 0
+   uint8_t BinaryClock::HeartbeatLED = LED_HEART;
+   #else
+   uint8_t BinaryClock::HeartbeatLED = LED_BUILTIN;
+   #endif
 
    // When the SERIAL_SETUP_CODE code is removed, redefine the method calls to be whitespace only
    // This allows the code to compile without the serial setup code, but still allows the methods 
    // to be "called" in the code without causing compilation errors (Must return void to work).
    #if SERIAL_SETUP_CODE != true
-   #define serialStartInfo()
-   #define serialSettings()
-   #define serialAlarmInfo()
-   #define serialCurrentModifiedValue()
+      #define serialStartInfo()
+      #define serialSettings()
+      #define serialAlarmInfo()
+      #define serialCurrentModifiedValue()
    #endif 
 
    // When the SERIAL_TIME_CODE code is remove, redefine the method calls to be whitespace only
    #if SERIAL_TIME_CODE != true
-   #define serialTime() 
+      #define serialTime() 
    #endif
 
    //################################################################################//
    // SETUP
    //################################################################################//
+
+   #if DEV_CODE
+   void BinaryClock::DisplayAllRegisters()
+      {
+      char buffer[32];
+      const char* bit_rep[16] = {
+         [0]  = "0000", [1]  = "0001", [2]  = "0010", [3]  = "0011",
+         [4]  = "0100", [5]  = "0101", [6]  = "0110", [7]  = "0111",
+         [8]  = "1000", [9]  = "1001", [10] = "1010", [11] = "1011",
+         [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
+         };
+
+      char binStr[10];
+      auto binByteStr = [&bit_rep, &binStr](uint8_t byte)
+         {
+         memmove(binStr, bit_rep[byte >> 4], 4);
+         binStr[4] = ' ';
+         memmove(binStr + 5, bit_rep[byte & 0x0F], 4);
+         binStr[9] = '\0'; // Null-terminate the string
+
+         return binStr;
+         };
+
+      const size_t RegSize = 0x13;
+
+      uint8_t regs[RegSize] = { 0 };
+      Serial << F("RTC Registers:\n");
+      for (size_t i = 0; i < RegSize; i++)
+         {
+         regs[i] = RTC.RawRead(i);
+         // Serial << F("Reg[") << i << F("]: 0x") << String(regs[i], HEX) 
+         //        << F("; ") << String(regs[i], BIN)
+         //        << F(" (") << (int)regs[i] << F(")\n");
+         snprintf(buffer, sizeof(buffer), "Reg[0x%02X] 0x%02X; %s (%3d)\n", 
+                  i, regs[i], binByteStr(regs[i]), (int)regs[i]); // Print register number, value in hex, binary and decimal
+         Serial << buffer;
+         }
+
+      Serial << endl;
+      }
+   #endif
 
    void BinaryClock::setup(bool testLeds)
       {
@@ -195,11 +245,14 @@ namespace BinaryClockShield
       Serial.println(F("#        https://nixietester.com/          #"));
       Serial.println(F("# product/binary-clock-shield-for-arduino/ #"));
       Serial.println(F("############################################"));
-      Serial.println(F(""));
+      Serial.println(F("#  This software is licensed under the GNU #"));
+      Serial.println(F("# General Public License (GPL) v3.0        #"));
+      Serial.println(F("############################################"));
+      Serial.println();
       #endif
 
-      pinMode(BuiltinLED, OUTPUT);
-      digitalWrite(BuiltinLED, LOW);
+      pinMode(HeartbeatLED, OUTPUT);
+      digitalWrite(HeartbeatLED, LOW);
 
       assert(melodySize == noteDurationsSize);  // Ensure the melody and note durations arrays are the same size
       bool s2Pressed = buttonS2.read();
@@ -214,6 +267,7 @@ namespace BinaryClockShield
 
       if (setupRTC())
          {
+         testLeds = testLeds || RTC.lostPower();
          setupFastLED(testLeds);
          setupAlarm();
 
@@ -236,21 +290,23 @@ namespace BinaryClockShield
 
    void BinaryClock::loop()
       {
-      if (timeDispatch())
+      if (timeDispatch())                       // Check if time has been updated (from RTC)
          {
-         if (settingsOption == 0)               // Display time but not during time/alarm settings
+         if (settingsOption == 0)               // Display the time but not during time/alarm settings
             {
+            // Display the current time in binary format on the LEDs in the selected time format.
             convertDecToBinaryAndDisplay(time.hour(), time.minute(), time.second(), get_Is12HourFormat());
             
             #if SERIAL_TIME_CODE
             if (get_isSerialTime()) { serialTime(); }
             #endif
 
+            // Check if the alarm has gone off, play the alarm sounds.
             if (Alarm2.fired)
                {
                playAlarm();
-               CallbackAlarmTriggered = true; // Set the alarm callback flag
-               Alarm2.fired = false;          // Clear the fired flag, we've processed the alarm.
+               CallbackAlarmTriggered = true;   // Set the alarm callback flag
+               Alarm2.fired = false;            // Clear the fired flag, we've processed the alarm.
 
                #if SERIAL_TIME_CODE
                if (get_isSerialTime()) { Serial << "   ALARM!\n"; }
@@ -288,11 +344,15 @@ namespace BinaryClockShield
 
          // Enable 1 Hz square wave RTC SQW output
          RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_SquareWave1Hz);
+
+         bool mode12 = RTC.get_Is12HourMode();
+         // Set the 12/24 hour format based on RTC setting
+         if (get_Is12HourFormat() != mode12)
+            { set_Is12HourFormat(mode12); }
+
+         time = RTC.now();
          }
 
-      #if DEV_BOARD
-      Serial  << F("RTC is: ") << (rtcValid? F("Valid") : F("Missing.")) << endl;   // *** DEBUG ***
-      #endif
       return rtcValid;
       }
 
@@ -300,8 +360,8 @@ namespace BinaryClockShield
    //#            Initialize the RTC library and set up the RTC          #//
    //#####################################################################//
 
-   #define DAY_SECONDS 86400  // 24 * 3600
-   #define MAX_ALARM_DELTA 300
+   #define DAY_SECONDS 86400     // 24 * 3600
+   #define MAX_ALARM_DELTA 300   // 5 minutes in seconds
 
    void BinaryClock::setupAlarm()
       {
@@ -334,15 +394,15 @@ namespace BinaryClockShield
          uint8_t control;
          uint8_t status;
          control = RTC.RawRead(DS3231_CONTROL);
-         status  = RTC.RawRead(DS3231_STATUS);
+         status = RTC.RawRead(DS3231_STATUSREG);
 
          // Having just started, we need to know if an alarm has just fired 
          // (i.e. < MAX_ALARM_DELTA seconds ago) so we can set the alarm
          // fired flag correctly. The RTC alarm fired flag will always be set if 
          // the shield has been off for over 24 hrs (for daily alarms) or if
-         // the alarm happened when the shield was off.
+         // the alarm happened while the shield was off.
          long alarm1seconds = (Alarm1.time.secondstime() % (DAY_SECONDS));
-         long alarm2seconds = (Alarm1.time.secondstime() % (DAY_SECONDS));
+         long alarm2seconds = (Alarm2.time.secondstime() % (DAY_SECONDS));
          long timeDaySeconds = RTC.now().secondstime() % (DAY_SECONDS);
          long alarm1delta = timeDaySeconds - alarm1seconds;
          long alarm2delta = timeDaySeconds - alarm2seconds;
@@ -356,14 +416,14 @@ namespace BinaryClockShield
          //         The A1IE and A2IE bits are being used as ON/OFF for our 'AlarmTime' objects.
          //         They can't trigger an interrupt as we are using that pin for the 1 Hz
          //         interrupt. We test the A1F and A2F status bits for an alarm triggered/fired.
-         // Future: These alarm values should be kept in the EEPROM to persist across reboots if
-         //         we can. Will need a solution to work for all boards. DS3231 has no user storage.
+         // Future: These alarm values could be kept in the EEPROM to persist across reboots if
+         //         we can. Will need a solution to work for all boards. DS3231M has no user storage.
          Alarm1.status = (control & DS3231_ALARM1_STATUS_MASK) ? 1 : 0; // Alarm 1 status ON/OFF
          Alarm2.status = (control & DS3231_ALARM2_STATUS_MASK) ? 1 : 0; // Alarm 2 status ON/OFF
          Alarm1.fired = (status & DS3231_ALARM1_FLAG_MASK) ? (Alarm1.status == 1) && (alarm1inrange) : false; // Alarm 'ringing'
          Alarm2.fired = (status & DS3231_ALARM2_FLAG_MASK) ? (Alarm2.status == 1) && (alarm2inrange) : false; // Alarm 'ringing'
 
-         #if DEV_BOARD
+         #if DEV_CODE
          Serial << "Alarm1: " <<  Alarm1.time.timestamp(DateTime::TIMESTAMP_TIME) << " (" << alarm1time.timestamp(DateTime::TIMESTAMP_TIME) <<   // *** DEBUG ***
                (Alarm1.time.isValid() ? " Valid) " : " Bad Time) ") << (Alarm1.status > 0 ? " ON; " : " OFF; ") << alarm1delta <<
                (alarm1inrange? " In Range; " : " Continue; ") << (Alarm1.fired? " Alarm Fired " : " No Alarm ") << endl;
@@ -400,19 +460,19 @@ namespace BinaryClockShield
       if (testLEDs)
          {
          displayLedBuffer(OnColor, NUM_LEDS);
-         FlashLed(BuiltinLED, 2, 75, 2);
+         FlashLed(HeartbeatLED, 2, 75, 4);      // Acts as a delay(2000/4) and does something.
          displayLedBuffer(OnText, NUM_LEDS);
-         FlashLed(BuiltinLED, 3, 50, 2);
+         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
          displayLedBuffer(OffTxt, NUM_LEDS);
-         FlashLed(BuiltinLED, 3, 50, 2);
+         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
          displayLedBuffer(XAbort, NUM_LEDS);
-         FlashLed(BuiltinLED, 3, 50, 2);
+         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
          displayLedBuffer(OkText, NUM_LEDS);
-         FlashLed(BuiltinLED, 3, 50, 2);
+         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
          displayLedBuffer(Rainbow, NUM_LEDS);
-         FlashLed(BuiltinLED, 3, 25);
+         FlashLed(HeartbeatLED, 3, 25, 2);      // Acts as a delay(3000/2) and does something.
          displayLedBuffer(OffColor, NUM_LEDS);
-         FlashLed(BuiltinLED);
+         FlashLed(HeartbeatLED);                // Acts as a delay(1000) and does something.
          }
       }
 
@@ -463,7 +523,7 @@ namespace BinaryClockShield
       noteDurations = (unsigned long *)NoteDurations; // Assign the note durations array to the pointer
       noteDurationsSize = NoteDurationsSize;          // Assign the size of the note
 
-      #pragma region Required code, UNO error: "sorry, unimplemented: non-trivial designated initializers not supported"
+      // Required code, UNO error: "sorry, unimplemented: non-trivial designated initializers not supported"
       memset(leds, 0, sizeof(leds)); // Clear the LED array
       memset(binaryArray, 0, sizeof(binaryArray)); // Clear the binary array
 
@@ -471,7 +531,7 @@ namespace BinaryClockShield
       Alarm1.clear();
       Alarm2.number = ALARM_2;
       Alarm2.clear();
-      #pragma endregion
+      // END UNO required
 
       // Setup the button pin as input and based on connection internal pullup/down.
       initializeButtons();
@@ -535,14 +595,13 @@ namespace BinaryClockShield
    void BinaryClock::set_Time(DateTime &value)
       {
       if (rtcValid && value.isValid())
-         { RTC.adjust(value); }   // Set the time in the RTC
+         { RTC.adjust(value, get_Is12HourFormat()); }   // Set the time in the RTC
+
       time = value;
       }
 
    DateTime BinaryClock::get_Time() const
-      {
-      return time;
-      }
+      {  return time; }
 
    void BinaryClock::set_Alarm(AlarmTime& value)
       {
@@ -559,24 +618,18 @@ namespace BinaryClockShield
          // This shouldn't impact the LED display but it might generate an additional interrupt.
          RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_OFF);
 
-         // Set the alarm to sound at 'hour:minute' each day.
+         // Set the alarm to sound at the same time, 'hour:minute', each day.
          if (value.number == ALARM_1)
-            {
-            RTC.setAlarm1(value.time, Ds3231Alarm1Mode::DS3231_A1_Hour);
-            }
+            { RTC.setAlarm1(value.time, Ds3231Alarm1Mode::DS3231_A1_Hour); }
          else if (value.number == ALARM_2)
-            {  
-            RTC.setAlarm2(value.time, Ds3231Alarm2Mode::DS3231_A2_Hour);
-            }
+            { RTC.setAlarm2(value.time, Ds3231Alarm2Mode::DS3231_A2_Hour); }
 
          RTC.clearAlarm(value.number); // Clear the Alarm Trigger flag.
          RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_SquareWave1Hz);
 
          // We saved the alarm time in the RTC, now turn it off IFF the status is OFF
          if (value.status == 0)
-            {
-            RTC.disableAlarm(value.number);
-            }
+            { RTC.disableAlarm(value.number); }
          }
       else { ; } // Ignore bad (-ve) input status
       }
@@ -662,7 +715,8 @@ namespace BinaryClockShield
       amPmMode = value;
       timeFormat = value? timeFormat12 : timeFormat24;
       alarmFormat = value? alarmFormat12 : alarmFormat24;
-      #if DEV_BOARD
+      RTC.set_Is12HourMode(value); // Set the RTC to 12/24 hour mode
+      #if DEV_CODE
       Serial << endl << "Is AM/PM? " << (value? "True" : "False") << "; Formats in use: " << timeFormat << "; " << alarmFormat << endl; // *** DEBUG ***
       #endif
       }
@@ -817,40 +871,131 @@ namespace BinaryClockShield
 
    void BinaryClock::purgatoryTask(const char* message)
       {
-      // This is where failure comes to die.
+          // This is where failure comes to die.
       FastLED.clear(true); // Clear the LEDs.
 
-      pinMode(BuiltinLED, OUTPUT);
+      pinMode(HeartbeatLED, OUTPUT);
       #if SERIAL_OUTPUT
       Serial.begin(115200);
       Serial.println(F("Failure: Unable to continue."));
       if (message != nullptr)
          {
-         Serial << F("Message: ") << message << endl;
+         Serial << F("Message: ") << message << endl << endl;
          }
-
-      Serial.println(F("Entering Purgatory..."));
+      Serial.println(F("    CQD - Entering Purgatory..."));
       #endif
 
+      // -.-. --.- -..  -.-. --.- -..  -.-. --.- -..  -.-. --.- -..  
+      // Flash the LED to signal the failure.
+      // This is just a little fun, flash the failure in Morse code.
+      // Never use S.O.S. outside an actual emergency, so use the 
+      // alternate: CQD (-.-. --.- -..) it expands to: Come Quick Distress.
+      // CQD was used before SOS and is a good alternative for us.
+      // So, flash the message: 
+      //       CQD NO RTC  -  Come Quick Distress NO Real Time Clock.
+      //       -.-. --.- -..  -. ---   .-. - -.-.
+      // We can't get out of purgatory without a Real Time Clock
+      //
+      int dit = 100;
+      int dah = 3 * dit;
+      int delayDitDah;
+      int interLetterDelay = 3 * dit; // Delay between letters in Morse code.
+      int interWordDelay = 7 * dit;   // Delay between words in Morse code.
+
+      struct morseLetter
+         {
+         char letter;    // The character represented by the Morse code
+         int* code;      // Pointer to the Morse code array
+         int  size;      // Size of the Morse code array
+         morseLetter(char l, int c[], int s) : letter(l), code(c), size(s) { }
+         };
+
+      struct morseWord
+         {
+         morseLetter* letters; // Pointer to the array of Morse letters
+         int          size;    // Number of letters in the word
+         morseWord(morseLetter l[], int s) : letters(l), size(s) { }
+         };
+
+      struct morseMessage
+         {
+         morseWord* words; // Array of words in the message
+         int        size;  // Number of words in the message
+         morseMessage(morseWord w[], int s) : words(w), size(s) { }
+         };
+
+      // Define Morse code arrays as static arrays
+      int cCode[] = { dah, dit, dah, dit };  // C: -·-·  
+      int qCode[] = { dah, dah, dit, dah };  // Q: --·-  
+      int dCode[] = { dah, dit, dit };       // D: -··   
+      int nCode[] = { dah, dit };            // N: -·    
+      int oCode[] = { dah, dah, dah };       // O: ---   
+      int rCode[] = { dit, dah, dit };       // R: ·-·   
+      int tCode[] = { dah };                 // T: -     
+
+      // Create morse letters
+      morseLetter C('C', cCode, 4);
+      morseLetter Q('Q', qCode, 4);
+      morseLetter D('D', dCode, 3);
+      morseLetter N('N', nCode, 2);
+      morseLetter O('O', oCode, 3);
+      morseLetter R('R', rCode, 3);
+      morseLetter T('T', tCode, 1);
+
+      // Create words
+      morseLetter cqdLetters[] = { C, Q, D }; 
+      morseLetter noLetters[]  = { N, O };    
+      morseLetter rtcLetters[] = { R, T, C }; 
+
+      morseWord CQD(cqdLetters, 3);
+      morseWord NO(noLetters, 2);
+      morseWord RTC_(rtcLetters, 3);
+
+      // Create message
+      morseWord messageWords[] = { CQD, NO, RTC_ };
+      morseMessage morseCodes(messageWords, 3);
+
+      bool done = false;   // Flag to display the serial message only once.
       FOREVER
          {
-         // Flash SOS to signal failure.
-         int ditLength = 100;
-         int delayDitDash = ditLength;
-         for (int j = 0; j < 3; j++)
+         // Flash CQD NO RTC (Come Quick Distress NO Real Time Clock) to signal the failure.
+         if (!done) { Serial << "  C    Q    D     N  O     R   T C " << endl 
+                             << " [-.-. --.- -..   -. ---   .-. - -.-.] " << endl 
+                             << "(Come Quick Distress NO Real Time Clock)" << endl; }
+         for (int k = 0; k < morseCodes.size; k++)
             {
-            // Dash time is 3 * Dit time. SOS: Dit Dit Dit; Dash Dash Dash; Dit Dit Dit;
-            delayDitDash = (j == 1 ? ditLength * 3 : ditLength);
-            for (int i = 0; i < 3; i++)
+            if (!done) { Serial << "Word " << k + 1 << ") Word Size: " << morseCodes.words[k].size << ": \n"; }
+
+            for (int j = 0; j < morseCodes.words[k].size; j++)
                {
-               digitalWrite(BuiltinLED, HIGH); // Turn the LED on
-               delay(delayDitDash);
-               digitalWrite(BuiltinLED, LOW);  // Turn the LED off
-               delay(delayDitDash);
+               morseLetter currentLetter = morseCodes.words[k].letters[j];
+               if (!done) { Serial << "  " << j + 1 << ") Letter '" << currentLetter.letter << "' Size: " << currentLetter.size << ": "; }
+
+               // For each message in the array, iterate through the Morse code for the letter.
+               for (int i = 0; i < currentLetter.size; i++)
+                  {
+                  delayDitDah = currentLetter.code[i];
+                  if (!done) { Serial << (delayDitDah == dit ? "dit" : "dah") << (i + 1 < currentLetter.size? "-" : ""); }
+                  digitalWrite(HeartbeatLED, HIGH); // Turn the LED on
+                  delay(delayDitDah);
+                  digitalWrite(HeartbeatLED, LOW);  // Turn the LED off
+                  delay(delayDitDah);
+                  }
+
+               if (!done) { Serial << endl; }
+               delay(interLetterDelay);
                }
+
+            delay(interWordDelay); // Delay between words
             }
 
+         if (!done) { Serial << endl; }
          delay(1950);
+         done = true;
+         if (RTC.begin())
+            {
+            resetBoard(); // Reset the board if RTC is available
+            }
          }
       }
 
@@ -995,8 +1140,8 @@ namespace BinaryClockShield
             {
             tempTime = time;                        // Read time from the current value
             tempAmPm = get_Is12HourFormat();        // Get the current 12/24 Hr. mode
-            settingsOption = 1;                     // Set time option settings value (12/24)
-            settingsLevel = 1;                      // Set time options level settings
+            settingsOption = 1;                     // Set time option settings 
+            settingsLevel = 1;                      // Set time options level value (12/24)
             setCurrentModifiedValue();              // Assign options to modify +/- 
             if (isSerialSetup) { serialSettings(); }// Use serial monitor for showing settings
             displayCurrentModifiedValue();          // Display current hour on LEDs
@@ -1044,7 +1189,7 @@ namespace BinaryClockShield
             if (isSerialSetup) { serialCurrentModifiedValue(); }  // Use serial monitor for showing settings
             }
 
-         // Save if buttonS2 was just pressed
+         // Save if buttonS2 was just pressed (or continue the processing after a delay)
          if ((curMillis > delayTimer) && (continueS2 || isButtonOnNew(buttonS2)))
             {
             if (!continueS2)                    // If the button S2 was just presse (i.e. not resume S2).
@@ -1052,8 +1197,8 @@ namespace BinaryClockShield
 
             // During time setting, display a check mark after 12/24 hour mode selected to 
             // indicate to the user that level was done. Now on to setting Hours. 
-            // Abort/Cancel changes the settings level to 99 so this is bypassed, it will process the abort instead.
             // This is due to using the Hours Row to display the 12/24 hour mode selection. 
+            // Abort/Cancel changes the settings level to 99 so this is bypassed, it will process the abort instead.
             if (settingsOption == 1 && settingsLevel == 1)
                { displayOK = true; }            // Flag to display the Green check mark
 
@@ -1064,7 +1209,7 @@ namespace BinaryClockShield
             if (!continueS2)                    // If the button S2 was just pressed (i.e. not resume S2).
                { settingsLevel++; }             // Go to next settings level: abort or => hour => minute => second
 
-            // Check if we are done with the Alarm settings (Alarm levels are 1 - 3)
+            // Check if we are done with the Alarm settings (Alarm levels are 1 - 3, 100 == Abort)
             if ((settingsOption == 3) && (settingsLevel > 3)) 
                {
                exit = true;
@@ -1079,26 +1224,29 @@ namespace BinaryClockShield
                #if SERIAL_SETUP_CODE
                if (isSerialSetup)
                   {
-                  Serial << endl;               // New line for the setting displayed at this level.
+                  Serial << endl;               // New line for the setting displayed previously.
                   }
                #endif
 
                serialAlarmInfo();               // Show the time and alarm status info when you exit to the main menu
                }
-            // Check if we are done with the Time settings (Time levels are 1 - 4)
+            // Check if we are done with the Time settings (Time levels are 1 - 4, 100 == Abort)
             else if ((settingsOption == 1) && (settingsLevel > 4)) 
                {
                exit = true;
                // Save the new time to the RTC if the user didn't abort.
                if (settingsLevel < 10) 
                   { 
-                  set_Time(tempTime); 
+                  // Order is important here, we need to update the time format first.
+                  // When setting the time on the RTC, we save it in the selected format.
                   set_Is12HourFormat(tempAmPm);
+                  set_Time(tempTime);
+                  time = ReadTime();
                   }
                else
                   { 
-                  abort = true;
-                  time = ReadTime();          // Update the current time.
+                  abort = true;                 // User selected abort.
+                  time = ReadTime();            // Update the current time.
                   timeFormat = get_Is12HourFormat() ? timeFormat12 : timeFormat24;
                   }
 
@@ -1112,23 +1260,31 @@ namespace BinaryClockShield
                   }
                #endif
                }
+            // This interrupts the buttonS2 processing to display a check mark after
+            // the user selects 12 or 24 hour time display mode to signal the
+            // transition to setting the time. Required for a better UX as the 
+            // time mode selection (12/24) is too similar to the hour setting.
             else if (displayOK)
                {
                displayLedBuffer(OkText, NUM_LEDS);
-               delayTimer = curMillis + 500; // Delay further updates for ~0.5 seconds.
-               displayOK = false;
-               continueS2 = true;
+               delayTimer = curMillis + 500;    // Delay further updates for ~0.5 seconds.
+               displayOK = false;               // Clear the flag
+               continueS2 = true;               // Set the flag to resume buttonS2 processing after the delay.
                }
-            else                                // If you do not go to the main menu yet
+            else                                // Continue processing, more settings level(s) remain.
                { 
-               continueS2 = false;              // Clear the flag, we have arrived. 
-               setCurrentModifiedValue();
-               displayCurrentModifiedValue();   // Display current modified value on LEDs                
+               continueS2 = false;              // Clear the flag, we have arrived to finish S2. 
+               setCurrentModifiedValue();       // Set the value for the next level.
+               displayCurrentModifiedValue();   // Display next level value on the LEDs                
                if (isSerialSetup) 
                    { serialSettings(); }        // Use serial monitor for showing settings
                }
             } // END S2
 
+         // This is the exit process that occurs over several stages.
+         // Stage 0: Display the rainbow LEDs to signal the end.
+         // Stage 1: Display the Pink 'X' for an abort or the check mark for a save.
+         // Stage 2: Clean up and exit back to the main menu (displaying the time).
          if (exit)
             {
             unsigned long curTimer = millis();
@@ -1160,12 +1316,11 @@ namespace BinaryClockShield
 
                delayTimer = curTimer + 1250U;   
                exitStage++;   
-               // delay(750);
                }
 
             if ((exitStage == 2) && (curTimer > delayTimer))
                {
-               settingsLevel = 0;                  // Escape to main menu  
+               settingsLevel = 0;                  // Escape to main menu (Displaying the time)
                settingsOption = 0;                 // Escape to main menu
                exit = false;                       // Reset the flags for the next time.
                abort = false;
@@ -1206,18 +1361,18 @@ namespace BinaryClockShield
       {
       SettingsType type = SettingsType::Undefined;
 
-      if (options == 1)  
+      if (options == 1) // Time 
          {
-         if (level == 1)  type = SettingsType::TimeOptions;
-         if (level == 2)  type = SettingsType::Hours;
-         if (level == 3)  type = SettingsType::Minutes;
-         if (level == 4)  type = SettingsType::Seconds;
+         if (level == 1)  { type = SettingsType::TimeOptions; }
+         if (level == 2)  { type = SettingsType::Hours; }
+         if (level == 3)  { type = SettingsType::Minutes; }
+         if (level == 4)  { type = SettingsType::Seconds; }
          }
-      else if (options == 3)
+      else if (options == 3) // Alarm
          {
-         if (level == 1)  type = SettingsType::AlarmStatus;
-         if (level == 2)  type = SettingsType::Hours;
-         if (level == 3)  type = SettingsType::Minutes;
+         if (level == 1)  { type = SettingsType::AlarmStatus; }
+         if (level == 2)  { type = SettingsType::Hours; }
+         if (level == 3)  { type = SettingsType::Minutes; }
          }
 
       return type;
@@ -1374,64 +1529,64 @@ namespace BinaryClockShield
 
    void BinaryClock::setNewTime() { set_Time(time); }
 
-      ////////////////////////////////////////////////////////////////////////////////////
-      // Convert values from DEC to BIN format and display
+   ////////////////////////////////////////////////////////////////////////////////////
+   // Convert values from DEC to BIN format and display
+
+   void BinaryClock::convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode)
+   {
+   // A fast and efficient way to convert decimal to binary format and to set the individual LED colors
+   // The original code ran in a hard-coded loop extracting on bit at a time from the decimal value
+   // and setting the corresponding LED color based on whether the bit was 0 or 1
+   // This code just does a bitwise AND and tests if the bit was non-zero, then sets the corresponding LED color.
+   // I removed the loops as the number of LEDs is fixed in the hardware and doesn't need to be generic.
+   // This results in a faster execution time and less code complexity, easier to maintain.
+   // Using a MACRO to handle SERIAL_TIME_CODE compiles where the serial output is used, and 'binaryArray[]' is required.
+   // Performing the assignment to 'binaryArray[]' then testing the result for non-zero to assign the colour
+   #if SERIAL_TIME_CODE
+      // If SERIAL_TIME_CODE is defined, we need to keep track of the binary representation of the time
+      #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
+            leds[led_num] = (binaryArray[led_num] = ((value) & (bitmask))) ? on_color : off_color;
+   #else
+      #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
+            leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
+   #endif
    
-      void BinaryClock::convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode)
+   // H - upper row LEDs where the hour is displayed, left most bit, the MSB, is led 16, LSB is LED 12
+   int displayHour = hoursRow;
+   if (use12HourMode)
       {
-      // A fast and efficient way to convert decimal to binary format and to set the individual LED colors
-      // The original code ran in a hard-coded loop extracting on bit at a time from the decimal value
-      // and setting the corresponding LED color based on whether the bit was 0 or 1
-      // This code just does a bitwise AND and tests if the bit was non-zero, then sets the corresponding LED color.
-      // I removed the loops as the number of LEDs is fixed in the hardware and doesn't need to be generic.
-      // This results in a faster execution time and less code complexity, easier to maintain.
-      // Using a MACRO to handle SERIAL_TIME_CODE compiles where the serial output is used, and 'binaryArray[]' is required.
-      // Performing the assignment to 'binaryArray[]' then testing the result for non-zero to assign the colour
-      #if SERIAL_TIME_CODE
-         // If SERIAL_TIME_CODE is defined, we need to keep track of the binary representation of the time
-         #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
-               leds[led_num] = (binaryArray[led_num] = ((value) & (bitmask))) ? on_color : off_color;
-      #else
-         #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
-               leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
-      #endif
-      
-      // H - upper row LEDs where the hour is displayed, left most bit, the MSB, is led 16, LSB is LED 12
-      int displayHour = hoursRow;
-      if (use12HourMode)
-         {
-         displayHour = hoursRow % 12;
-         if (displayHour == 0) { displayHour = 12; } // Display 12 instead of 0.
-         leds[16] = (hoursRow >= 12) ? PmColor : AmColor; // LED 16 - AM/PM Indicator
-         }
-      else
-         {
-         SET_LEDS(16, displayHour, 0b00010000, OnColor[16], OffColor[16]); // LED 16 - bit[4] for hour 16 (msb)
-         }
-      SET_LEDS(15, displayHour, 0b00001000, OnColor[15], OffColor[15]); // LED 15 - bit[3] for hour  8      
-      SET_LEDS(14, displayHour, 0b00000100, OnColor[14], OffColor[14]); // LED 14 - bit[2] for hour  4      
-      SET_LEDS(13, displayHour, 0b00000010, OnColor[13], OffColor[13]); // LED 13 - bit[1] for hour  2      
-      SET_LEDS(12, displayHour, 0b00000001, OnColor[12], OffColor[12]); // LED 12 - bit[0] for hour  1 (lsb)
-
-      // M - middle row LEDs where the minute is displayed, left most bit, the MSB, is led 12, LSB is LED 6
-      SET_LEDS(11, minutesRow,  0b00100000, OnColor[11], OffColor[11]); // LED 11 - bit[5] for minute 32 (msb)
-      SET_LEDS(10, minutesRow,  0b00010000, OnColor[10], OffColor[10]); // LED 10 - bit[4] for minute 16      
-      SET_LEDS( 9, minutesRow,  0b00001000, OnColor[ 9], OffColor[ 9]); // LED  9 - bit[3] for minute  8      
-      SET_LEDS( 8, minutesRow,  0b00000100, OnColor[ 8], OffColor[ 8]); // LED  8 - bit[2] for minute  4      
-      SET_LEDS( 7, minutesRow,  0b00000010, OnColor[ 7], OffColor[ 7]); // LED  7 - bit[1] for minute  2      
-      SET_LEDS( 6, minutesRow,  0b00000001, OnColor[ 6], OffColor[ 6]); // LED  6 - bit[0] for minute  1 (lsb)
-
-      // S - bottom row LEDs where the second is displayed, left most bit, the MSB, is led 5, LSB is LED 0
-      SET_LEDS( 5, secondsRow,  0b00100000, OnColor[ 5], OffColor[ 5]); // LED  5 - bit[5] for second 32 (msb)
-      SET_LEDS( 4, secondsRow,  0b00010000, OnColor[ 4], OffColor[ 4]); // LED  4 - bit[4] for second 16
-      SET_LEDS( 3, secondsRow,  0b00001000, OnColor[ 3], OffColor[ 3]); // LED  3 - bit[3] for second  8
-      SET_LEDS( 2, secondsRow,  0b00000100, OnColor[ 2], OffColor[ 2]); // LED  2 - bit[2] for second  4
-      SET_LEDS( 1, secondsRow,  0b00000010, OnColor[ 1], OffColor[ 1]); // LED  1 - bit[1] for second  2
-      SET_LEDS( 0, secondsRow,  0b00000001, OnColor[ 0], OffColor[ 0]); // LED  0 - bit[0] for second  1 (lsb)
-
-      FastLED.show();
-      #undef SET_LEDS
+      displayHour = hoursRow % 12;
+      if (displayHour == 0) { displayHour = 12; } // Display 12 instead of 0.
+      leds[16] = (hoursRow >= 12) ? PmColor : AmColor; // LED 16 - AM/PM Indicator
       }
+   else
+      {
+      SET_LEDS(16, displayHour, 0b00010000, OnColor[16], OffColor[16]); // LED 16 - bit[4] for hour 16 (msb)
+      }
+   SET_LEDS(15, displayHour, 0b00001000, OnColor[15], OffColor[15]); // LED 15 - bit[3] for hour  8      
+   SET_LEDS(14, displayHour, 0b00000100, OnColor[14], OffColor[14]); // LED 14 - bit[2] for hour  4      
+   SET_LEDS(13, displayHour, 0b00000010, OnColor[13], OffColor[13]); // LED 13 - bit[1] for hour  2      
+   SET_LEDS(12, displayHour, 0b00000001, OnColor[12], OffColor[12]); // LED 12 - bit[0] for hour  1 (lsb)
+
+   // M - middle row LEDs where the minute is displayed, left most bit, the MSB, is led 12, LSB is LED 6
+   SET_LEDS(11, minutesRow,  0b00100000, OnColor[11], OffColor[11]); // LED 11 - bit[5] for minute 32 (msb)
+   SET_LEDS(10, minutesRow,  0b00010000, OnColor[10], OffColor[10]); // LED 10 - bit[4] for minute 16      
+   SET_LEDS( 9, minutesRow,  0b00001000, OnColor[ 9], OffColor[ 9]); // LED  9 - bit[3] for minute  8      
+   SET_LEDS( 8, minutesRow,  0b00000100, OnColor[ 8], OffColor[ 8]); // LED  8 - bit[2] for minute  4      
+   SET_LEDS( 7, minutesRow,  0b00000010, OnColor[ 7], OffColor[ 7]); // LED  7 - bit[1] for minute  2      
+   SET_LEDS( 6, minutesRow,  0b00000001, OnColor[ 6], OffColor[ 6]); // LED  6 - bit[0] for minute  1 (lsb)
+
+   // S - bottom row LEDs where the second is displayed, left most bit, the MSB, is led 5, LSB is LED 0
+   SET_LEDS( 5, secondsRow,  0b00100000, OnColor[ 5], OffColor[ 5]); // LED  5 - bit[5] for second 32 (msb)
+   SET_LEDS( 4, secondsRow,  0b00010000, OnColor[ 4], OffColor[ 4]); // LED  4 - bit[4] for second 16
+   SET_LEDS( 3, secondsRow,  0b00001000, OnColor[ 3], OffColor[ 3]); // LED  3 - bit[3] for second  8
+   SET_LEDS( 2, secondsRow,  0b00000100, OnColor[ 2], OffColor[ 2]); // LED  2 - bit[2] for second  4
+   SET_LEDS( 1, secondsRow,  0b00000010, OnColor[ 1], OffColor[ 1]); // LED  1 - bit[1] for second  2
+   SET_LEDS( 0, secondsRow,  0b00000001, OnColor[ 0], OffColor[ 0]); // LED  0 - bit[0] for second  1 (lsb)
+
+   FastLED.show();
+   #undef SET_LEDS
+   }
 
    //################################################################################//
    // MELODY ALARM

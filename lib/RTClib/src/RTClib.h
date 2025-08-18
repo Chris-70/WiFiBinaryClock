@@ -34,12 +34,12 @@ class TimeSpan;
 
 /** DS1307 SQW pin mode settings */
 enum Ds1307SqwPinMode {
-  DS1307_OFF = 0x00,            // Low
-  DS1307_ON = 0x80,             // High
-  DS1307_SquareWave1HZ = 0x10,  // 1Hz square wave
-  DS1307_SquareWave4kHz = 0x11, // 4kHz square wave
-  DS1307_SquareWave8kHz = 0x12, // 8kHz square wave
-  DS1307_SquareWave32kHz = 0x13 // 32kHz square wave
+  DS1307_OFF = 0x00,             // SQW/OUT PIN - Low
+  DS1307_ON  = 0x80,             // SQW/OUT PIN - High
+  DS1307_SquareWave1HZ   = 0x10, // 1Hz square wave
+  DS1307_SquareWave4kHz  = 0x11, // 4kHz square wave
+  DS1307_SquareWave8kHz  = 0x12, // 8kHz square wave
+  DS1307_SquareWave32kHz = 0x13  // 32kHz square wave
 };
 
 /** DS3231 SQW pin mode settings */
@@ -209,12 +209,21 @@ public:
   */
   uint8_t second() const { return ss; }
 
+  /*!
+      @brief  Return the day of the week.
+      @return Day of the week (1--7).
+      @remarks 1 = the day of the week of WeekdayEpoch (see above),
+               2 = the next day, ..., 7 = the day before the day of
+               WeekdayEpoch.
+               E.g. if WeekdayEpoch is a Monday, then 1 = Monday,
+               See: 'FIRST_WEEK_DAY_MONTH' above.
+  */
   uint8_t dayOfTheWeek() const;
 
-  /* 32-bit times as seconds since 2000-01-01. */
+  /* 32-bit time as seconds since 2000-01-01. */
   uint32_t secondstime() const;
 
-  /* 32-bit times as seconds since 1970-01-01. */
+  /* 32-bit time as seconds since 1970-01-01. */
   uint32_t unixtime(void) const;
 
   /*!
@@ -380,7 +389,8 @@ protected:
 class RTC_DS1307 : public RTC_I2C {
 public:
   bool begin(TwoWire *wireInstance = &Wire);
-  void adjust(const DateTime &dt);
+  void adjust(const DateTime& dt, bool use12HourFormat);
+  void adjust(const DateTime& dt);
   uint8_t isrunning(void);
   DateTime now();
   Ds1307SqwPinMode readSqwPinMode();
@@ -389,6 +399,16 @@ public:
   void readnvram(uint8_t *buf, uint8_t size, uint8_t address);
   void writenvram(uint8_t address, uint8_t data);
   void writenvram(uint8_t address, const uint8_t *buf, uint8_t size);
+  /*!
+      @brief  Convert the day of the week to a representation suitable for
+              storing in the DS1307: from 1 (WeekdayEpoch.dayOfTheWeek() + 1) to 7.
+      @param  d Day of the week as represented by the library: DateTime::dayOfTheWeek()
+              from 0 (WeekdayEpoch.dayOfTheWeek()) to 6 (WeekdayEpoch.dayOfTheWeek() + 6).
+      @return the converted value
+  */
+  static uint8_t dowToDS1307(uint8_t d) { return d + 1; }
+  bool get_Is12HourMode();
+  void set_Is12HourMode(bool value);
 };
 
 /**************************************************************************/
@@ -399,13 +419,16 @@ public:
 class RTC_DS3231 : public RTC_I2C {
 public:
   bool begin(TwoWire *wireInstance = &Wire);
-  void adjust(const DateTime &dt);
+  void adjust(const DateTime& dt);
+  void adjust(const DateTime& dt, bool use12HourMode);
   bool lostPower(void);
   DateTime now();
   Ds3231SqwPinMode readSqwPinMode();
   void writeSqwPinMode(Ds3231SqwPinMode mode);
   bool setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode);
+  bool setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode, bool use12HourMode);
   bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode);
+  bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode, bool use12HourMode);
   DateTime getAlarm1();
   DateTime getAlarm2();
   Ds3231Alarm1Mode getAlarm1Mode();
@@ -416,7 +439,8 @@ public:
   void enable32K(void);
   void disable32K(void);
   bool isEnabled32K(void);
-  float getTemperature(); // in Celsius degree
+  float getTemperature();   // in Celsius degree, +- 0.25 degree resolution
+  int get_IntTemperature(); // in Celsius degree, (-128 to +127 C) no floating point
   /*!
       @brief  Convert the day of the week to a representation suitable for
               storing in the DS3231: from 1 (WeekdayEpoch.dayOfTheWeek() + 1) to 7.
@@ -425,6 +449,9 @@ public:
       @return the converted value
   */
   static uint8_t dowToDS3231(uint8_t d) { return d + 1; }
+  bool get_Is12HourMode();
+  void set_Is12HourMode(bool value);
+
 };
 
 /**************************************************************************/

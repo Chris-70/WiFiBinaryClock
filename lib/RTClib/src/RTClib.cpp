@@ -210,8 +210,8 @@ DateTime::DateTime(uint32_t t) {
 DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
                    uint8_t min, uint8_t sec) {
   if (year >= 2000U)
-    year = (year - 2000U) % 200U;
-  yOff = year;
+    year = (year - 2000U);
+  yOff = year % 200U;
   m = month % 12;
   d = day % 31;
   hh = hour % 24;
@@ -413,7 +413,7 @@ bool DateTime::isValid() const {
 
     | specifier | output                                                 |
     |-----------|--------------------------------------------------------|
-    | YYYY      | the year as a 4-digit number (2000--2099)              |
+    | YYYY      | the year as a 4-digit number (2000--2199)              |
     | YY        | the year as a 2-digit number (00--99)                  |
     | MM        | the month as a 2-digit number (01--12)                 |
     | MMM       | the abbreviated English month name ("Jan"--"Dec")      |
