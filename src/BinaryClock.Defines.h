@@ -164,7 +164,12 @@
    #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
 
-#elif !(CUSTOM_UNO)
+//================================================================================//
+// If a custom board is defined, then the code will use the custom board definitions.
+// The custom board definitions must be defined in the "board_select.h" file.
+// This custom board is defined as: 'CUSTOM_UNO' which must be defined as true.
+// If no board is defined, then the code will not compile. This is to ensure that a board is defined.
+#elif !defined(CUSTOM_UNO) || !(CUSTOM_UNO)
    #pragma message "No supported board defined. Supported boards are:"
    #pragma message "  ESP32_D1_R32_UNO  - generic Wemos D1 R32 UNO with ESP32"
    #pragma message "  METRO_ESP32_S3    - Adafruit Metro ESP32-S3 board"
@@ -172,7 +177,8 @@
    #pragma message "  UNO_R3            - Arduino UNO R3 board"
    #pragma message "  UNO_R4_WIFI       - Arduino UNO R4 WiFi board"
    #pragma message "  UNO_R4_MINIMA     - Arduino UNO R4 Minima board"
-   #pragma message "Please define one of the above boards to compile the code."
+   #pragma message "  CUSTOM_UNO        - custom board with defined pin numbers in board_select.h"
+   #pragma message "Please define one of the above boards or create CUSTOM_UNO to compile the code."
    #error "Undefined board. Please define the pin numbers for your board."
    #include <NoBoardDefinition_StopCompilationNow> // Include a dummy header file to stop compilation
 #endif
@@ -216,9 +222,9 @@
 #define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
 
 // The physical layout of the LEDs on the shield, one row each.
-#define NUM_HOUR_LEDS   5
-#define NUM_MINUTE_LEDS 6
-#define NUM_SECOND_LEDS 6
+#define NUM_HOUR_LEDS   5              // The LEDs on the top row of the shield.
+#define NUM_MINUTE_LEDS 6              // The LEDs on the middle row of the shield.
+#define NUM_SECOND_LEDS 6              // The LEDs on the bottom row of the shield.
 #define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
 
 #define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
@@ -247,11 +253,11 @@
 #define SERIAL_SETUP_CODE       true   // If (true) - serial setup code included, (false) - code removed
 #endif
 #ifndef SERIAL_TIME_CODE
-#define SERIAL_TIME_CODE       false   // If (true) - serial time  code included, (false) - code removed
+#define SERIAL_TIME_CODE        true   // If (true) - serial time  code included, (false) - code removed
 #endif
 #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) // If (true) - Allow serial output messages.
-#define DEFAULT_SERIAL_SETUP    true   // Initial serial setup display value (e.g. allow the serial setup display).
-#define DEFAULT_SERIAL_TIME    false   // Initial serial time display value  (e.g. no serial time display at startup).
+#define DEFAULT_SERIAL_SETUP    true   // Initial serial setup display value (e.g. allow the serial setup to be displayed).
+#define DEFAULT_SERIAL_TIME    false   // Initial serial time display value  (e.g. no continious serial time display at startup).
 
 // Defines for the hardware development board to control software output from the hardware.
 // This controls the inclusion/removal of the code to support hardware buttons/switches to also control the serial output.
@@ -336,17 +342,17 @@
 #define DS3231_ALARM1_A2M4_MASK     0x80  ///< Bit 7: Alarm 2 A2M4 Flag bit in alarm 2 register Day (0x0D)
 #define DS3231_CENTURY_MASK         0x80  ///< Bit 7: Century bit in month register (0x05)
 #define DS3231_TEMP_LSB_MASK        0xC0  ///< Bit 7-6: Temperature LSB mask for DS3231, fractional part.
-// Time reading masks for DS chips:
+// Time reading masks for most DS chips:
 #define DS_SECONDS_MASK             0x7F  ///< Mask for seconds registers (0x00; 0x07)
 #define DS_MINUTES_MASK             0x7F  ///< Mask for minutes registers (0x01; 0x08; 0x0B)
 #define DS_HOUR_REG_MASK            0x7F  ///< Mask for all hour bits reg.(0x02; 0x09; 0x0C)
 #define DS_HOUR_12_24_MASK          0x40  ///< Bit 6: 12/24 hour mode bit in hour registers
 #define DS_HOUR_PM_MASK             0x20  ///< Bit 5: PM bit in hour registers (0x02; 0x09; 0x0C)
-#define DS_HOUR24_MASK              0x3F  ///< Mask for 24 hours value    (0x02; 0x09; 0x0C) - 24 hour mode
-#define DS_HOUR12_MASK              0x1F  ///< Mask for 12 hours value    (0x02; 0x09; 0x0C) - 12 hour mode
-#define DS_DAY_MASK                 0x07  ///< Mask for day registers     (0x03; 0x0A; 0x0D)
-#define DS_DATE_MASK                0x3F  ///< Mask for date registers    (0x04; 0x0A; 0x0D)
-#define DS_MONTH_MASK               0x1F  ///< Mask for month registers   (0x05)
-#define DS_YEAR_MASK                0xFF  ///< Mask for year registers    (0x06)
+#define DS_HOUR24_MASK              0x3F  ///< Mask for 24 hours value    (e.g. 0x02; 0x09; 0x0C) - 24 hour mode
+#define DS_HOUR12_MASK              0x1F  ///< Mask for 12 hours value    (e.g. 0x02; 0x09; 0x0C) - 12 hour mode
+#define DS_DAY_MASK                 0x07  ///< Mask for day registers     (e.g. 0x03; 0x0A; 0x0D)
+#define DS_DATE_MASK                0x3F  ///< Mask for date registers    (e.g. 0x04; 0x0A; 0x0D)
+#define DS_MONTH_MASK               0x1F  ///< Mask for month registers   (e.g. 0x05)
+#define DS_YEAR_MASK                0xFF  ///< Mask for year registers    (e.g. 0x06)
 
 #endif // _BinaryClock_Defines_h_

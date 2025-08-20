@@ -196,22 +196,31 @@ DateTime::DateTime(uint32_t t) {
 /**************************************************************************/
 /*!
     @brief  Constructor from (year, month, day, hour, minute, second).
+    @note   The minimum year is 1, or 2001, so that the DayOfWeek() calculation
+            works correctly. The maximum year is 199, or 2199.
     @warning If the provided parameters are not valid (e.g. 31 February),
            the constructed DateTime will be invalid.
     @see   The `isValid()` method can be used to test whether the
            constructed DateTime is valid.
-    @param year Either the full year (range: 2000--2199) or the offset from
-                year 2000 (range: 0--199).
+    @param year Either the full year (range: 2001--2199) or the offset from
+                year 2000 (range: 1--199).
     @param month Month number (1--12).
     @param day Day of the month (1--31).
     @param hour,min,sec Hour (0--23), minute (0--59) and second (0--59).
+    @remarks The WeekdayEpoch is an exception, its year is always 2000.
+             This constructor will allow year 2000 when the day is 1.
+             To set a date in the year 2000, use the constructor that
+             takes UNIX style seconds since 1970-01-01 00:00:00.
 */
 /**************************************************************************/
 DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
                    uint8_t min, uint8_t sec) {
   if (year >= 2000U)
     year = (year - 2000U);
-  yOff = year % 200U;
+  // In order for the dayOfTheWeek() to work correctly the must be 2001 or later.
+  // When calculating dayOfTheWeek the 'WeekdayEpoch' is subtracted from the date.
+  // The WeekdayEpoch is always in the year 2000, so the date must be later.
+  yOff = (year > 0) ? year % 200U : (day == 1 ? 0 : 1U);
   m = month % 12;
   d = day % 31;
   hh = hour % 24;

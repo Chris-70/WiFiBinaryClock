@@ -211,11 +211,11 @@ public:
 
   /*!
       @brief  Return the day of the week.
-      @return Day of the week (1--7).
-      @remarks 1 = the day of the week of WeekdayEpoch (see above),
-               2 = the next day, ..., 7 = the day before the day of
-               WeekdayEpoch.
-               E.g. if WeekdayEpoch is a Monday, then 1 = Monday,
+      @return Day of the week (0--6).
+      @remarks 0 = the day of the week of WeekdayEpoch (see above),
+               1 = the next day, ..., 6 = the day before the day of
+                   WeekdayEpoch.
+               E.g. if WeekdayEpoch is a Monday, then 0 = Monday,
                See: 'FIRST_WEEK_DAY_MONTH' above.
   */
   uint8_t dayOfTheWeek() const;
@@ -304,6 +304,9 @@ protected:
 // So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
 static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEK_DAY_MONTH, 1, 0, 0, 0);
 
+// The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
+// This can be used to calculate the time difference between two DateTime objects.
+static const DateTime DateTimeEpoch = DateTime(2000, 1, 1, 0, 0, 0);
 
 /**************************************************************************/
 /*!
