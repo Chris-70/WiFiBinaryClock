@@ -47,8 +47,8 @@ int ScanI2C(byte* addrList, size_t listSize);
 
 #if DEV_BOARD
 char buffer[32] = {0};
-const char *format12 = { "HH:mm:ss AP " }; // 12 Hour time format
-const char *format24 = { "hh:mm:ss " };    // 24 Hour time format
+const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
+const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
 const char *timeFormat = format24;
 char daysOfTheWeek[7][12] = { "Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday" };
 #endif 
@@ -88,8 +88,11 @@ void TimeAlert(DateTime time)
    digitalWrite(HeartbeatLED, heartbeat);
 
    #if DEV_BOARD
+   if (!oledValid) { return; } // If OLED display is not valid, do not proceed.
+
    timeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
-   
+   int cursor;
+
    OLED_DISPLAY(setCursor(0, 0))
    OLED_DISPLAY(setTextSize(2))
    char timeBuf[32] = { 0 };
@@ -103,18 +106,32 @@ void TimeAlert(DateTime time)
       spaceAP++;       // set pointer to AM/PM
       }
    OLED_DISPLAY(write(timeStr)) // Write just the numbers in size 2
-   OLED_DISPLAY(write(" "))     // Add a space after the time in all cases
+   OLED_DISPLAY(write(" "))     // Add a space after the time to clear.
    OLED_DISPLAY(setTextSize(1))
    if (spaceAP) 
       { 
-      OLED_DISPLAY(setCursor((strlen(timeStr) + 1) * 12, 8))   // Position at the end of the space.
+      OLED_DISPLAY(write(" "))    
+      int timeStrLen = strlen(timeStr);
+      int cursor = (timeStrLen) * 12;     // Each character is 6 pixels wide * TextSize (2) = 12;
+      cursor += 4;                        // only 1/2 a space before we write the AM/PM.
+      OLED_DISPLAY(setCursor(cursor, 8))  // Position at the end of the 1/2 space.
+      OLED_DISPLAY(fillRect(cursor, 0, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
       OLED_DISPLAY(write(spaceAP)) 
+      cursor += 2 * 6; // Move cursor to the end of the " " + AM/PM string
+      OLED_DISPLAY(setCursor(cursor, 8)) // Position at the end of the AM/PM string.
+      // OLED_DISPLAY(write("  ")) // Add two spaces after the AM/PM to clear the screen AM/PM.
+      OLED_DISPLAY(fillRect(cursor, 8, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
       }
 
    OLED_DISPLAY(setCursor(0, 16))
-   OLED_DISPLAY(write(daysOfTheWeek[time.dayOfTheWeek() % 7]))
+   int dow = time.dayOfTheWeek() % 7;
+   OLED_DISPLAY(write(daysOfTheWeek[dow]))
+   cursor = strlen(daysOfTheWeek[dow]) * 6;
+   OLED_DISPLAY(fillRect(cursor, 16, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
    OLED_DISPLAY(setCursor(0, 24))
    OLED_DISPLAY(write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD")))
+   cursor = strlen("YYYY/MM/DD") * 6; // Each character is 6 pixels wide.
+   OLED_DISPLAY(fillRect(cursor, 24, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
    OLED_DISPLAY(display())
    #endif   // DEV_BOARD
    }

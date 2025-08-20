@@ -4,8 +4,8 @@
 // Binary Clock RTC 24H with Interrupt, Alarm and Buttons Example
 // This example demonstrates complete Binary Clock with Time and Alarm settings
 //
-// *It is recommended that the first start should be carried out with the serial terminal, 
-// for better knowing the setting options. 
+// * It is recommended that the first start should be carried out with the serial terminal, 
+//   for better knowing the setting options. 
 //
 // The buttons allows you to set the time and alarm - exact hour, minute, second/alarm status.
 // Alarm causes melody to play.  
@@ -42,7 +42,8 @@
 // RTC SDA** connected to: Arduino pin PC4  SDA ; Metro ESP32-S3  47 ; ESP32_D1-R32 36  ; ESP32-S3 UNO  8
 // RTC SCL** connected to: Arduino pin PC5  SCL ; Metro ESP32-S3  48 ; ESP32_D1-R32 39  ; ESP32-S3 UNO  9
 //
-//  * (Requires hardware board modification to use LED output pin)
+//  * (Requires hardware board modification to use LED output pin. Wire pin 15 on the D1-R32 board to
+//    the SHIELD pin that connects to A3/34. This is where the LED data pin is connected to.)
 // ** (The shield is connected to and uses the alternate SDA (A4) and SCL (A5) pins: PC4; and PC5.
 //    These pins are located just below the RESET button and above the AREF pin)
 //
@@ -60,7 +61,7 @@
 //    |
 //    |    +------+       +------+       +------+       +------+       +------+       +------+
 //    +----|LED 05|---<---|LED 04|---<---|LED 03|---<---|LED 02|---<---|LED 01|---<---|LED 0 |--<-- DATA_PIN 
-//         +------+       +------+       +------+       +------+       +------+       +------+
+//         +------+       +------+       +------+       +------+       +------+       +------+       (A3)
 // 
 // Note: (Chris-80 2025/07)
 // =====
@@ -87,8 +88,8 @@
 #include <RTClib.h>              // Adafruit RTC library: https://github.com/adafruit/RTClib
 #include <Streaming.h>           // https://github.com/janelia-arduino/Streaming                            
 
-#include "BinaryClock.Defines.h" // Include the Binary Clock definitions for the boards, and hard constants.
-#include "pitches.h"             // Need to create the pitches library: https://arduino.cc/en/Tutorial/ToneMelody
+#include "BinaryClock.Defines.h" // Include the Binary Clock definitions for the boards, and any hard constants.
+#include "pitches.h"             // Needed to create the pitches. Library: https://arduino.cc/en/Tutorial/ToneMelody
 
 #ifdef TESTING                   // Changes needed for unit testing of this code.
    #define TEST_VIRTUAL virtual
@@ -97,6 +98,8 @@
    #define TEST_VIRTUAL
    #define PRIVATE private
 #endif
+
+/// Protect from any possible name clashes by putting this code in its own namespace.
 namespace BinaryClockShield
    {
    /// @brief The structure holds all the Alarm information used by the Binary Clock.
@@ -119,11 +122,11 @@ namespace BinaryClockShield
       } AlarmTime;
 
    /// @brief The structure that holds the state of a button.
-   ///        It contains the pin number, current state, last read state, last read time
-   ///        the onValue (the value when the button is pressed) for CC (HIGH) or CA (LOW) connections.
-   ///        The isPressed() method returns true if the button state is ON (pressed), false otherwise.
-   ///        The read() method reads the current button pin state without debouncing. True: ON, False: OFF.
-   ///        The value() method reads the current raw pin value without debouncing, returns HIGH/LOW.
+   /// @details It contains the pin number, current state, last read state, last read time
+   ///          the onValue (the value when the button is pressed) for CC (HIGH) or CA (LOW) connections.
+   ///          The isPressed() method returns true if the button state is ON (pressed), false otherwise.
+   ///          The read() method reads the current button pin state without debouncing. True: ON, False: OFF.
+   ///          The value() method reads the current raw pin value without debouncing, returns HIGH/LOW.
    /// @author Chris-80 (2025/07)
    typedef struct buttonState
       {
@@ -144,7 +147,8 @@ namespace BinaryClockShield
       } ButtonState;
 
    /// @brief The class that extends the RTCLib's RTC_DS3231 class to add raw read/write methods
-   /// @note  This class is a hack for now as the RTCLib does not provide a way to read/write raw registers.
+   /// @remarks This class is a hack for now as the RTCLib does not provide a direct way to read/write 
+   ///          raw registers. The base RTC_I2C class only has protected methods to read/write registers,
    /// @author Chris-80 (2025/07)
    class RTCLibPlusDS3231 : public RTC_DS3231
       {
@@ -164,32 +168,32 @@ namespace BinaryClockShield
 
    /// @brief The BinaryClock class encapsulates the functionality of the Binary Clock Shield for Arduino.
    ///        It provides all the methods needed to initialize, set the date/time, set the alarm, and 
-   ///        change the brightness and LED colors in addition to handling the LED display.
+   ///        change the brightness and LED colors in addition to handling the LED display. This now
+   ///        supports display in 12 hour mode and the settings UX has been improved.
    /// @details The class has public methods to get/set the time, alarm, alarm melody, and brightness.
    ///          It also has methods to handle the settings menu on a serial display. Refactoring the 
    ///          original example code into a class was done to pair it with another class that handles
    ///          the WiFi connection and allows the user to change the LED colors and melodies used for
    ///          the alarm at runtime, without needing to recompile the code. The original code and shield design
    ///          targeted an Arduino UNO board, this is designed for an ESP32 based UNO board, such as 
-   ///          the Wemos D1 R32 UNO or the new ESP32-S3 UNO. The idea is to connect to a NTP server over WiFi.
+   ///          Adafruit Metro ESP32 S3 (https://www.adafruit.com/product/5500), Arduino UNO R4 Minima (no WiFi)
+   ///          (https://store.arduino.cc/products/uno-r4-minima), Arduino UNO R4 WiFi (which has an ESP32-S3)
+   ///          (https://store.arduino.cc/products/uno-r4-wifi), the Wemos D1 R32 UNO or the new ESP32-S3 UNO. 
+   ///          The idea is to connect to a NTP server over WiFi.
    /// @remarks This class is designed to be used with the excellent 'Binary Clock Shield for Arduino' by 
-   ///          Marcin Saj (available from: https://nixietester.com), original source code: 
-   ///          https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
+   ///          Marcin Saj (available from: https://nixietester.com/product/binary-clock-shield-for-arduino/), 
+   ///          original source code: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
    ///          This class uses the Adafruit RTCLib library for the RTC functionality 
    ///          (https://github.com/adafruit/RTClib) in place of the original DS3232RTC library by 
    ///          Jack Christensen (https://github.com/JChristensen/DS3232RTC) used in the original code.
    ///          One big reason for this is the inclusion of the classes 'DateTime' and 'TimeSpan'
    ///          which closely resemble the C# classes. The implementation of DateTime keeps the
    ///          time in individual bytes for Year; Month; Day; Hours; Minutes; and Seconds which is
-   ///          close to the format that the RTC uses.
+   ///          close to the format that the RTC uses. This class has been fully documented.
    /// @author  Chris-80 (2025/07)
    class BinaryClock
       {
    public:
-      #if DEV_BOARD
-      void DisplayAllRegisters();   /// *** DEBUG ***
-      #endif
-
       /// @brief The method called to initialize the Binary Clock Shield.
       ///        This has the same functionality of the Arduino setup() method.
       ///        Call this method before using the BinaryClock class.
@@ -279,8 +283,8 @@ namespace BinaryClockShield
       /// @endverbatim
       ///          When the final selection is made the 'Rainbow' pattern is displayed
       ///          to indicate to the user the changes are over and the settings are 
-      ///          either being saved, indicated by the Green check mark, or the 
-      ///          changes have been discarded, indicated by the Pink 'X' on the shield.
+      ///          either being saved, indicated by the Green check mark [✅], or the 
+      ///          changes have been discarded, indicated by the Pink 'X' [❌] on the shield.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       /// @author Chris-80 (2025/07)
       void settingsMenu();
@@ -448,6 +452,7 @@ namespace BinaryClockShield
       void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1);
 
    protected:
+      /// @brief Enum to classify the different settings types/levels in the settings menu.
       enum SettingsType { Undefined, TimeOptions, Hours, Minutes, Seconds, AlarmStatus };
 
       /// @brief Default Constructor for the BinaryClock class. This initializes the 
@@ -505,6 +510,10 @@ namespace BinaryClockShield
       ///           this method so that it can be called from within the 'loop()' method.
       bool timeDispatch();
 
+      /// @brief This method is used to get the settings type based on the options and level.
+      /// @param options The current settings options, e.g. TimeOptions (1), AlarmStatus (3).
+      /// @param level The current settings level, e.g. 1 - 4.
+      /// @return The SettingsType enum value that corresponds to the options and level.
       SettingsType GetSettingsType(int options, int level);
 
       // ################################################################################
@@ -653,6 +662,12 @@ namespace BinaryClockShield
       void callbackTask();
       #endif
 
+      #if DEV_BOARD
+      /// @brief This method is called to display all the registers of the RTC chip.
+      ///        The DS3231 registers 0x00 through 0x13 are dumped in: Hex; Binary; and Decimal.
+      void DisplayAllRegisters();
+      #endif
+
       /// @brief This method is called when the BinaryClock has died. It signals S.O.S. on the builtin led forever.
       ///        It turns off the the LEDs on the shield and goes in a loop forever signaling SOS on the builtin LED.
       ///        This is called for a catastrophic failure such as missing/failed RTC chip. A reboot is required
@@ -698,10 +713,10 @@ namespace BinaryClockShield
       static const size_t        NoteDurationsSize; // Size of the note durations array
 
       static CRGB DrawBuffer   [NUM_LEDS];   // Buffer for drawing the LEDs, used for static symbol display.
-      static const CRGB OnText [NUM_LEDS];   // A big       Green 'O'   (for On)
-      static const CRGB OffTxt [NUM_LEDS];   // A sideways  Red   'F'   (for oFF)
-      static const CRGB XAbort [NUM_LEDS];   // A big       Pink  'X'   (for abaort/cancel)   /
-      static const CRGB OkText [NUM_LEDS];   // A big       Lime  tick  (for okay/good)     \/
+      static const CRGB OnText [NUM_LEDS];   // A big       Green 'O'        (for On)
+      static const CRGB OffTxt [NUM_LEDS];   // A sideways  Red   'F'        (for oFF)
+      static const CRGB XAbort [NUM_LEDS];   // A big       Pink  'X'  [❌]  (for abaort/cancel)   /
+      static const CRGB OkText [NUM_LEDS];   // A big       Lime  tick [✅]  (for okay/good)     \/
       static const CRGB Rainbow[NUM_LEDS];   // Colours of the rainbow.
 
   PRIVATE:

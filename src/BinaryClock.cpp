@@ -57,6 +57,7 @@
 //
 
 #include "BinaryClock.h"
+#include "MorseCodeLED.h"
 
 // Include libraries
 #include <FastLED.h>            // https://github.com/FastLED/FastLED
@@ -69,7 +70,10 @@ namespace BinaryClockShield
    // Software for the 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
    //
 
-   // Notes in the melody: (70)
+   /// @brief Notes (70) to play in the melody for the alarm sound.
+   /// @remarks See the links for details on creating your own melody using tone():
+   /// @paragraph  (http://www.arduino.cc/en/Tutorial/Tone)
+   /// @paragraph  (https://arduino.cc/en/Tutorial/ToneMelody)
    const unsigned BinaryClock::MelodyAlarm[] PROGMEM =
          {
          NOTE_A4,  NOTE_A4,  NOTE_A4,  NOTE_F4,  NOTE_C5,  NOTE_A4,  NOTE_F4,  NOTE_C5,
@@ -84,8 +88,8 @@ namespace BinaryClockShield
          };
 
    #define NOTE_MS(N) (1000 / N) // Convert note duration to milliseconds
-   // Note durations: 4 = quarter note, 8 = eighth note, etc.:
-   // Some notes durations have been changed (1, 3, 6) to make them sound better
+   /// @brief Note durations: 4 = quarter note, 8 = eighth note, etc.:
+   /// @remarks Some notes durations have been changed (1, 3, 6) to make them sound better
    const unsigned long BinaryClock::NoteDurations[] PROGMEM =
          {
          NOTE_MS(2), NOTE_MS(2), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6), NOTE_MS(2), NOTE_MS(3), NOTE_MS(6),
@@ -104,7 +108,9 @@ namespace BinaryClockShield
    const size_t BinaryClock::MelodySize = sizeof(BinaryClock::MelodyAlarm) / sizeof(BinaryClock::MelodyAlarm[0]); 
    const size_t BinaryClock::NoteDurationsSize = sizeof(BinaryClock::NoteDurations) / sizeof(BinaryClock::NoteDurations[0]); 
    
-   // Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
+   /// @brief Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
+   /// @details The default colors are Hours: Blue; Minutes: Green; and Seconds: Red with the lower nibble a
+   ///          darker shade than the upper (half) nibble.
    CRGB BinaryClock::OnColor[NUM_LEDS] =
          {
          CRGB::DarkRed,   CRGB::DarkRed,   CRGB::DarkRed,   CRGB::DarkRed,   CRGB::Red,   CRGB::Red,    // Seconds (0 - 5)  
@@ -112,8 +118,8 @@ namespace BinaryClockShield
          CRGB::DarkBlue,  CRGB::DarkBlue,  CRGB::DarkBlue,  CRGB::DarkBlue,  CRGB::Blue                 // Hours   (12 - 16)
          };
 
-   // Default: Colors for the LEDs when OFF (Usually Black or No Power (i.e. OFF), Seconds, Minutes and Hours)
-   //    Note: Using any color other than Black means the LEDS will be consuming power at all times.
+   /// @brief Default: Colors for the LEDs Seconds, Minutes and Hours, when OFF (Usually Black i.e. No Power.)
+   /// @note  Using any color other than Black means the LEDs will be consuming power at all times.
    CRGB BinaryClock::OffColor[NUM_LEDS] =
          {
          CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Black,  // Seconds (0 - 5)
@@ -124,36 +130,58 @@ namespace BinaryClockShield
    CRGB BinaryClock::PmColor = CRGB::Indigo; // Color for the PM indicator LED, distinct from other time colors (e.g. 0x4000A0)
    CRGB BinaryClock::AmColor = CRGB::Black;  // Color for the AM indicator (Usually Black/OFF.)
 
-   const CRGB BinaryClock::OnText[NUM_LEDS] = // A big Green 'O' for On
-         {
+   /// @brief The screen shaped in an 'O' for 'On' when setting the alarm to ON in the alarm menu.
+   /// @see OffTxt
+   /// @see XAbort
+   const CRGB BinaryClock::OnText[NUM_LEDS] = 
+         {  // A big Green 'O' for On
          CRGB::Green, CRGB::Green, CRGB::Green, CRGB::Green, CRGB::Black, CRGB::Black,
          CRGB::Green, CRGB::Black, CRGB::Black, CRGB::Green, CRGB::Black, CRGB::Black,
          CRGB::Green, CRGB::Green, CRGB::Green, CRGB::Green, CRGB::Black
          };
 
-   const CRGB BinaryClock::OffTxt[NUM_LEDS] = // A big Red 'F' for oFF
-         {
+   /// @brief The screen shaped in a RED 'F' for 'Off' when setting the alarm to OFF in the alarm menu.
+   /// @see OnText
+   /// @see XAbort
+   const CRGB BinaryClock::OffTxt[NUM_LEDS] = 
+         {  // A big Red 'F' for oFF
          CRGB::Red,   CRGB::Black, CRGB::Red,   CRGB::Black, CRGB::Black, CRGB::Black,
          CRGB::Red,   CRGB::Black, CRGB::Red,   CRGB::Black, CRGB::Black, CRGB::Black,
          CRGB::Red,   CRGB::Red,   CRGB::Red,   CRGB::Red,   CRGB::Red
          };
 
-   const CRGB BinaryClock::XAbort[NUM_LEDS] = // A big Pink (Fuchsia) 'X' for abort/cancel
-         {
+   /// @brief The screen shaped in a big Pink (Fuchsia) 'X' [❌] for abort/cancel when setting the alarm or time.
+   /// @remarks This is used to cancel the Time and Alarm settings and exit without making any changes.
+   ///          This is also displayed, after the Rainbow (saving/exit) screen to signal nothing saved.
+   /// @see OnText
+   /// @see OffTxt
+   /// @see OkText
+   const CRGB BinaryClock::XAbort[NUM_LEDS] = 
+         {  // A big Pink (Fuchsia) 'X' [❌] for abort/cancel
          CRGB::Black,   CRGB::Fuchsia, CRGB::Black,   CRGB::Fuchsia, CRGB::Black,   CRGB::Black,
          CRGB::Black,   CRGB::Black,   CRGB::Fuchsia, CRGB::Black,   CRGB::Black,   CRGB::Black,
          CRGB::Black,   CRGB::Fuchsia, CRGB::Black,   CRGB::Fuchsia, CRGB::Black
          };
 
-   const CRGB BinaryClock::OkText[NUM_LEDS] = // A big Lime 'tick mark' for okay/good     / 
-         {                                    //                                        \/
-         CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Black,
+   /// @brief The screen shaped in a big Lime 'check mark' [✅] for okay/good when saving settings.
+   /// @remarks This is used to signal that the settings have been saved successfully.
+   /// @see XAbort
+   /// @see Rainbow
+   const CRGB BinaryClock::OkText[NUM_LEDS] = 
+         {                                    // A big Lime 'check mark' [✅] for okay/good     / 
+         CRGB::Black, CRGB::Black, CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Black, //     \/
          CRGB::Black, CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Lime,  CRGB::Black,
          CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Black, CRGB::Black
          };
 
-   const CRGB BinaryClock::Rainbow[NUM_LEDS] =
-         {
+   /// @brief The screen shaped in a big Rainbow of colors across all LEDs. 
+   /// @details This is displayed after the Time or Alarm settings has ended and the 
+   ///          program is saving/restoring the settings. This is followed by either
+   ///          the 'check mark' [✅] for settings saved or the 'X' [❌] for no changes.
+   /// @see OkText
+   /// @see XAbort
+   const CRGB BinaryClock::Rainbow[NUM_LEDS] = 
+         {  // All colors of the rainbow over all LEDs.
          CRGB::Violet, CRGB::Indigo, CRGB::Blue,   CRGB::Green,  CRGB::Yellow, CRGB::Orange,
          CRGB::Indigo, CRGB::Blue,   CRGB::Green,  CRGB::Yellow, CRGB::Orange, CRGB::Red,
          CRGB::Blue,   CRGB::Green,  CRGB::Yellow, CRGB::Orange, CRGB::Red
@@ -192,22 +220,27 @@ namespace BinaryClockShield
    void BinaryClock::DisplayAllRegisters()
       {
       char buffer[32];
-      const char* bit_rep[16] = {
+      const char* nibbles[16] = {
          [0]  = "0000", [1]  = "0001", [2]  = "0010", [3]  = "0011",
          [4]  = "0100", [5]  = "0101", [6]  = "0110", [7]  = "0111",
          [8]  = "1000", [9]  = "1001", [10] = "1010", [11] = "1011",
          [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
          };
 
-      char binStr[10];
-      auto binByteStr = [&bit_rep, &binStr](uint8_t byte)
+      char byteStr[10];
+      // Lambda function to convert a byte to a binary string representation.
+      // The string is the upper nibble, a space, the lower nibble. This is the
+      // best way to display a byte as anyone who knows binary and is worth
+      // their salt can instantly understand a binary nibble. It is up to the 
+      // caller to deliniate between bytes, e.g. by using a comma and a space.
+      auto binByteStr = [&nibbles, &byteStr](uint8_t byte)
          {
-         memmove(binStr, bit_rep[byte >> 4], 4);
-         binStr[4] = ' ';
-         memmove(binStr + 5, bit_rep[byte & 0x0F], 4);
-         binStr[9] = '\0'; // Null-terminate the string
+         memmove(byteStr, nibbles[byte >> 4], 4);
+         byteStr[4] = ' ';
+         memmove(byteStr + 5, nibbles[byte & 0x0F], 4);
+         byteStr[9] = '\0'; // Null-terminate the string
 
-         return binStr;
+         return byteStr;
          };
 
       const size_t RegSize = 0x13;
@@ -217,11 +250,9 @@ namespace BinaryClockShield
       for (size_t i = 0; i < RegSize; i++)
          {
          regs[i] = RTC.RawRead(i);
-         // Serial << F("Reg[") << i << F("]: 0x") << String(regs[i], HEX) 
-         //        << F("; ") << String(regs[i], BIN)
-         //        << F(" (") << (int)regs[i] << F(")\n");
+         // Print register number, value in hex, binary and decimal
          snprintf(buffer, sizeof(buffer), "Reg[0x%02X] 0x%02X; %s (%3d)\n", 
-                  i, regs[i], binByteStr(regs[i]), (int)regs[i]); // Print register number, value in hex, binary and decimal
+                  i, regs[i], binByteStr(regs[i]), (int)regs[i]); 
          Serial << buffer;
          }
 
@@ -246,7 +277,7 @@ namespace BinaryClockShield
       Serial.println(F("# product/binary-clock-shield-for-arduino/ #"));
       Serial.println(F("############################################"));
       Serial.println(F("#  This software is licensed under the GNU #"));
-      Serial.println(F("# General Public License (GPL) v3.0        #"));
+      Serial.println(F("#     General Public License (GPL) v3.0    #"));
       Serial.println(F("############################################"));
       Serial.println();
       #endif
@@ -455,25 +486,28 @@ namespace BinaryClockShield
       // Limit to 450mA at 5V of power draw total for all LEDs
       FastLED.setMaxPowerInVoltsAndMilliamps(5, 450);
       FastLED.setBrightness(brightness);
-
+      int frequency = 3;
       // Display the LED test patterns for the user.
       if (testLEDs)
          {
          displayLedBuffer(OnColor, NUM_LEDS);
-         FlashLed(HeartbeatLED, 2, 75, 4);      // Acts as a delay(2000/4) and does something.
+         FlashLed(HeartbeatLED, 3, 75, 2);      // Acts as a delay(3000/2) and does something.
          displayLedBuffer(OnText, NUM_LEDS);
-         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(OffTxt, NUM_LEDS);
-         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(XAbort, NUM_LEDS);
-         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(OkText, NUM_LEDS);
-         FlashLed(HeartbeatLED, 3, 50, 4);      // Acts as a delay(3000/4) and does something.
-         displayLedBuffer(Rainbow, NUM_LEDS);
-         FlashLed(HeartbeatLED, 3, 25, 2);      // Acts as a delay(3000/2) and does something.
-         displayLedBuffer(OffColor, NUM_LEDS);
-         FlashLed(HeartbeatLED);                // Acts as a delay(1000) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
+         frequency = 2;
          }
+
+      // Display the rainbow pattern over all pixels to show everything working.
+      displayLedBuffer(Rainbow, NUM_LEDS);      // Turn on all LEDS showing a rainbow of colors.
+      FlashLed(HeartbeatLED, 4, 25, frequency); // Acts as a delay(2000/2) and does something.
+      displayLedBuffer(OffColor, NUM_LEDS);
+      FlashLed(HeartbeatLED, 1, 25, frequency); // Acts as a delay(1000/2) and does something.
       }
 
    void BinaryClock::FlashLed(uint8_t ledNum, uint8_t repeat, uint8_t dutyCycle, uint8_t frequency)
@@ -543,7 +577,7 @@ namespace BinaryClockShield
          { isSerialTime = true; }                  // Enable serial time
       #endif
 
-      time = DateTime(70, 1, 1, 10, 4, 10);  // An 'X' if RTC fails.
+      time = DateTime(70, 1, 1, 10, 4, 10);  // An 'X' [❌] if RTC fails.
       }
    
    BinaryClock::~BinaryClock()
@@ -595,7 +629,12 @@ namespace BinaryClockShield
    void BinaryClock::set_Time(DateTime &value)
       {
       if (rtcValid && value.isValid())
-         { RTC.adjust(value, get_Is12HourFormat()); }   // Set the time in the RTC
+         { 
+         // If the year is 2000, set it to 2001 so that the DayOfWeek() calculation works correctly
+         if (value.year() == 2000) 
+            { value = DateTime(2001, value.month(), value.day(), value.hour(), value.minute(), value.second()); }
+         RTC.adjust(value, get_Is12HourFormat()); // Set the time in the RTC
+         }
 
       time = value;
       }
@@ -871,7 +910,7 @@ namespace BinaryClockShield
 
    void BinaryClock::purgatoryTask(const char* message)
       {
-          // This is where failure comes to die.
+      // This is where failure comes to die.
       FastLED.clear(true); // Clear the LEDs.
 
       pinMode(HeartbeatLED, OUTPUT);
@@ -896,102 +935,32 @@ namespace BinaryClockShield
       //       -.-. --.- -..  -. ---   .-. - -.-.
       // We can't get out of purgatory without a Real Time Clock
       //
-      int dit = 100;
-      int dah = 3 * dit;
-      int delayDitDah;
-      int interLetterDelay = 3 * dit; // Delay between letters in Morse code.
-      int interWordDelay = 7 * dit;   // Delay between words in Morse code.
+      MorseCodeLED morseCode(HeartbeatLED);
+      morseCode.begin();
 
-      struct morseLetter
-         {
-         char letter;    // The character represented by the Morse code
-         int* code;      // Pointer to the Morse code array
-         int  size;      // Size of the Morse code array
-         morseLetter(char l, int c[], int s) : letter(l), code(c), size(s) { }
-         };
-
-      struct morseWord
-         {
-         morseLetter* letters; // Pointer to the array of Morse letters
-         int          size;    // Number of letters in the word
-         morseWord(morseLetter l[], int s) : letters(l), size(s) { }
-         };
-
-      struct morseMessage
-         {
-         morseWord* words; // Array of words in the message
-         int        size;  // Number of words in the message
-         morseMessage(morseWord w[], int s) : words(w), size(s) { }
-         };
-
-      // Define Morse code arrays as static arrays
-      int cCode[] = { dah, dit, dah, dit };  // C: -·-·  
-      int qCode[] = { dah, dah, dit, dah };  // Q: --·-  
-      int dCode[] = { dah, dit, dit };       // D: -··   
-      int nCode[] = { dah, dit };            // N: -·    
-      int oCode[] = { dah, dah, dah };       // O: ---   
-      int rCode[] = { dit, dah, dit };       // R: ·-·   
-      int tCode[] = { dah };                 // T: -     
-
-      // Create morse letters
-      morseLetter C('C', cCode, 4);
-      morseLetter Q('Q', qCode, 4);
-      morseLetter D('D', dCode, 3);
-      morseLetter N('N', nCode, 2);
-      morseLetter O('O', oCode, 3);
-      morseLetter R('R', rCode, 3);
-      morseLetter T('T', tCode, 1);
-
-      // Create words
-      morseLetter cqdLetters[] = { C, Q, D }; 
-      morseLetter noLetters[]  = { N, O };    
-      morseLetter rtcLetters[] = { R, T, C }; 
-
-      morseWord CQD(cqdLetters, 3);
-      morseWord NO(noLetters, 2);
-      morseWord RTC_(rtcLetters, 3);
-
-      // Create message
-      morseWord messageWords[] = { CQD, NO, RTC_ };
-      morseMessage morseCodes(messageWords, 3);
+      #ifndef UNO_R3
+      morseCode.flashString("CQD");
+      delay(1250);
+      morseCode.flashString(message);
+      delay(1750);
+      #endif
 
       bool done = false;   // Flag to display the serial message only once.
+      // Flash CQD NO RTC (Come Quick Distress NO Real Time Clock) to signal the failure.
+      if (!done)
+         {
+         Serial << "  C    Q    D     N  O     R   T C " << endl
+            << " [-.-. --.- -..   -. ---   .-. - -.-.] " << endl
+            << "(Come Quick Distress NO Real Time Clock)" << endl;
+         }
+      if (!done) { Serial << endl; }
+      done = true;
+
       FOREVER
          {
-         // Flash CQD NO RTC (Come Quick Distress NO Real Time Clock) to signal the failure.
-         if (!done) { Serial << "  C    Q    D     N  O     R   T C " << endl 
-                             << " [-.-. --.- -..   -. ---   .-. - -.-.] " << endl 
-                             << "(Come Quick Distress NO Real Time Clock)" << endl; }
-         for (int k = 0; k < morseCodes.size; k++)
-            {
-            if (!done) { Serial << "Word " << k + 1 << ") Word Size: " << morseCodes.words[k].size << ": \n"; }
-
-            for (int j = 0; j < morseCodes.words[k].size; j++)
-               {
-               morseLetter currentLetter = morseCodes.words[k].letters[j];
-               if (!done) { Serial << "  " << j + 1 << ") Letter '" << currentLetter.letter << "' Size: " << currentLetter.size << ": "; }
-
-               // For each message in the array, iterate through the Morse code for the letter.
-               for (int i = 0; i < currentLetter.size; i++)
-                  {
-                  delayDitDah = currentLetter.code[i];
-                  if (!done) { Serial << (delayDitDah == dit ? "dit" : "dah") << (i + 1 < currentLetter.size? "-" : ""); }
-                  digitalWrite(HeartbeatLED, HIGH); // Turn the LED on
-                  delay(delayDitDah);
-                  digitalWrite(HeartbeatLED, LOW);  // Turn the LED off
-                  delay(delayDitDah);
-                  }
-
-               if (!done) { Serial << endl; }
-               delay(interLetterDelay);
-               }
-
-            delay(interWordDelay); // Delay between words
-            }
-
-         if (!done) { Serial << endl; }
+         morseCode.flash_CQD_NO_RTC();        
          delay(1950);
-         done = true;
+
          if (RTC.begin())
             {
             resetBoard(); // Reset the board if RTC is available
@@ -1068,8 +1037,8 @@ namespace BinaryClockShield
    /// @endverbatim
    ///          When the final selection is made the 'Rainbow' pattern is displayed
    ///          to indicate to the user the changes are over and the settings are 
-   ///          either being saved, indicated by the Green check mark, or the 
-   ///          changes have been discarded, indicated by the Pink 'X' on the shield.
+   ///          either being saved, indicated by the Green  [✅], or the 
+   ///          changes have been discarded, indicated by the Pink 'X' [❌] on the shield.
 
    ////////////////////////////////////////////////////////////////////////////////////
    ///               settingsMenu() - DESIGN                         Chris-70 (2025/08)
@@ -1102,7 +1071,7 @@ namespace BinaryClockShield
    ///         b) signal the beginning of action being taken; 
    ///      2) A display showing the user the action being taken:
    ///         a) Green Check mark is shown if the settings are being saved; or 
-   ///         b) Pink 'X' is shown if the settings are being discarded.
+   ///         b) Pink 'X' [❌] is shown if the settings are being discarded.
    /// Adding these configuration screens requires that they remain visible for a 
    ///   period of time so that the user can view them. We can't use the 'delay()'
    ///   method as it would block the main loop and prevent other tasks from running. 
@@ -1114,7 +1083,7 @@ namespace BinaryClockShield
    ///   12 PM or 24 on the Hours (top) Row. This is immediately followed by the user 
    ///   selecting the hours which is poor from a UX perspective. The two types, 
    ///   time mode and hours, appear to be very similar to the user. There needs to 
-   ///   be a clear transition between them. The Green check mark is displayed
+   ///   be a clear transition between them. The Green check mark [✅] is displayed
    ///   briefly to mark this transition which is handed with 'continueS2' variable.
    /// The 'delayTimer' prevents any action by the user until after it has expired.
    ///   To resume processing the Time settings (i.e. hours) after the Green check 
@@ -1122,8 +1091,8 @@ namespace BinaryClockShield
    ///   buttonS2 processing to continue after the delay.
    /// The 'exit', 'exitStage' and 'abort' variables are used when we are done with 
    ///   the 'settingsMenu()' and we will resume displaying the time. This involves 
-   ///   displaying two screens: the Rainbow screen; and either the Green check mark
-   ///   or the Pink 'X' before displaying the time. The 'exitStage' keeps track of
+   ///   displaying two screens: the Rainbow screen; and either the Green check mark [✅]
+   ///   or the Pink 'X' [❌] before displaying the time. The 'exitStage' keeps track of
    ///   where we are in the exit process. These two flags, along with the 'delayTimer',
    ///   handle displaying the correct screens for the specified time.
    ///
@@ -1169,7 +1138,7 @@ namespace BinaryClockShield
          static uint8_t exitStage = 0U;  // Stage of exit process (Needed for user info/display)
          static unsigned long delayTimer = 0UL; // Delay timer instead of using delay().
          static bool continueS2 = false; // Flag to resume 'buttonS2' processing after a delay.
-         bool displayOK = false;         // Flag to display check mark after 12/24 hr. mode selection
+         bool displayOK = false;         // Flag to display check mark [✅] after 12/24 hr. mode selection
 
          // Decrement - if the buttonS1 was just pressed
          if (isButtonOnNew(buttonS1) && (curMillis > delayTimer))
@@ -1195,15 +1164,15 @@ namespace BinaryClockShield
             if (!continueS2)                    // If the button S2 was just presse (i.e. not resume S2).
                { saveCurrentModifiedValue(); }  // Save current value e.g. hour, minute, second, alarm status or Cancel    
 
-            // During time setting, display a check mark after 12/24 hour mode selected to 
+            // During time setting, display a check mark [✅] after 12/24 hour mode selected to 
             // indicate to the user that level was done. Now on to setting Hours. 
             // This is due to using the Hours Row to display the 12/24 hour mode selection. 
             // Abort/Cancel changes the settings level to 99 so this is bypassed, it will process the abort instead.
             if (settingsOption == 1 && settingsLevel == 1)
-               { displayOK = true; }            // Flag to display the Green check mark
+               { displayOK = true; }            // Flag to display the Green check mark [✅]
 
             // This sequence position is important in this state machine, the level needs to be incremented
-            // after the value was saved and after we checked if we need to display a check mark once the user
+            // after the value was saved and after we checked if we need to display a check mark [✅] once the user
             // has selected to save the selected time mode. This must be done as part of the processing of the
             // physical save button press never during a resume of the S2 processing.
             if (!continueS2)                    // If the button S2 was just pressed (i.e. not resume S2).
@@ -1260,7 +1229,7 @@ namespace BinaryClockShield
                   }
                #endif
                }
-            // This interrupts the buttonS2 processing to display a check mark after
+            // This interrupts the buttonS2 processing to display a check mark [✅] after
             // the user selects 12 or 24 hour time display mode to signal the
             // transition to setting the time. Required for a better UX as the 
             // time mode selection (12/24) is too similar to the hour setting.
@@ -1283,7 +1252,7 @@ namespace BinaryClockShield
 
          // This is the exit process that occurs over several stages.
          // Stage 0: Display the rainbow LEDs to signal the end.
-         // Stage 1: Display the Pink 'X' for an abort or the check mark for a save.
+         // Stage 1: Display the Pink 'X' [❌] for an abort or the check mark [✅] for a save.
          // Stage 2: Clean up and exit back to the main menu (displaying the time).
          if (exit)
             {
