@@ -142,7 +142,7 @@ uint8_t RTC_DS1307::isrunning(void) { return !(read_register(0) >> 7); }
              If the current time format is 12 hour then it returns true.
 */
 /**************************************************************************/
-bool RTC_DS1307::get_Is12HourMode()
+bool RTC_DS1307::getIs12HourMode()
    {
    uint8_t buffer = DS1307_HOUR;     // Hour register number
    i2c_dev->read(&buffer, 1, false); // Read the hour register
@@ -161,9 +161,9 @@ bool RTC_DS1307::get_Is12HourMode()
             'value' parameter.
 */
 /**************************************************************************/
-void RTC_DS1307::set_Is12HourMode(bool value)
+void RTC_DS1307::setIs12HourMode(bool value)
    {
-   bool curMode12 = get_Is12HourMode();
+   bool curMode12 = getIs12HourMode();
    if (curMode12 != value)
       {
       DateTime dt = now(); // Get current date/time
@@ -185,7 +185,7 @@ void RTC_DS1307::set_Is12HourMode(bool value)
 */
 /**************************************************************************/
 void RTC_DS1307::adjust(const DateTime &dt) 
-               { adjust(dt, get_Is12HourMode()); }
+               { adjust(dt, getIs12HourMode()); }
 
 void RTC_DS1307::adjust(const DateTime &dt, bool use12HourFormat) {
   uint8_t buffer[8] = {0,

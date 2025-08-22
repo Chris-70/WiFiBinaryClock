@@ -196,7 +196,7 @@ bool RTC_DS3231::lostPower(void) {
 */
 /**************************************************************************/
 void RTC_DS3231::adjust(const DateTime& dt) 
-               { adjust(dt, get_Is12HourMode()); }
+               { adjust(dt, getIs12HourMode()); }
                
 void RTC_DS3231::adjust(const DateTime &dt, bool use12HourMode) {
   if (!dt.isValid()) { return; } // Invalid date, do not set 
@@ -278,7 +278,23 @@ float RTC_DS3231::getTemperature() {
   return (float)buffer[0] + (buffer[1] >> 6) * 0.25f;
 }
 
-int RTC_DS3231::get_IntTemperature() {
+/**************************************************************************/
+/*!
+    @brief  Get the current temperature from the DS3231's temperature sensor
+            as an integer, in degrees C.
+    @details The DS3231 temperature sensor has a resolution of 0.25 degrees C.
+             This method returns the integer part of the temperature only.
+             The accuracy of the sensor is only +/- 3 degrees C, so reading
+             just the integer portion is sufficient. The bonus is that if
+             you remove the getTemperature() method, which returns a float
+             and you don't use anyother floats in your program you can 
+             compile a smaller program on chips that don't support any
+             floating point in hardware and must import the software 
+             libraries for floating point calculations (e.g. UNO R3).
+    @return Current temperature (int) in degrees C.
+*/
+/**************************************************************************/
+int RTC_DS3231::getIntTemperature() {
    uint8_t buffer = read_register(DS3231_TEMPERATUREREG);
    return (int8_t)buffer; // Return the temperature as signed integer
 }
@@ -290,7 +306,7 @@ int RTC_DS3231::get_IntTemperature() {
              If the current time format is 12 hour then it returns true.
 */             
 /**************************************************************************/
-bool RTC_DS3231::get_Is12HourMode()
+bool RTC_DS3231::getIs12HourMode()
    {
    uint8_t buffer = read_register(DS3231_HOUR); // Read the hour register
    // Check bit 6 (0x40) for 12 hour mode
@@ -325,9 +341,9 @@ bool RTC_DS3231::get_Is12HourMode()
              set the desired new mode for the alarm.
 */
 /**************************************************************************/
-void RTC_DS3231::set_Is12HourMode(bool value)
+void RTC_DS3231::setIs12HourMode(bool value)
    {
-   bool curMode12 = get_Is12HourMode();
+   bool curMode12 = getIs12HourMode();
    if (curMode12 != value) 
       { 
       // Mode has changed, we need to update the time and both alarms to match.
@@ -380,14 +396,14 @@ void RTC_DS3231::set_Is12HourMode(bool value)
             the level set by the mode (e.g. seconds, minutes, hours, day/date).
             If the time mode is different from the alarm time mode, then the
             hour registers will never match and the alarm will be OFF.
-            Call 'set_Is12HourMode(bool)' to change all the time modes.
-    @see set_Is12HourMode(bool) to change the time mode for all alarms and time registers.
+            Call 'setIs12HourMode(bool)' to change all the time modes.
+    @see setIs12HourMode(bool) to change the time mode for all alarms and time registers.
     @see getAlarm1Mode() to get the current alarm mode.
     @see getAlarm1() to get the current alarm time.
 */
 /**************************************************************************/
 bool RTC_DS3231::setAlarm1(const DateTime& alarmTime, Ds3231Alarm1Mode alarm_mode) 
-        { return setAlarm1(alarmTime, alarm_mode, get_Is12HourMode()); }
+        { return setAlarm1(alarmTime, alarm_mode, getIs12HourMode()); }
 
 bool RTC_DS3231::setAlarm1(const DateTime &alarmTime, Ds3231Alarm1Mode alarm_mode, bool use12HourMode) {
   if (!alarmTime.isValid()) { return false; } // Invalid date, do not set alarm
@@ -436,13 +452,13 @@ bool RTC_DS3231::setAlarm1(const DateTime &alarmTime, Ds3231Alarm1Mode alarm_mod
             the level set by the mode (e.g. seconds, minutes, hours, day/date).
             If the time mode is different from the alarm time mode, then the
             hour registers will never match and the alarm will be OFF.
-            Call 'set_Is12HourMode(bool)' to change all the time modes.
-    @see set_Is12HourMode(bool) to change the time mode for all alarms and time registers.
+            Call 'setIs12HourMode(bool)' to change all the time modes.
+    @see setIs12HourMode(bool) to change the time mode for all alarms and time registers.
     @see getAlarm2Mode() to get the current alarm mode.            
 */
 /**************************************************************************/
 bool RTC_DS3231::setAlarm2(const DateTime& alarmTime, Ds3231Alarm2Mode alarm_mode) 
-        { return setAlarm2(alarmTime, alarm_mode, get_Is12HourMode()); }
+        { return setAlarm2(alarmTime, alarm_mode, getIs12HourMode()); }
 
 bool RTC_DS3231::setAlarm2(const DateTime& alarmTime, Ds3231Alarm2Mode alarm_mode, bool use12HourMode) {
    if (!alarmTime.isValid()) { return false; } // Invalid date, do not set alarm
@@ -509,7 +525,7 @@ DateTime RTC_DS3231::getAlarm1() {
   // Use  (3) March     2000, 1 for Wednesday and 7 for Tuesday.
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
-  // selected month defined by 'FIRST_WEEK_DAY_MONTH' in 2000.
+  // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
   return DateTime(2000, WeekdayEpoch.month(), day, hour, minutes, seconds);
 }
 
@@ -554,7 +570,7 @@ DateTime RTC_DS3231::getAlarm2() {
   // Use  (3) March     2000, 1 for Wednesday and 7 for Tuesday.
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
-  // selected month defined by 'FIRST_WEEK_DAY_MONTH' in 2000.
+  // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
   return DateTime(2000, WeekdayEpoch.month(), day, hour, minutes, 0);
 }
 

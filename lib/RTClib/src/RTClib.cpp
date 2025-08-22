@@ -499,9 +499,11 @@ char *DateTime::toString(char *buffer) const {
       buffer[i] = '0' + ss / 10;
       buffer[i + 1] = '0' + ss % 10;
     }
+
+    // Get the name of the weekday give the day number and offset.
     if (buffer[i] == 'D' && buffer[i + 1] == 'D' && buffer[i + 2] == 'D') {
-      static PROGMEM const char day_names[] = "SunMonTueWedThuFriSat";
-      const char *p = &day_names[3 * dayOfTheWeek()];
+      static PROGMEM const char day_names[] = "MonTueWedThuFriSatSun";
+      const char *p = &day_names[3 * ((dayOfTheWeek() + WEEKDAY_NAME_OFFSET) % 7)];
       buffer[i] = pgm_read_byte(p);
       buffer[i + 1] = pgm_read_byte(p + 1);
       buffer[i + 2] = pgm_read_byte(p + 2);

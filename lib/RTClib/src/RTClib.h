@@ -124,6 +124,20 @@ enum Pcf8563SqwPinMode {
   PCF8563_SquareWave32kHz = 0x80 /**< 32kHz square wave */
 };
 
+//**************************************************************************/
+///< The first day of the week: "Mon"; "Tue"; "Wed"; "Thu"; "Fri"; "Sat"; "Sun"
+///  Alter this define to change the first day of the week.
+#define FIRST_WEEKDAY "Mon"   
+// -------------------------------------------------------------------------
+//
+//**************************************************************************/
+// The starting day of the week isn't the same for all cultures. These MACROs
+// and #defines allow you to set the first day of the week to be used in all
+// calculations. Just define FIRST_WEEKDAY to the first day of the week you 
+// want to use and the MACROs will take care of the rest.
+// The output from dayOfTheWeek() and DateTime::toString() will reflect this 
+// setting. 
+// ----------------------------------------------------------------------------
 // On the first week of May 2000, the day-of-the-week (Monday) number 1 (1 - 7) or 0 (0 - 6)
 // matches the date number 1. For other starting days:
 // Use  (5) May       2000, 1 for Monday    and 7 for Sunday.
@@ -140,7 +154,47 @@ enum Pcf8563SqwPinMode {
 #define DAY_1_IS_THURSDAY  6  ///< The first day of the week (1) is Thursday  in June      2000
 #define DAY_1_IS_WEDNESDAY 3  ///< The first day of the week (1) is Wednesday in March     2000
 #define DAY_1_IS_TUESDAY   2  ///< The first day of the week (1) is Tuesday   in February  2000
-#define FIRST_WEEK_DAY_MONTH DAY_1_IS_MONDAY ///< The first day of the week (1) is Monday in May 2000
+// Offset (order) in the names array to each day of the week name.
+#define DOW_MONDAY         0  ///< Day of the week name offset value for Monday
+#define DOW_SUNDAY         6  ///< Day of the week name offset value for Sunday
+#define DOW_SATURDAY       5  ///< Day of the week name offset value for Saturday
+#define DOW_FRIDAY         4  ///< Day of the week name offset value for Friday
+#define DOW_THURSDAY       3  ///< Day of the week name offset value for Thursday
+#define DOW_WEDNESDAY      2  ///< Day of the week name offset value for Wednesday
+#define DOW_TUESDAY        1  ///< Day of the week name offset value for Tuesday
+// ----------------------------------------------------------------------------
+/// @brief MACRO to set the first day of the week for calculations.
+/// @details The first day of the week is used in calculations for the DateTime::dayOfTheWeek()
+///          and the DateTime::toString() methods.
+/// @param DAY_NAME The name of the first day of the week, e.g. "Monday", "Sunday", etc.
+#define MONTH_WEEKDAY_START(DAY_NAME) \
+  (((DAY_NAME)[0] == 'M')                                                     ? DAY_1_IS_MONDAY    : \
+   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DAY_1_IS_SUNDAY    : \
+   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A')) ? DAY_1_IS_SATURDAY  : \
+   ((DAY_NAME)[0] == 'F')                                                     ? DAY_1_IS_FRIDAY    : \
+   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H')) ? DAY_1_IS_THURSDAY  : \
+   ((DAY_NAME)[0] == 'W')                                                     ? DAY_1_IS_WEDNESDAY : \
+   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DAY_1_IS_TUESDAY   : 5)  // Default to Monday
+// ----------------------------------------------------------------------------
+/// @brief MACRO to set the first day of the week name offset (order) to match the name.
+/// @details The first day of the week name offset is used in the DateTime::toString() method.
+///          The name array is static and hardcoded, this MACRO ensures that the name will
+///          match the first day of the week used in calculations.
+/// @param DAY_NAME The name of the first day of the week, e.g. "Monday", "Sunday", etc.
+#define WEEKDAY_OFFSET(DAY_NAME) \
+  (((DAY_NAME)[0] == 'M')                                                     ? DOW_MONDAY         : \
+   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DOW_SUNDAY         : \
+   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A')) ? DOW_SATURDAY       : \
+   ((DAY_NAME)[0] == 'F')                                                     ? DOW_FRIDAY         : \
+   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H')) ? DOW_THURSDAY       : \
+   ((DAY_NAME)[0] == 'W')                                                     ? DOW_WEDNESDAY      : \
+   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DOW_TUESDAY        : 0)  // Default to Monday
+// ----------------------------------------------------------------------------
+// These defines are used to set the first day of the week for the both the
+// DateTime::dayOfTheWeek() and DateTime::toString() methods.
+// They use the #define FIRST_WEEKDAY (above) to synchronize the first day of the week.
+#define FIRST_WEEKDAY_MONTH MONTH_WEEKDAY_START(FIRST_WEEKDAY) ///< The first day of the week (1) is Monday in May 2000
+#define WEEKDAY_NAME_OFFSET WEEKDAY_OFFSET(FIRST_WEEKDAY)      ///< First Day of the week name offset value for day names.
 
 /**************************************************************************/
 /*!
@@ -216,7 +270,7 @@ public:
                1 = the next day, ..., 6 = the day before the day of
                    WeekdayEpoch.
                E.g. if WeekdayEpoch is a Monday, then 0 = Monday,
-               See: 'FIRST_WEEK_DAY_MONTH' above.
+               See: 'FIRST_WEEKDAY_MONTH' above.
   */
   uint8_t dayOfTheWeek() const;
 
@@ -302,7 +356,7 @@ protected:
 // Monday would be the first day of the week. If you want Sunday as the first day of the
 // week you'd choose October 1st, 2000, which was a Sunday.
 // So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
-static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEK_DAY_MONTH, 1, 0, 0, 0);
+static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEKDAY_MONTH, 1, 0, 0, 0);
 
 // The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
 // This can be used to calculate the time difference between two DateTime objects.
@@ -410,8 +464,8 @@ public:
       @return the converted value
   */
   static uint8_t dowToDS1307(uint8_t d) { return d + 1; }
-  bool get_Is12HourMode();
-  void set_Is12HourMode(bool value);
+  bool getIs12HourMode();
+  void setIs12HourMode(bool value);
 };
 
 /**************************************************************************/
@@ -443,7 +497,7 @@ public:
   void disable32K(void);
   bool isEnabled32K(void);
   float getTemperature();   // in Celsius degree, +- 0.25 degree resolution
-  int get_IntTemperature(); // in Celsius degree, (-128 to +127 C) no floating point
+  int getIntTemperature(); // in Celsius degree, (-128 to +127 C) no floating point
   /*!
       @brief  Convert the day of the week to a representation suitable for
               storing in the DS3231: from 1 (WeekdayEpoch.dayOfTheWeek() + 1) to 7.
@@ -452,8 +506,8 @@ public:
       @return the converted value
   */
   static uint8_t dowToDS3231(uint8_t d) { return d + 1; }
-  bool get_Is12HourMode();
-  void set_Is12HourMode(bool value);
+  bool getIs12HourMode();
+  void setIs12HourMode(bool value);
 
 };
 

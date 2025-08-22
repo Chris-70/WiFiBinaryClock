@@ -183,23 +183,26 @@
    #include <NoBoardDefinition_StopCompilationNow> // Include a dummy header file to stop compilation
 #endif
 
-#if defined(UNO_R3) || defined(UNO_R4_MINIMA)
-   // These defines are used for boards without WiFi and the FreeRTOS library.
-   #define ESP32_WIFI false
-   #define FREE_RTOS  false
-   #if defined(UNO_R3)
-      // Not enough resources on the UNO R3 board to use the development board code.
-      // The UNO R3 board doesn't have the resources to include the code for an
-      // OLED display (on the development board) in addition to the code for the 
-      // Binary Clock Shield.
-      #ifdef DEV_BOARD
-         #undef DEV_BOARD
-      #endif
-   #endif
-#else
-   #define ESP32_WIFI false
-   #define FREE_RTOS  false
+#ifndef CUSTOM_UNO
+   #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
+      // These defines are used for boards without WiFi and the FreeRTOS library.
+      #define ESP32_WIFI false
+      #define FREE_RTOS  false
+   #else
+      #define ESP32_WIFI false
+      #define FREE_RTOS  false
+   #endif 
 #endif 
+
+#if defined(UNO_R3)
+   // Not enough resources on the UNO R3 board to use the development board code.
+   // The UNO R3 board doesn't have the resources to include the code for an
+   // OLED display (on the development board) in addition to the code for the 
+   // Binary Clock Shield.
+   #ifdef DEV_BOARD
+      #undef DEV_BOARD
+   #endif
+#endif
 
 #ifndef DEV_BOARD
    #define DEV_BOARD false    // If DEV_BOARD hasn't been defined, don't include code for the development board
