@@ -376,7 +376,7 @@ namespace BinaryClockShield
          // Enable 1 Hz square wave RTC SQW output
          RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_SquareWave1Hz);
 
-         bool mode12 = RTC.get_Is12HourMode();
+         bool mode12 = RTC.getIs12HourMode();
          // Set the 12/24 hour format based on RTC setting
          if (get_Is12HourFormat() != mode12)
             { set_Is12HourFormat(mode12); }
@@ -754,7 +754,7 @@ namespace BinaryClockShield
       amPmMode = value;
       timeFormat = value? timeFormat12 : timeFormat24;
       alarmFormat = value? alarmFormat12 : alarmFormat24;
-      RTC.set_Is12HourMode(value); // Set the RTC to 12/24 hour mode
+      RTC.setIs12HourMode(value); // Set the RTC to 12/24 hour mode
       #if DEV_CODE
       Serial << endl << "Is AM/PM? " << (value? "True" : "False") << "; Formats in use: " << timeFormat << "; " << alarmFormat << endl; // *** DEBUG ***
       #endif

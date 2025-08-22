@@ -56,13 +56,17 @@ The advantages of a development Shield are that you can add additional component
 The software was based on the [example/11-BinaryClockRTCInterruptAlarmButtons](https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons) on the GitHub [marcinsaj/Binary-Clock-Shield-for-Arduino](https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino). I kept the core methods and created the `BinaryClock` class to handle all the base operations of the Binary Clock Shield. The class would perform everything related to the Binary Clock Shield, such as setting the time, alarms, and handling the button presses. The class also handles the display of the time and alarms on the NeoPixel LED strip.  
     ![ESP32 Binary Clock](./assets/BinaryClock_ESP32.png)  
 The `BinaryClock` class extended the basic capabilities of the original code by:
-1.  Added support for many different UNO boards and allowing for users to define their own board:
-    - The code supports the original Arduino UNO R3.
-    - The new Arduino UNO R4 WiFi & Minima boards.
+1.  Adding support for many different UNO boards and allowing for users to define their own board:
+    - The code supports the original [Arduino UNO R3](https://store.arduino.cc/collections/uno/products/arduino-uno-rev3) board.
+    - The new [Arduino UNO R4 WiFi](https://store.arduino.cc/collections/uno/products/arduino-uno-rev4-wifi) & [Minima](https://store.arduino.cc/collections/uno/products/arduino-minima) boards.
+    - The [Adafruit Metro ESP32-S3](https://www.adafruit.com/product/5400) board.
     - The ESP32-S3 based UNO boards.
     - The Wemos D1 R32 ESP32 based UNO board, which requires a hardware modification to work with the Binary Clock Shield.
     - The user can define their own board by modifying the `board_select.h` file.
-2.  Added full support for displaying the hours in 12 hour format with AM/PM indicator in addition to the 24 hour format.
+2.  Adding full support for displaying the hours in 12 hour format with AM/PM indicator in addition to the 24 hour format.
+    - The user can change the hour format in the Time setting menu.
+    - The alarm hours format follows the selected time hours format.
+    - The DS3231 RTC chip is set to the selected time format, so the selected format will return after the power is lost.
 3.  Changes to the User eXperience (UX) by allowing the user to exit the time and alarm settings menu without making any changes.
     - For time setting, the user first selects: 12 hour; 24 hour; or eXit. 
       - The eXit is shown with a large '**X**' [❌] on the LEDs.
@@ -104,6 +108,7 @@ The `BinaryClock` class extended the basic capabilities of the original code by:
      - For the ESP32 based boards running FreeRTOS, the callback is handled in a separate task. The task waits for a notification from the `BinaryClock::timeDispatch()` method and calls the `Time` or `Alarm` callback routines from its own thread.
 7. Added error handling for critical errors where the program can't continue such as not being able to communicate with the RTC chip.
     - The error handling consists of displaying an error code on a LED on the board such as the builtin LED.
+    - Watchdog time is triggered after ~2.1 seconds has elapsed without an update.
     - Instead of using some custom code of blinking LEDs I decided to have some fun and use Morse code to display the error code. My first instinct was to flash SOS, but I learned that this is not cool. SOS is reserved for an actual distress signal and must never be used for anything else. So I decided to write a Morse Code class to blink the message on the LEDs. I also took the opertunity to see what AI (in this case CoPilot) could come up with and it did a mixed job. The encoding of the Morse code was a good idea from CoPilot but then it couldn't get the codes correct for all letters, numbers and punctuation. It also wrote lots of duplicate code in the methods and the code wasn't at all robust. It was an educational experience, you need to have experience or CoPilot will lead you down the garden path.
       - The error code is displayed as a series of Morse code blinks on the LED. SOS is **NOT** used as this is an actual distress signal. **CQD** should used instead, which stands for "Come Quick Distress". This is the original distress signal taht was replaced by SOS. It is probably a good choice when it isn't an actual life critical distress that needs to be communicated.
         - The default message, when the program enters the `purgatoryTask()` is **CQD NO RTC** in Morse code. This stands for "Come Quick Distress NO Real Time Clock".
