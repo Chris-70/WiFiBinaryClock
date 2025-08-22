@@ -766,6 +766,19 @@ String DateTime::timestamp(timestampOpt opt) const {
   return String(buffer);
 }
 
+// Month in 2000 where the 1st of the month falls on the selected starting day of week.
+// The user / developer can decide which is the first day of the week (e.g. Monday, Sunday, etc.)
+// This date is then used to calculate which day of the week a given date is starting from
+// Their selected first day of the week. For example May 1, 2000 was a Monday, so 
+// Monday would be the first day of the week. If you want Sunday as the first day of the
+// week you'd choose October 1st, 2000, which was a Sunday.
+// So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
+const DateTime DateTime::WeekdayEpoch = DateTime(2000, FIRST_WEEKDAY_MONTH, 1, 0, 0, 0);
+
+// The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
+// This can be used to calculate the time difference between two DateTime objects.
+const DateTime DateTime::DateTimeEpoch = DateTime(2000, 1, 1, 0, 0, 0);
+
 /**************************************************************************/
 /*!
     @brief  Create a new TimeSpan object in seconds

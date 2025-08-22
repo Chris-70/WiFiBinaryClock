@@ -410,7 +410,7 @@ bool RTC_DS3231::setAlarm1(const DateTime &alarmTime, Ds3231Alarm1Mode alarm_mod
   uint8_t ctrl = read_register(DS3231_CONTROL);
 
   // Set the 'alarmTime' year and month so day of week and day of month match (1 - 7)
-  DateTime dt = DateTime(WeekdayEpoch.year(), WeekdayEpoch.month(), alarmTime.day(), 
+  DateTime dt = DateTime(DateTime::WeekdayEpoch.year(), DateTime::WeekdayEpoch.month(), alarmTime.day(),
                          alarmTime.hour(), alarmTime.minute(), alarmTime.second());
   uint8_t A1M1 = (alarm_mode & 0x01) << 7; // Seconds bit 7.
   uint8_t A1M2 = (alarm_mode & 0x02) << 6; // Minutes bit 7.
@@ -465,7 +465,7 @@ bool RTC_DS3231::setAlarm2(const DateTime& alarmTime, Ds3231Alarm2Mode alarm_mod
    uint8_t ctrl = read_register(DS3231_CONTROL);
 
   // Set the 'alarmTime' year and month so day of week and day of month match (1 - 7)
-  DateTime dt = DateTime(WeekdayEpoch.year(), WeekdayEpoch.month(), alarmTime.day(),
+  DateTime dt = DateTime(DateTime::WeekdayEpoch.year(), DateTime::WeekdayEpoch.month(), alarmTime.day(),
                          alarmTime.hour(), alarmTime.minute(), alarmTime.second());
   uint8_t A2M2 = (alarm_mode & 0x01) << 7; // Minutes bit 7.
   uint8_t A2M3 = (alarm_mode & 0x02) << 6; // Hour bit 7.
@@ -490,7 +490,7 @@ bool RTC_DS3231::setAlarm2(const DateTime& alarmTime, Ds3231Alarm2Mode alarm_mod
     @brief  Get the date/time value of Alarm1
     @return DateTime object with the Alarm1 data set in the
             day, hour, minutes, and seconds fields
-    @see DateTime::WeekdayEpoch for day of the week mapping
+    @see DateTime::DateTime::WeekdayEpoch for day of the week mapping
     @see #GET_HOUR() for hour conversion of 12/24 hr. mode
 */
 /**************************************************************************/
@@ -526,7 +526,7 @@ DateTime RTC_DS3231::getAlarm1() {
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
   // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
-  return DateTime(2000, WeekdayEpoch.month(), day, hour, minutes, seconds);
+  return DateTime(2000, DateTime::WeekdayEpoch.month(), day, hour, minutes, seconds);
 }
 
 /**************************************************************************/
@@ -571,7 +571,7 @@ DateTime RTC_DS3231::getAlarm2() {
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
   // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
-  return DateTime(2000, WeekdayEpoch.month(), day, hour, minutes, 0);
+  return DateTime(2000, DateTime::WeekdayEpoch.month(), day, hour, minutes, 0);
 }
 
 /**************************************************************************/
