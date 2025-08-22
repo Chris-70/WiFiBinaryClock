@@ -168,13 +168,13 @@ enum Pcf8563SqwPinMode {
 ///          and the DateTime::toString() methods.
 /// @param DAY_NAME The name of the first day of the week, e.g. "Monday", "Sunday", etc.
 #define MONTH_WEEKDAY_START(DAY_NAME) \
-  (((DAY_NAME)[0] == 'M')                                                     ? DAY_1_IS_MONDAY    : \
-   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DAY_1_IS_SUNDAY    : \
-   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A')) ? DAY_1_IS_SATURDAY  : \
-   ((DAY_NAME)[0] == 'F')                                                     ? DAY_1_IS_FRIDAY    : \
-   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H')) ? DAY_1_IS_THURSDAY  : \
-   ((DAY_NAME)[0] == 'W')                                                     ? DAY_1_IS_WEDNESDAY : \
-   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DAY_1_IS_TUESDAY   : 5)  // Default to Monday
+   (((DAY_NAME)[0] == 'M')                                                         ? DAY_1_IS_MONDAY    : \
+   (((DAY_NAME)[0] == 'S') && (((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')))  ? DAY_1_IS_SUNDAY    : \
+   (((DAY_NAME)[0] == 'S') && (((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A')))  ? DAY_1_IS_SATURDAY  : \
+    ((DAY_NAME)[0] == 'F')                                                         ? DAY_1_IS_FRIDAY    : \
+   (((DAY_NAME)[0] == 'T') && (((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H')))  ? DAY_1_IS_THURSDAY  : \
+    ((DAY_NAME)[0] == 'W')                                                         ? DAY_1_IS_WEDNESDAY : \
+   (((DAY_NAME)[0] == 'T') && (((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')))  ? DAY_1_IS_TUESDAY   : 5)  // Default to Monday
 // ----------------------------------------------------------------------------
 /// @brief MACRO to set the first day of the week name offset (order) to match the name.
 /// @details The first day of the week name offset is used in the DateTime::toString() method.
@@ -182,13 +182,13 @@ enum Pcf8563SqwPinMode {
 ///          match the first day of the week used in calculations.
 /// @param DAY_NAME The name of the first day of the week, e.g. "Monday", "Sunday", etc.
 #define WEEKDAY_OFFSET(DAY_NAME) \
-  (((DAY_NAME)[0] == 'M')                                                     ? DOW_MONDAY         : \
-   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DOW_SUNDAY         : \
-   ((DAY_NAME)[0] == 'S' && ((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A')) ? DOW_SATURDAY       : \
-   ((DAY_NAME)[0] == 'F')                                                     ? DOW_FRIDAY         : \
-   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H')) ? DOW_THURSDAY       : \
-   ((DAY_NAME)[0] == 'W')                                                     ? DOW_WEDNESDAY      : \
-   ((DAY_NAME)[0] == 'T' && ((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U')) ? DOW_TUESDAY        : 0)  // Default to Monday
+   (((DAY_NAME)[0] == 'M')                                                        ? DOW_MONDAY         : \
+   (((DAY_NAME)[0] == 'S') && (((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U'))) ? DOW_SUNDAY         : \
+   (((DAY_NAME)[0] == 'S') && (((DAY_NAME)[1] == 'a') || ((DAY_NAME)[1] == 'A'))) ? DOW_SATURDAY       : \
+    ((DAY_NAME)[0] == 'F')                                                        ? DOW_FRIDAY         : \
+   (((DAY_NAME)[0] == 'T') && (((DAY_NAME)[1] == 'h') || ((DAY_NAME)[1] == 'H'))) ? DOW_THURSDAY       : \
+    ((DAY_NAME)[0] == 'W')                                                        ? DOW_WEDNESDAY      : \
+   (((DAY_NAME)[0] == 'T') && (((DAY_NAME)[1] == 'u') || ((DAY_NAME)[1] == 'U'))) ? DOW_TUESDAY        : 0)  // Default to Monday
 // ----------------------------------------------------------------------------
 // These defines are used to set the first day of the week for the both the
 // DateTime::dayOfTheWeek() and DateTime::toString() methods.
@@ -274,6 +274,21 @@ public:
   */
   uint8_t dayOfTheWeek() const;
 
+  /*!
+     @brief  Return the constant `WEEKDAY_NAME_OFFSET` which is defined
+              to be the offset to day of the week in the name array that
+              internally starts with "Mon" which isn't necessarily
+              the start of the week.
+     @return Returns WEEKDAY_NAME_OFFSET 
+     @remarks The offset (order) of the day of the week name 
+              based on the selected first day of the week.
+              Internally the text string is an array of 21 characters
+              with each day having 3 letters. The ((offset + dayOfTheWeek()) * 3) 
+              gives the index into the array of names for the day of the week.
+              See: 'WEEKDAY_NAME_OFFSET' above.
+  */
+  static uint8_t dayNameOffset() { return (uint8_t)(WEEKDAY_NAME_OFFSET); }
+
   /* 32-bit time as seconds since 2000-01-01. */
   uint32_t secondstime() const;
 
@@ -340,6 +355,9 @@ public:
   */
   bool operator!=(const DateTime &right) const { return !(*this == right); }
 
+  static const DateTime WeekdayEpoch;
+  static const DateTime DateTimeEpoch;
+
 protected:
   uint8_t yOff; ///< Year offset from 2000 (0-199)
   uint8_t m;    ///< Month 1-12
@@ -349,18 +367,18 @@ protected:
   uint8_t ss;   ///< Seconds 0-59
 };
 
-// Month in 2000 where the 1st of the month falls on the selected starting day of week.
-// The user / developer can decide which is the first day of the week (e.g. Monday, Sunday, etc.)
-// This date is then used to calculate which day of the week a given date is starting from
-// Their selected first day of the week. For example May 1, 2000 was a Monday, so 
-// Monday would be the first day of the week. If you want Sunday as the first day of the
-// week you'd choose October 1st, 2000, which was a Sunday.
-// So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
-static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEKDAY_MONTH, 1, 0, 0, 0);
+// // Month in 2000 where the 1st of the month falls on the selected starting day of week.
+// // The user / developer can decide which is the first day of the week (e.g. Monday, Sunday, etc.)
+// // This date is then used to calculate which day of the week a given date is starting from
+// // Their selected first day of the week. For example May 1, 2000 was a Monday, so 
+// // Monday would be the first day of the week. If you want Sunday as the first day of the
+// // week you'd choose October 1st, 2000, which was a Sunday.
+// // So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
+// static const DateTime WeekdayEpoch = DateTime(2000, FIRST_WEEKDAY_MONTH, 1, 0, 0, 0);
 
-// The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
-// This can be used to calculate the time difference between two DateTime objects.
-static const DateTime DateTimeEpoch = DateTime(2000, 1, 1, 0, 0, 0);
+// // The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
+// // This can be used to calculate the time difference between two DateTime objects.
+// static const DateTime DateTimeEpoch = DateTime(2000, 1, 1, 0, 0, 0);
 
 /**************************************************************************/
 /*!
