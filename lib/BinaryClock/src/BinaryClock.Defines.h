@@ -14,11 +14,11 @@
 //                         "board_select.h"
 //
 // to include the define that identifies the target board for your project.
-// You can add additional defines here for the project if needed.
+// You can add additional defines there for the project if needed.
 // Below are the contents of the "board_select.h" file:
 //
-// The following are defines for the currently supported boards. One must be used to compile.
-// Add your own UNO style board definitions below for any different UNO style board you have.
+// The following are defines for the currently supported boards. One must be used to compile, or
+// create your own CUSTOM_UNO style board definitions for any different UNO style board you have.
 //
 // #define ESP32_D1_R32_UNO   // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions     (ESP32 WiFi)
 // #define METRO_ESP32_S3     // If defined, the code will use Adafruit Metro ESP32-S3 board definitions    (ESP32 WiFi)
@@ -29,29 +29,29 @@
 // 
 //################################################################################//
 
-// A Binary Clock Shield Development Board was used in the development and testing of this software.
-// It has an OLED display and additional buttons to control the software.
-// The development board is not part of the Binary Clock Shield, but used to develop and test the code.
-// The development board replaces the Binary Clock Shield during development. Additional code is included
-// to support the development board, e.g. OLED display, additional buttons, etc. during development
-// DEVELOPMENT; DEV_CODE; and DEV_BOARD are used to control the inclusion of the development code.
-// When compiled for the" Binary Clock Shield" the development code is not included.
+// A Binary Clock Shield Development Boards were used in the development and testing of this software.
+// They have an OLED display and additional buttons to control the software.
+// The development boards are not part of the Binary Clock Shield, but used to develop and test the code.
+// The development boards replace/sandwich the Binary Clock Shield during development. Additional code is included
+// to support the development boards, e.g. OLED display, additional buttons, etc. during development
+// `DEVELOPMENT`; `DEV_CODE`; and `DEV_BOARD` are used to control the inclusion of the development code.
+// When compiled for the `Binary Clock Shield` the development code is not included.
 // The Debug Time PIN is used to print out the current time over serial monitor (if ON)
 // The debug time and setup pins are used to enable/disable the serial output at runtime.
 // without the need to change the software. The Serial Time is a switch to enable/disable 
 // the serial time display, displays while switch is ON. The Serial Setup is a momentary button
 // to toggle enable/disable the serial setup display. 
-// When the PIN value is -1 (-ve) the associated code is removed.
+// When the PIN values are -1 (-ve) the associated code is removed.
 //
 // ================================================================================
 // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
 // to compile the code and make them available. They can each be set in the
-// software: 'void BinaryClock::set_isSerialSetup(bool value)' and
+// software by calling: 'void BinaryClock::set_isSerialSetup(bool value)' and
 // 'void BinaryClock::set_isSerialTime(bool value)' methods.
 // The SERIAL_MENU_CODE is used to control the display of the serial menu to 
 // change the settings of the Binary Clock Shield for Time and Alarm.
 // This can be helpful to users who are just learning how to set the Binary Clock Shield
-// time or alarm settings. 
+// time and/or alarm.
 
 //################################################################################//
 //             Defines for the different UNO sized boards                         //

@@ -493,11 +493,11 @@ namespace BinaryClockShield
          displayLedBuffer(OnColor, NUM_LEDS);
          FlashLed(HeartbeatLED, 3, 75, 2);      // Acts as a delay(3000/2) and does something.
          displayLedBuffer(OnText, NUM_LEDS);
-         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 4);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(OffTxt, NUM_LEDS);
-         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 4);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(XAbort, NUM_LEDS);
-         FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
+         FlashLed(HeartbeatLED, 4, 50, 4);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(OkText, NUM_LEDS);
          FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
          frequency = 2;
@@ -505,7 +505,7 @@ namespace BinaryClockShield
 
       // Display the rainbow pattern over all pixels to show everything working.
       displayLedBuffer(Rainbow, NUM_LEDS);      // Turn on all LEDS showing a rainbow of colors.
-      FlashLed(HeartbeatLED, 4, 25, frequency); // Acts as a delay(2000/2) and does something.
+      FlashLed(HeartbeatLED, 5, 25, frequency); // Acts as a delay(2000/2) and does something.
       displayLedBuffer(OffColor, NUM_LEDS);
       FlashLed(HeartbeatLED, 1, 25, frequency); // Acts as a delay(1000/2) and does something.
       }
