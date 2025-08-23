@@ -6,8 +6,9 @@
 
 [The Binary Clock Shield for Arduino UNO](https://nixietester.com/product/binary-clock-shield-for-arduino/) is the best Binary Clock I've seen and I own way too many binary clocks.
 
-This project was created to unlock the full potential of this great Binary Clock. Being an Arduino Shield means that we can substitute the UNO R3 for something much more powerful. I wanted to get my Wemos D1 R32 ESP32 UNO board to work with this shield, then it could connect to a NTP server over WiFi and keep the time synced whenever we switch to/from daylight savings time. In addition we could change the colors of the LEDs and upload new alarm melodies from a phone or computer.
+This project was created to unlock the full potential of this great Binary Clock. Being an Arduino Shield means that we can substitute the UNO R3 for something much more powerful. I wanted to get my Wemos D1 R32 ESP32 UNO board to work with this shield [^1], then it could connect to a NTP server over WiFi and keep the time synced whenever we switch to/from daylight savings time. In addition we could change the colors of the LEDs and upload new alarm melodies from a phone or computer.
 
+[^1]: The Wemos D1 R32 ESP32 UNO board requires a hardware modification to work with the Binary Clock Shield, see the details in the Hardware Modifications section below.
 ## **Usage:**
 
 The user needs to define the target board being used for this code to compile. The choices are:
@@ -18,7 +19,7 @@ The user needs to define the target board being used for this code to compile. T
 4.  **UNO\_R4\_WIFI** - The new [Arduino UNO R4 WiFi](https://store.arduino.cc/collections/uno/products/uno-r4-wifi) board.
 5.  **UNO\_R4\_MINIMA** - The no WiFi [R4 Minima](https://store.arduino.cc/collections/uno/products/uno-r4-minima) board.
 6.   **UNO\_R3** -  The original [Arduino UNO R3](https://store.arduino.cc/collections/uno/products/arduino-uno-rev3) board.
-7.  **CUSTOM\_UNO** - An UNO board you define in "`board\_select.h`" and enable.
+7.  **CUSTOM\_UNO** - An UNO board you define in ["`board_select.h`"](./lib/BinaryClock/src/board_select.h) and enable.
 
 Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) at the start of the [BinaryClock.defines.h file](./lib/BinaryClock/src/BinaryClock.Defines.h). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have a custom UNO board, modify the [board_select.h file](./lib/BinaryClock/src/board_select.h) with the correct definitions for your board.
 
@@ -62,7 +63,7 @@ The `BinaryClock` class extended the basic capabilities of the original code by:
     - The [Adafruit Metro ESP32-S3](https://www.adafruit.com/product/5400) board.
     - The ESP32-S3 based UNO boards.
     - The Wemos D1 R32 ESP32 based UNO board, which requires a hardware modification to work with the Binary Clock Shield.
-    - The user can define their own board by modifying the `board_select.h` file.
+    - The user can define their own board by modifying the [`board_select.h`](./lib/BinaryClock/src/board_select.h) file.
 2.  Adding full support for displaying the hours in 12 hour format with AM/PM indicator in addition to the 24 hour format.
     - The user can change the hour format in the Time setting menu.
     - The alarm hours format follows the selected time hours format.
@@ -85,12 +86,12 @@ The `BinaryClock` class extended the basic capabilities of the original code by:
 4.  Adding support for changing the colors of the NeoPixel LED indicators for the: hours; minutes; and seconds as well as AM and PM indicators.
     - The user can change the ON color for each individual LED indicator as well as change the OFF color for all the LEDs. 
       - Default ON colors are: 
-        - hours = Blue; 
-        - minutes = Green; 
-        - seconds = Red; 
-        - AM = Black; 
-        - PM = Purple.
-      - Default OFF color is: Black.
+        - hours =  Blue <span style="font-size:35px; color:Blue"> &#x25CF; </span>; 
+        - minutes = Green <span style="color:Green"> &#x1F7E2; </span>; 
+        - seconds = Red <span style="color:Red"> &#x1F7E0; </span>; 
+        - AM = Black <span style="color:Black"> &#x25C9; </span>; 
+        - PM = Purple <span style="color:Purple"> &#x1F7E3; </span>.
+      - Default OFF color is: Black <span style="color:Black"> &#1F789; </span>.
         - Using any color other than black means the LED will always be lit.
 5.  Adding support for playing different, user supplied, melodies for the alarms.
     - The user can upload their own melodies and use them for the alarms.

@@ -101,8 +101,8 @@ namespace BinaryClockShield
          uint16_t pattern;
          struct
             {
-            uint16_t code : 12;  // Morse code pattern (max 12 bits)
-            uint16_t len  :  4;  // Length of the Morse code sequence (max 12)
+            uint16_t code : 12;  // [00-11] Morse code pattern (max 12 bits)
+            uint16_t len  :  4;  // [12-15] Length of the Morse code sequence (max 12)
             };
 
          /// @brief Constructor to initialize the MCode with a length and code.
@@ -144,6 +144,20 @@ namespace BinaryClockShield
       /// @brief Starting method, needs to be called before anyother method.
       void begin();
 
+      /// @brief Method to flash the predefined message, "CQD NO RTC" in Morse code.
+      /// @details This method flashes the "Come Quick Distress No Real Time Clock" message
+      ///          called from the BinaryClock::purgatory() method. This is the only message
+      ///          that is available on the UNO R3 board, as it lacks resources for more.
+      void flash_CQD_NO_RTC();  // Predefined message
+
+      /// @brief Method to flash an array of raw Morse code components.
+      /// @details This method flashes the LED according to the Morse code pattern for the 
+      ///          given array of MC enumerated types. It uses the dot, dash, space, and wordSpace methods
+      ///          to flash the LED for the appropriate durations. The character is flashed with a space
+      /// @param morseData The MCode structure containing the Morse code pattern and length.
+      void FlashMorseCode(const MC* morseData);
+
+   protected:
       /// @brief Method to flash a dot in Morse code.
       /// @details This method flashes the LED for a duration defined by the dot length.
       void dot();
@@ -160,22 +174,10 @@ namespace BinaryClockShield
       /// @details This method turns the LED off for a duration defined by the word space length
       void wordSpace();
 
-      /// @brief Method to flash the predefined message, "CQD NO RTC" in Morse code.
-      /// @details This method flashes the "Come Quick Distress No Real Time Clock" message
-      ///          called from the BinaryClock::purgatory() method. This is the only message
-      ///          that is available on the UNO R3 board, as it lacks resources for more.
-      void flash_CQD_NO_RTC();  // Predefined message
-
-      /// @brief Method to flash an array of raw Morse code components.
-      /// @details This method flashes the LED according to the Morse code pattern for the 
-      ///          given array of MC enumerated types. It uses the dot, dash, space, and wordSpace methods
-      ///          to flash the LED for the appropriate durations. The character is flashed with a space
-      /// @param morseData The MCode structure containing the Morse code pattern and length.
-      void FlashMorseCode(const MC* morseData);
+      void flashLED(int duration);  // Helper function
 
    private:
       int ledPin;                   /// The pin number where the LED is connected.
-      void flashLED(int duration);  // Helper function
 
       #ifndef UNO_R3
    public:
@@ -192,17 +194,18 @@ namespace BinaryClockShield
       /// @param text The null terminated C string to flash in Morse code.
       void flashString(const char* text);  // New method
 
-      /// @brief Method to flash a single Morse character from the MCode structure, morseData.
+      /// @brief Method to flash a given `MCode` structure instance, `morseData`
       /// @details This method flashes the LED according to the Morse code pattern for the given MCode structure.
-      ///          It uses the flashCharIndex() method to flash the character and adds character space at the end.
+      ///          It is called by all the other methods that flash Morse code, such as flashCharacter() and 
+      ///          flashString(). Any valid pattern can be flashed using this method.
       /// @param morseData The MCode structure containing the Morse code pattern and length.
-      /// @remarks This method is what actually calls the dot(); dash() and space() methods to flash the LED as
+      /// @remarks This method is what actually calls the: `dot()`; `dash()` and `space()` methods to flash the LED as
       ///          defined by the bits in MCode::code portion of morseData. Ultimately all the flashing is done
       ///          from this method with the exception of flashMorseCode which is used to flash predefined message
       ///          CQD_NO_RTC for the UNO_R3 board.
       void flashMCode(const MCode& morseData);
 
-   private:
+   protected:
       /// @brief Helper method called by flashCharacter() to flash a single letter, A-Z or number, 0-9.
       /// @details The flashCharacter() method determines the type of character it is: Alphabetic: Numeric;
       ///          or punctuation. For alpha-numeric characters it calls this method with the index for
@@ -242,7 +245,10 @@ namespace BinaryClockShield
       ///            - "ERROR" for the prosign Error (......)
       void flashPredefinedMessage(const char* keyword);
 
+   private:
       static const MCode morseTable[26 + 10];  // Morse code lookup table for letters and numbers (A-Z, 0-9).
+      static const xLookup extendedLookup[];   // Extended character lookup table for punctuation and special characters.
+      static const controlLookup extendedControlLookup[]; // Extended control character lookup table for prosigns
       #endif   // END ...#ifndef UNO_R3
       };
 
