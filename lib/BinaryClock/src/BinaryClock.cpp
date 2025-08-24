@@ -1121,9 +1121,9 @@ namespace BinaryClockShield
          if (isButtonOnNew(buttonS1))               // Check if Time button, S1, was just pressed.
             {
             tempTime = time;                        // Read time from the current value
-            tempAmPm = get_Is12HourFormat();        // Get the current 12/24 Hr. mode
             settingsOption = 1;                     // Set time option settings 
             settingsLevel = 1;                      // Set time options level value (12/24)
+            tempAmPm = get_Is12HourFormat();           // Get the current 12/24 Hr. mode
             setCurrentModifiedValue();              // Assign options to modify +/- 
             if (isSerialSetup) { serialSettings(); }// Use serial monitor for showing settings
             displayCurrentModifiedValue();          // Display current hour on LEDs
@@ -1133,9 +1133,10 @@ namespace BinaryClockShield
          if (isButtonOnNew(buttonS3))               // Check if Alarm button, S3, was just pressed.
             {
             tempAlarm = get_Alarm();                // Get the default alarm time and status
-
             settingsOption = 3;                     // Set Alarm time option settings
             settingsLevel = 1;                      // Set hour level settings
+            tempAmPm = get_Is12HourFormat();        // Get the current 12/24 Hr. mode
+            timeFormat = (tempAmPm ? timeFormat12 : timeFormat24); // Set the time format for displaying the alarm
             setCurrentModifiedValue();              // Assign hours to modify +/-
             if (isSerialSetup) { serialSettings(); }// Use serial monitor for showing settings
             displayCurrentModifiedValue();          // Display current alarm hour on LEDs 

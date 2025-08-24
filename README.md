@@ -18,9 +18,9 @@ The user needs to define the target board being used for this code to compile. T
 2.   **METRO\_ESP32\_S3** - The great [Adafruit Metro ESP32-S3](https://www.adafruit.com/product/5500) board.
 3.   **ESP32\_S3\_UNO** - The generic UNO clone board with the new ESP32-S3 module.
 4.  **UNO\_R4\_WIFI** - The new [Arduino UNO R4 WiFi](https://store.arduino.cc/collections/uno/products/uno-r4-wifi) board.
-5.  **UNO\_R4\_MINIMA** - The no WiFi [R4 Minima](https://store.arduino.cc/collections/uno/products/uno-r4-minima) board.
+5.  **UNO\_R4\_MINIMA** - The [R4 Minima](https://store.arduino.cc/collections/uno/products/uno-r4-minima) board without WiFi.
 6.   **UNO\_R3** -  The original [Arduino UNO R3](https://store.arduino.cc/collections/uno/products/arduino-uno-rev3) board.
-7.  **CUSTOM\_UNO** - An UNO board you define in ["`board_select.h`"](./lib/BinaryClock/src/board_select.h) and enable.
+7.  **CUSTOM\_UNO** - An UNO board you define in [`board_select.h`](./lib/BinaryClock/src/board_select.h) and enable.
 
 Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) at the start of the [BinaryClock.defines.h file](./lib/BinaryClock/src/BinaryClock.Defines.h). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have a custom UNO board, modify the [board\_select.h file](./lib/BinaryClock/src/board_select.h) with the correct definitions for your board.
 
@@ -39,17 +39,17 @@ The following boards are supported by this code:
     these work well with the Binary Clock Shield. They are available from you favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins.
 *   The Wemos D1 R32 ESP32 UNO  
     ![The Wemos D1 R32 ESP32 UNO](./assets/Wemos_D1_R32_UNO.png)  
-    board is supported, however it requires a hardware modification to work with the shield. See the details below.
+    board is supported, however it requires a minor [Hardware Modification](#details-and-hardware-modifications) to work with the shield. See the details below.
 
 ## Details and Hardware Modifications
 
-The Binary Clock Shield is designed to work with the Arduino UNO R3 board, however it can be used with other boards that have the same pinout as the UNO. When I got my first ESP32 based UNO board I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3, to I make the changes to the pin numbers and I still had errors compiling. The Wemos D1 R32 ESP32 based UNO type board seemed like the ideal candidate however I discovered it had a hardware limitation. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin which is an input only pin.
+The Binary Clock Shield is designed to work with the Arduino UNO R3 board, however it can be used with other boards that have the same pinout as the UNO. When I got my first ESP32 based UNO board I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3. I made the changes to the pin numbers and I still had errors compiling, this required further investigation. The Wemos D1 R32 ESP32 based UNO type board seemed like the ideal candidate. I read the datasheet and discovered it had a hardware limitation. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin which is an input only pin. The only other limitation was the builtin LED which is wired to 'GPIO 02' which corresponds to the UNO pin A0 which is used by the shield for pushbutton S3, so just don't use the builtin LED.
 
-In order to get this to work with the shield, the corresponding pin on the shield needs to be connected to an output pin such as `GPIO 15`. To do this you need to physically remove the A3/GPIO34 socket from the ESP32 UNO board (cut the plastic and desolder the pin) then connect the corresponding shield pin to `GPIO 15`.
+In order to get this Wemos D1 R32 board to work with the shield, the pin corresponding to A3 on the shield needs to be connected to an output pin such as `GPIO 15`. To do this you need to physically remove the A3/GPIO34 socket from the ESP32 UNO board (cut the plastic and desolder the pin) then connect the corresponding shield pin to `GPIO 15`.
 
 ![Wemos D1 R32 ESP32 UNO](./assets/Pinout_Wemos_D1_R32.png)
 
-The alternative is to get an Arduino UNO Development Shield and modify the shield by bending the 'A3' pin and use a Dupont connector between the bent `A3` pin and `GPIO 15` to use an output capable GPIO pin. This is the easiest but it does add some height to the assembly.
+The alternative is to get an Arduino UNO Development Shield and modify the development shield by bending the 'A3' pin and use a Dupont connector between the bent `A3` pin and `GPIO 15` to use an output capable GPIO pin. This is the easiest but it does add some height, ~12mm or ½ inch, to the assembly.
 
 ![UNO Development Shield](./assets/Modified_UNO_Shield.png)
 
@@ -124,16 +124,21 @@ The `BinaryClock` class extended the basic capabilities of the original code by:
 
 ## **Note:**
 
-This code uses a forked version of [Adafruit's RTClib library](https://github.com/adafruit/RTClib), see the [README.md](./lib/RTClib/README.md) file for more information. The forked library is called `RTCLibPlus` and is available on GitHub at [https://github.com/Chris-70/RTClibPlus](https://github.com/Chris-70/RTClibPlus). It has been modified to:
+This code uses a forked version of [Adafruit's RTClib library](https://github.com/adafruit/RTClib), see the forked [RTClib README.md](./lib/RTClib/README.md) file for more information. The forked library is called `RTCLibPlus` and is available on GitHub at [https://github.com/Chris-70/RTClibPlus](https://github.com/Chris-70/RTClibPlus). It has been modified to:
 
 *   Make the inherited base class `RTC_I2C` public for the `RTC_DS3231` class (and all other child classes), e.g. `class RTC_DS3231 : public RTC_I2C`.
-*   It removes the DS3231 interrupt enable check (register 0x0E, bit: 4) when setting alarms. This check has no reason to be there as setting the alarm time on the DS3231 chip is independent of the interrupt setting. The Binary Clock makes use of the SQW pin for the 1 Hz signal, this is the same physical pin as the alarm interrupt pin. The Binary Clock still needs to set the alarm time values as the code checks for the alarm without needing the interrupt pin. This allows the rest of the code to set the alarm time registers. In the methods: `bool RTC_DS3231::setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode)` and `bool RTC_DS3231::setAlarm2(const DateTime &dt, Ds3231Alarm1Mode alarm_mode)`, the removed code was:
+*   It removes the DS3231 interrupt enable check (register 0x0E, bit: 4) when setting alarms. This check has no reason to be there as setting the alarm time on the DS3231 chip is independent of the interrupt setting. The Binary Clock makes use of the SQW pin for the 1 Hz signal, this is the same physical pin as the alarm interrupt pin. The Binary Clock still needs to set the alarm time values as the code checks for the alarm without needing the interrupt pin. This allows the rest of the code to set the alarm time registers. In the methods: `bool RTC_DS3231::setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode)` and `bool RTC_DS3231::setAlarm2(const DateTime &dt, Ds3231Alarm1Mode alarm_mode)`, the removed code was:  
+```cpp
+//   if (!(ctrl & 0x04)) {
+//     return false;
+//   }
+```
+
 *   An additional method was added to the `DateTime` class, `char* toString(char* buffer, size_t size, const char *format) const;`. This method takes the `format` string and copies it to the `buffer` before calling `char *toString(char *buffer) const;` allowing the method to be used inline without the need to format the buffer first. Example: `Serial << time.toString(buffer, 31, "hh:mm AP on DDD. MMM. DD, YYYY");` instead of needing two lines: `strncpy(buffer, "hh:mm AP on DDD. MMM. DD, YYYY", 32); Serial << time.toString(buffer);`.
 
 A fork of the `RTCLib`, `RTCLibPlus`, is available ([https://github.com/Chris-70/RTClibPlus](https://github.com/Chris-70/RTClibPlus)) while the pull request, # 313, for RTClib is pending.
 
-```cpp
-//   if (!(ctrl & 0x04)) {`
-//     return false;`
-//   }`
-```
+Additional features were added to RTClibPlus:
+
+*   Added full support for 12 hour mode on the DS3231 and DS1307 RTC chips. These chips support 12 hour mode but the RTClib library didn't implement it. The `DateTime` class was modified to support reading and writing the 12 hour mode to/from the RTC chips. The `DateTime` class was modified to support reading and writing the 12 hour mode to/from the RTC chips. The `DateTime` constructor was modified to accept a new parameter, `is12HourFormat`, which defaults to `false` (24 hour mode). The `RTC_DS3231::adjust()` and `RTC_DS1307::adjust()` methods were modified to write the 12 hour mode to the RTC chips if the `is12HourFormat()` returns `true`.  
+*   Added full support to set the starting day of the week in the `DateTime` class at compile time. The original implementation defined May 1st, 2000 as the epoch for calculating the weekday as this date was a Monday. I extended this concept to match every day of the week with the first corresponding month in the year 2000 where the 1st fell on that weekday. This matches the weekday with the RTC that doesn't define a starting weekday just that they are consecutive from 1 - 7 (0 - 6 in DateTime). The developer just needs to modify the `#define FIRST_WEEKDAY "Mon"` line in the [RTClibPlus.h](./lib/RTClibPlus/src/RTClibPlus.h) file to the desired starting weekday. The choices are: `"Mon"`, `"Tue"`, `"Wed"`, `"Thu"`, `"Fri"`, `"Sat"`, and `"Sun"`. The default is `"Mon"` which matches the original implementation.
