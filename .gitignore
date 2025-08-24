@@ -4,5 +4,4 @@
 BinaryClock_ESP32.code-workspace
 compile_commands.json
 Notes/
-
-lib/BinaryClockWiFi/.backup/src.zip
+.backup/
