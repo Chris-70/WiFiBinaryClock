@@ -271,7 +271,7 @@
 // still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
 #define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
-#define DEVELOPMENT_BOARD (DEV_BOARD || DEV_CODE) 
+#define DEVELOPMENT    (DEV_BOARD || DEV_CODE) 
 
 //#####################################################################################//
 // Bit numbers for DS3231 RTC registers and register numbers

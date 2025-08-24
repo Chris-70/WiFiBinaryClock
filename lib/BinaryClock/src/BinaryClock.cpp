@@ -128,7 +128,7 @@ namespace BinaryClockShield
          };
 
    CRGB BinaryClock::PmColor = CRGB::Indigo; // Color for the PM indicator LED, distinct from other time colors (e.g. 0x4000A0)
-   CRGB BinaryClock::AmColor = CRGB::Black;  // Color for the AM indicator (Usually Black/OFF.)
+   CRGB BinaryClock::AmColor = CRGB::DarkSlateBlue;  // Black;  // Color for the AM indicator (Usually Black/OFF.)
 
    /// @brief The screen shaped in an 'O' for 'On' when setting the alarm to ON in the alarm menu.
    /// @see OffTxt
@@ -173,6 +173,17 @@ namespace BinaryClockShield
          CRGB::Black, CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Lime,  CRGB::Black,
          CRGB::Black, CRGB::Lime,  CRGB::Black, CRGB::Black, CRGB::Black
          };
+
+   #ifdef ESP32_WIFI
+   /// @brief The screen shaped in a big Blue 'W' [📶] for WPS / WiFi
+   /// @remarks This is used to signal that the WiFi needs to setup (e.g. WPS)
+   const CRGB BinaryClock::W_Text[NUM_LEDS] = 
+         {                                    // A big RoyalBlue 'W' [📶] (for WPS / WiFi)
+         CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
+         CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,
+         CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue              
+         };
+   #endif
 
    /// @brief The screen shaped in a big Rainbow of colors across all LEDs. 
    /// @details This is displayed after the Time or Alarm settings has ended and the 
@@ -500,6 +511,8 @@ namespace BinaryClockShield
          FlashLed(HeartbeatLED, 4, 50, 4);      // Acts as a delay(4000/3) and does something.
          displayLedBuffer(OkText, NUM_LEDS);
          FlashLed(HeartbeatLED, 4, 50, 3);      // Acts as a delay(4000/3) and does something.
+         displayLedBuffer(W_Text, NUM_LEDS); 
+         FlashLed(HeartbeatLED, 4, 50, 2);      // Acts as a delay(4000/3) and does something.
          frequency = 2;
          }
 

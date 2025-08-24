@@ -717,6 +717,9 @@ namespace BinaryClockShield
       static const CRGB OffTxt [NUM_LEDS];   // A sideways  Red   'F'        (for oFF)
       static const CRGB XAbort [NUM_LEDS];   // A big       Pink  'X'  [❌]  (for abaort/cancel)   /
       static const CRGB OkText [NUM_LEDS];   // A big       Lime  tick [✅]  (for okay/good)     \/
+      #ifdef ESP32_WIFI
+      static const CRGB W_Text[NUM_LEDS];    // A big       Blue  'W'  [📶]  (for WPS / WiFi)
+      #endif
       static const CRGB Rainbow[NUM_LEDS];   // Colours of the rainbow.
 
   PRIVATE:

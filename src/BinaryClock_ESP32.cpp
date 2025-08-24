@@ -46,12 +46,12 @@ void TimeAlert(DateTime time);
 void TimeOLED(DateTime& time);
 int ScanI2C(byte* addrList, size_t listSize);
 
-#if DEV_BOARD || DEV_CODE
+#if DEVELOPMENT
 char buffer[32] = {0};
 const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
 const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
 const char *timeFormat = format24;
-char daysOfTheWeek[7][12] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
+const char *daysOfTheWeek[7] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 #endif 
 
 BinaryClock& binClock = BinaryClock::get_Instance(); // Get the singleton instance of BinaryClock
