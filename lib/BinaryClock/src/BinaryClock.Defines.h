@@ -1,21 +1,25 @@
-
-#ifndef _BinaryClock_Defines_h_
-#define _BinaryClock_Defines_h_
+#pragma once
+#ifndef __BINARYCLOCK_DEFINES_H__
+#define __BINARYCLOCK_DEFINES_H__
 
 #if __has_include("board_select.h")
    #include "board_select.h"  // Include the user defined board selection file if it exists
 #endif
 
-//################################################################################//
+//###############################################################################################//
 // This is a 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
 //           (https://nixietester.com/products/binary-clock-shield-for-arduino/)
 // 
-// Create/modify the file: 
+// This file isn't designed to be modified by the user. Instead, the user should
+// create/modify the file: 
 //                         "board_select.h"
+// (https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/board_select.h)
 //
 // to include the define that identifies the target board for your project.
-// You can add additional defines there for the project if needed.
-// Below are the contents of the "board_select.h" file:
+// The sample "board_select.h" file is included and contains a template for a custom UNO 
+// board definition. You can also add additional defines there for the project if needed.
+//-----------------------------------------------------------------------------------------------//
+// Below are partial contents of the "board_select.h" file plus a custom board template:
 //
 // The following are defines for the currently supported boards. One must be used to compile, or
 // create your own CUSTOM_UNO style board definitions for any different UNO style board you have.
@@ -26,10 +30,10 @@
 // #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (ESP32 WiFi)
 // #define UNO_R4_MINIMA      // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
 // #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
-// 
-//################################################################################//
-
-// A Binary Clock Shield Development Boards were used in the development and testing of this software.
+//
+//###############################################################################################//
+//
+// Binary Clock Shield Development Boards were used in the development and testing of this software.
 // They have an OLED display and additional buttons to control the software.
 // The development boards are not part of the Binary Clock Shield, but used to develop and test the code.
 // The development boards replace/sandwich the Binary Clock Shield during development. Additional code is included
@@ -46,8 +50,8 @@
 // ================================================================================
 // The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
 // to compile the code and make them available. They can each be set in the
-// software by calling: 'void BinaryClock::set_isSerialSetup(bool value)' and
-// 'void BinaryClock::set_isSerialTime(bool value)' methods.
+// software by calling: 'void BinaryClock::set_IsSerialSetup(bool value)' and
+// 'void BinaryClock::set_IsSerialTime(bool value)' methods.
 // The SERIAL_MENU_CODE is used to control the display of the serial menu to 
 // change the settings of the Binary Clock Shield for Time and Alarm.
 // This can be helpful to users who are just learning how to set the Binary Clock Shield
@@ -77,13 +81,17 @@
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
    #if DEV_BOARD
-   #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define LED_HEART         19   // Heartbeat LED to show working software (Dev+H/W)
+      #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define LED_HEART         19   
    #else
-   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
+   // LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
+   // In all cases use a PIN that is not used by the shield even if it won't be visible.
+   #undef  LED_BUILTIN
+   #define LED_BUILTIN       19
 
 //================================================================================//
 // Adafruit Metro ESP32-S3 board (https://www.adafruit.com/product/5500)
@@ -103,12 +111,12 @@
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
    #if DEV_BOARD
-   #define DEBUG_SETUP_PIN    5   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN     6   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
+      #define DEBUG_SETUP_PIN    5   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN     6   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
    #else
-   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
 
 //================================================================================//
@@ -130,13 +138,17 @@
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
    #if DEV_BOARD
-   #define DEBUG_SETUP_PIN   20   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN     3   // Set to -1 to disable the Serial Time display control by H/W (CA)
-   #define LED_HEART         13   // Heartbeat LED to show working software (Dev+H/W)
+      #define DEBUG_SETUP_PIN   20   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN     3   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define LED_HEART         13   // Heartbeat LED to show working software (Dev+H/W)
    #else
-   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
+   // LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
+   // In all cases use a PIN that is not used by the shield even if it won't be visible.
+   #undef  LED_BUILTIN
+   #define LED_BUILTIN       48   // The built-in RGB LED is on pin 48
 
 //================================================================================//
 // Standard Arduino UNO  board definitions for: 
@@ -156,12 +168,12 @@
    #define ESP32_INPUT_PULLDOWN  INPUT   // Define for INPUT without an internal pull-down resistor
 
    #if DEV_BOARD && !defined(UNO_R3)
-   #define DEBUG_SETUP_PIN    5  // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN     6  // Set to -1 to disable the Serial Time display control by H/W  (CA)
-   #define LED_HEART         12   // Heartbeat LED to show working software (Dev+H/W)
+      #define DEBUG_SETUP_PIN    5  // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN     6  // Set to -1 to disable the Serial Time display control by H/W  (CA)
+      #define LED_HEART         12  // Heartbeat LED to show working software (Dev+H/W)
    #else
-   #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
-   #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
+      #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
+      #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
 
 //================================================================================//
@@ -183,14 +195,14 @@
    #include <NoBoardDefinition_StopCompilationNow> // Include a dummy header file to stop compilation
 #endif
 
-#ifndef CUSTOM_UNO
+#if !defined(CUSTOM_UNO) || !CUSTOM_UNO
    #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
       // These defines are used for boards without WiFi and the FreeRTOS library.
       #define ESP32_WIFI false
       #define FREE_RTOS  false
    #else
-      #define ESP32_WIFI false
-      #define FREE_RTOS  false
+      #define ESP32_WIFI true
+      #define FREE_RTOS  true
    #endif 
 #endif 
 
@@ -202,10 +214,13 @@
    #ifdef DEV_BOARD
       #undef DEV_BOARD
    #endif
+   #define SERIAL_TIME_CODE false
 #endif
 
 #ifndef DEV_BOARD
    #define DEV_BOARD false    // If DEV_BOARD hasn't been defined, don't include code for the development board
+#elif defined(DEV_BOARD) && DEV_BOARD
+   #define DEV_CODE  true     // If using a development board, include the development code
 #endif
 #ifndef DEV_CODE
    #define DEV_CODE false     // If DEV_CODE hasn't been defined, don't include the development code
@@ -220,36 +235,13 @@
    #define DEBUG_SETUP_PIN   -1   // No development board, so no H/W debug setup
    #define DEBUG_TIME_PIN    -1   // No development board, so no H/W debug time
 #endif
-//################################################################################//
-
-#define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
-
-// The physical layout of the LEDs on the shield, one row each.
-#define NUM_HOUR_LEDS   5              // The LEDs on the top row of the shield.
-#define NUM_MINUTE_LEDS 6              // The LEDs on the middle row of the shield.
-#define NUM_SECOND_LEDS 6              // The LEDs on the bottom row of the shield.
-#define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
-
-#define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
-#define COLOR_ORDER          GRB       // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
-
-#define DEFAULT_DEBOUNCE_DELAY    75   // The default debounce delay in milliseconds for the buttons
-#define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness range: 20-60
-#define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
-#define ALARM_1                    1   // Alarm 1. available on the RTC DS3231, adds seconds.
-#define ALARM_2                    2   // Alarm 2, the default alarm used by the shield.
-
-#define CA_ON                    LOW   // The value when ON  for CA connections
-#define CC_ON                   HIGH   // The value when ON  for CC connections
-#define CA_OFF                  HIGH   // The value when OFF for CA connections
-#define CC_OFF                   LOW   // The value when OFF for CC connections
 
 // This determines if the menu and/or time are also displayed on the serial monitor.
 // If SERIAL_SETUP_CODE is defined, code to display the serial menu is included in the project.
 // If SERIAL_TIME_CODE  is defined, code to display the serial time, every second, is included in the project.
 // The DEFAULT_SERIAL_SETUP and DEFAULT_SERIAL_TIME values are used to determine if the serial 
 //                 Setup and/or Time messages are displayed initially or not.
-//                 use the public methods 'set_isSerialSetup()' and 'set_isSerialTime()' to
+//                 use the public methods 'set_IsSerialSetup()' and 'set_IsSerialTime()' to
 //                 enable/disable the serial output at runtime. H/W buttons, if defined, 
 //                 can also be used to enable/disable the serial output at runtime.
 #ifndef SERIAL_SETUP_CODE
@@ -272,6 +264,103 @@
 #define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
 #define DEVELOPMENT    (DEV_BOARD || DEV_CODE) 
+//################################################################################//
+
+#define FOREVER while(true)            // Infinite loop, e.g. used in task methods.
+
+// These are defined as MACROs to simplify the code.
+// This avoids surrounding the code with #if `*defined*` directives. An additional
+// advantage is that the code is not compiled at all if `*defined*` is false or undefined.
+// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
+//       This required to avoid empty statements (i.e. ';') when the code is removed.
+//       It is also an indicator/reminder to the developer that this code might be excluded.
+#if DEV_CODE || SERIAL_OUTPUT
+   #define SERIAL_PRINT_MACRO(STRING) Serial.print(STRING);
+   #define SERIAL_PRINTLN_MACRO(STRING) Serial.println(STRING);
+   #define SERIAL_STREAM_MACRO(CMD_STRING) Serial << CMD_STRING;
+#else
+   // Removes the code from compilation, replaced with whitespace.
+   #dfefine SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_PRINTLN_MACRO(STRING)
+   #define SERIAL_STREAM_MACRO(CMD_STRING)
+#endif
+
+// Wrapper macro for single serial print statements to check the
+// `IsSerialSetup` properety flag for printing and eleminates the
+// need to surrond the statements with `#if SERIAL_SETUP_CODE...#endif`
+// directives. Don't use for multiple statements as it unnecessarly
+// adds an `if ()` statement to each line.
+#if SERIAL_SETUP_CODE
+   #define SERIAL_SETUP_STREAM(CMD_STRING) \
+         if (get_IsSerialSetup()) { SERIAL_STREAM_MACRO(CMD_STRING) }
+#else
+   #define SERIAL_SETUP_STREAM(CMD_STRING)
+#endif
+
+// Wrapper macro for single serial print statements to check the
+// `IsSerialTime` properety flag for printing and eleminates the
+// need to surrond the statements with `#if SERIAL_TIME_CODE...#endif`
+// directives. Don't use for multiple statements as it unnecessarly
+// adds an `if ()` statement to each line.
+#if SERIAL_TIME_CODE
+   #define SERIAL_TIME() \
+         if (get_IsSerialTime()) { serialTime(); }
+   #define SERIAL_TIME_STREAM(CMD_STRING) \
+         if (get_IsSerialTime()) { SERIAL_STREAM_MACRO(CMD_STRING) }
+#else
+   #define SERIAL_TIME()
+   #define SERIAL_TIME_STREAM(CMD_STRING)
+#endif
+
+#if SERIAL_OUTPUT
+   #define SERIAL_OUT_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_OUT_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
+   #define SERIAL_OUT_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
+#else
+   #define SERIAL_OUT_PRINT(STRING)
+   #define SERIAL_OUT_PRINTLN(STRING)
+   #define SERIAL_OUT_STREAM(CMD_STRING)
+#endif
+// Debugging macros for development.
+// Eleminates the need to wrap each Serial print statement with
+// `#if DEV_CODE...#endif` directives.
+// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
+//       This required to avoid empty statements (i.e. ';') when the code is removed.
+//       It's also an indicator/reminder to the developer that this code might be excluded.
+#if DEV_CODE
+   #define SERIAL_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
+   #define SERIAL_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
+#else
+   #define SERIAL_PRINT(STRING)
+   #define SERIAL_PRINTLN(STRING)
+   #define SERIAL_STREAM(CMD_STRING)
+#endif
+
+// The physical layout of the LEDs on the shield, one row each.
+#define NUM_HOUR_LEDS   5              // The LEDs on the top row of the shield.
+#define NUM_MINUTE_LEDS 6              // The LEDs on the middle row of the shield.
+#define NUM_SECOND_LEDS 6              // The LEDs on the bottom row of the shield.
+#define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
+#define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
+#define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
+#define SECOND_LED_OFFSET 0
+
+#define LED_TYPE           WS2812B     // Datasheet: http://bit.ly/LED-WS2812B
+#define COLOR_ORDER          GRB       // For color ordering use this sketch: http://bit.ly/RGBCalibrate   
+
+#define DEFAULT_DEBOUNCE_DELAY    75   // The default debounce delay in milliseconds for the buttons
+#define DEFAULT_BRIGHTNESS        30   // The best tested LEDs brightness range: 20-60
+#define DEFAULT_ALARM_REPEAT       3   // How many times play the melody alarm
+#define ALARM_1                    1   // Alarm 1. available on the RTC DS3231, adds seconds.
+#define ALARM_2                    2   // Alarm 2, the default alarm used by the shield.
+
+#define CA_ON                    LOW   // The value when ON  for CA connections
+#define CC_ON                   HIGH   // The value when ON  for CC connections
+#define CA_OFF                  HIGH   // The value when OFF for CA connections
+#define CC_OFF                   LOW   // The value when OFF for CC connections
+
+#define MAX_BUFFER_SIZE           64   // Maximum size of temporary buffers.
 
 //#####################################################################################//
 // Bit numbers for DS3231 RTC registers and register numbers

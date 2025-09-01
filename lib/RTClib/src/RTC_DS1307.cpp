@@ -190,12 +190,12 @@ void RTC_DS1307::adjust(const DateTime &dt)
 void RTC_DS1307::adjust(const DateTime &dt, bool use12HourFormat) {
   uint8_t buffer[8] = {0,
               (uint8_t)(bin2bcd(dt.second() % 60)            & DS_SECONDS_MASK), // CH bit = 0
-              (uint8_t)(bin2bcd(dt.minute() % 60)            & DS_MINUTES_MASK),
-              (uint8_t)(SET_HOUR(dt.hour(), use12HourFormat) & DS_HOUR_REG_MASK),
+              (uint8_t)(bin2bcd(dt.minute() % 60)            & DS_MINUTES_MASK), // 0-60
+              (uint8_t)(SET_HOUR(dt.hour(), use12HourFormat) & DS_HOUR_REG_MASK),// 00-23 or 1-12 + AM/PM
               (uint8_t)(bin2bcd(dt.dayOfTheWeek() + 1)       & DS_DAY_MASK),     // (0-6) +1 => (1-7)
-              (uint8_t)(bin2bcd(dt.day() % 31)               & DS_DATE_MASK),
-              (uint8_t)(bin2bcd(dt.month() % 12)             & DS_MONTH_MASK),
-              (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)};
+              (uint8_t)(bin2bcd(dt.day() % (31 + 1))         & DS_DATE_MASK),    // (1-31)
+              (uint8_t)(bin2bcd(dt.month() % (12 + 1))       & DS_MONTH_MASK),   // (1-12)
+              (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)};   // (0-99)
   i2c_dev->write(buffer, 8);
 }
 

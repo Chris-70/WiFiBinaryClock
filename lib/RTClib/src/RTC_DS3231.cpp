@@ -198,23 +198,31 @@ bool RTC_DS3231::lostPower(void) {
 void RTC_DS3231::adjust(const DateTime& dt) 
                { adjust(dt, getIs12HourMode()); }
                
-void RTC_DS3231::adjust(const DateTime &dt, bool use12HourMode) {
-  if (!dt.isValid()) { return; } // Invalid date, do not set 
-    uint8_t buffer[8] = {DS3231_TIME,
-             (uint8_t)(bin2bcd(dt.second() % 60)            & DS_SECONDS_MASK),
-             (uint8_t)(bin2bcd(dt.minute() % 60)            & DS_MINUTES_MASK),
-             (uint8_t)(SET_HOUR(dt.hour(), use12HourMode)   & DS_HOUR_REG_MASK),
-             (uint8_t)(bin2bcd(dt.dayOfTheWeek() + 1)       & DS_DAY_MASK), // (0-6) +1 => (1-7)
-             (uint8_t)(bin2bcd(dt.day() % 31)               & DS_DATE_MASK),
-            (uint8_t)((bin2bcd(dt.month() % 12)             & DS_MONTH_MASK) 
-                                                            | (dt.year() < 2100U ? 0x00 : DS3231_CENTURY_MASK)),
-             (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)
-  };
-  i2c_dev->write(buffer, 8);
+void RTC_DS3231::adjust(const DateTime &dt, bool use12HourMode) 
+               { adjust(dt, use12HourMode, nullptr); }
 
+uint8_t* RTC_DS3231::adjust(const DateTime& dt, bool use12HourMode, uint8_t* buf)
+   {
+  // if (!dt.isValid()) { return; } // Invalid date, do not set // *** DEBUG ***
+    uint8_t buffer[8] = {DS3231_TIME,
+             (uint8_t)(bin2bcd(dt.second() % 60)            & DS_SECONDS_MASK), // 0-59
+             (uint8_t)(bin2bcd(dt.minute() % 60)            & DS_MINUTES_MASK), // 0-59
+             (uint8_t)(SET_HOUR(dt.hour(), use12HourMode)   & DS_HOUR_REG_MASK),// 0-23 or 1-12
+             (uint8_t)(bin2bcd(dt.dayOfTheWeek() + 1)       & DS_DAY_MASK),  // (0-6) +1 => (1-7)
+             (uint8_t)(bin2bcd(dt.day() % (31 + 1))         & DS_DATE_MASK), // 1-31
+            (uint8_t)((bin2bcd(dt.month() % (12 + 1))       & DS_MONTH_MASK) // 1-12
+                                                            | (dt.year() < 2100U ? 0x00 : DS3231_CENTURY_MASK)),
+             (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)   // 0-99
+      };
+
+  i2c_dev->write(buffer, 8);
+   if (buf != nullptr) {
+      memmove(buf, buffer, 8);
+   }
   uint8_t statreg = read_register(DS3231_STATUSREG);
   statreg &= ~0x80; // force OSF bit to ON (0 == NOT STOPPED).
   write_register(DS3231_STATUSREG, statreg);
+  return buf;
 }
 
 /**************************************************************************/
@@ -674,7 +682,8 @@ void RTC_DS3231::clearAlarm(uint8_t alarm_num) {
 */
 /**************************************************************************/
 bool RTC_DS3231::alarmFired(uint8_t alarm_num) {
-   return (read_register(DS3231_STATUSREG) & (alarm_num - 1)) > 0;
+   return (read_register(DS3231_STATUSREG) & 
+         (alarm_num == 1? DS3231_STATUS_A1F_MASK : DS3231_STATUS_A2F_MASK)) > 0;
 }
 
 /**************************************************************************/

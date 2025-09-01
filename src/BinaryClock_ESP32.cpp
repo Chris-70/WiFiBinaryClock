@@ -20,33 +20,61 @@
    #define I2C_ADDRESS 0x3c //initialize with the I2C addr 0x3C Typically eBay OLED's
                         // e.g. the one with GM12864-77 written on it
    Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET, 100000UL, 100000UL);
+   // Wrap the display initialization in a MACRO to allow for the display being optional.
    #define BEGIN(ADDR,RESET) display.begin(SSD1306_SWITCHCAPVCC, (ADDR), (RESET), true)
+   // Wrap the OLED display in a MACRO to first test if the display is available.
+   #define OLED_DISPLAY(CMD) if (oledValid) { display.CMD; }
+   // Wrap this method in a MACRO definition only used with a dev. board that has an OLED display.
+   #define TIME_OLED(DATE_N_TIME) TimeOLED(DATE_N_TIME);
+   void TimeOLED(DateTime & time);
 #else
    // Removes the code from compilation, replaced with whitespace.
    #define BEGIN(ADDR, RESET)
+   #define OLED_DISPLAY(CMD) 
+   #define TIME_OLED(DATE_N_TIME)
+#endif
+#if DEV_BOARD
+#else
 #endif
 
-#define I2C_SIZE     16
-#define RTC_ADDR     0x68
-#define RTC_EEPROM   0x57
+
+#define I2C_SIZE      16
+#define RTC_ADDR      0x68
+#define RTC_EEPROM    0x57
 #define OLED_IIC_ADDR 0x3c
 #ifndef LED_HEART
-   // LED used to communicate errors.
+   // LED used to communicate status / errors.
    #define LED_HEART LED_BUILTIN 
 #endif
+// #if DEV_CODE
+//    // Debugging macros for development. These are defined as MACROs to simplify the code.
+//    // This avoids surrounding the code with #if DEV_CODE directives. An additional 
+//    // advantage is that the code is not compiled at all if DEV_CODE is false or undefined.
+//    // Code that contains the `Serial.println()` or `Serial <<` statements are there for
+//    // informing the user with the desired information over the serial console.
+//    #define SERIAL_PRINTLN(STRING) Serial.println(STRING);
+//    #define SERIAL_STREAM(CMD_STRING) Serial << CMD_STRING;
+// #else
+//    // Removes the code from compilation, replaced with whitespace.
+//    #define SERIAL_PRINTLN(STRING)
+//    #define SERIAL_STREAM(CMD_STRING)
+// #endif
 
 using namespace BinaryClockShield;
-#define BINARYCLOCK  BinaryClock::get_Instance()
+// #define BINARYCLOCK  BinaryClock::get_Instance()   // *** DEBUG ***
 
-// put function declarations here:
+// All function declarations here (Req'd for PlatformIO):
 void setup();
 void loop();
 bool checkWatchdog();
 void TimeAlert(DateTime time);
-void TimeOLED(DateTime& time);
+#ifdef UNO_R3
+   #define ScanI2C(ARRAY, SIZE) 0
+#else
 int ScanI2C(byte* addrList, size_t listSize);
+#endif 
 
-#if DEVELOPMENT
+#if (DEVELOPMENT || SERIAL_OUTPUT) && !defined(UNO_R3)
 char buffer[32] = {0};
 const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
 const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
@@ -60,19 +88,17 @@ volatile long timeWatchdog = 0;
 bool wdtFault = false;
 long curMillis = 0;
 long deltaMillis = 0;
+int HeartbeatLED = LED_HEART;
+int heartbeat = LOW;             // Heartbeat LED state: OFF
+#ifdef UNO_R3
+   #define oledValid    false 
+   #define rtcValid     true     // Assume we have the shield
+   #define eepromValid  false
+#else
 bool oledValid = false;
 bool rtcValid = false;
 bool eepromValid = false;
-int heartbeat = LOW;             // Heartbeat LED state: OFF
 byte i2cList[I2C_SIZE] = { 0 };
-int HeartbeatLED = LED_HEART;
-
-#if DEV_BOARD
-// Wrap the OLED display in a MACRO to first test if the display is available.
-#define OLED_DISPLAY(CMD) if (oledValid) { display.CMD; }
-#else
-// Removes OLED_DISPLAY() code from compilation, replaced with whitespace.
-#define OLED_DISPLAY(CMD) 
 #endif
 
 void setup()
@@ -81,15 +107,10 @@ void setup()
 
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
-
    Wire.begin();
+   #ifndef UNO_R3
    int i2cDevices = ScanI2C(i2cList, I2C_SIZE);
-   #if DEV_CODE
-      Serial << endl << "Found: " << i2cDevices << " I2C Devices." << endl << "  Known devices are:" << endl;
-      #define SERIAL_PRINTLN(STRING) Serial.println(STRING);
-   #else
-      #define SERIAL_PRINTLN(STRING)      
-   #endif
+   SERIAL_STREAM(endl << "Found: " << i2cDevices << " I2C Devices." << endl << "  Known devices are:" << endl)
    for (int i = 0; i < i2cDevices; i++)
       {
       if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; SERIAL_PRINTLN("  - OLED display is present.") } 
@@ -97,6 +118,7 @@ void setup()
       if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; SERIAL_PRINTLN("  - RTC EEPROM is present.")   } 
       }
    delay(500);
+   #endif
 
    #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
@@ -113,25 +135,24 @@ void setup()
    OLED_DISPLAY(display())
    delay(500);
    #else
+   // Non-dev board configuration, no OLED display, define the `displayResult` to be false.
    #define displayResult false
    #endif
 
-   #if DEV_CODE
-   Serial << "OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") 
-          << " Clear Display: " << (oledValid? "YES" : "NO") << endl; // *** DEBUG ***
-   Serial << "Starting the BinaryClock Setup" << endl; // *** DEBUG ***
-   #endif
+   SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") 
+                << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
+   SERIAL_STREAM("Starting the BinaryClock Setup" << endl)
 
    binClock.setup(!oledValid);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);
 
    binClock.registerTimeCallback(&TimeAlert);
    delay(250);
-   Serial << "Entering Loop() now" << endl;
+   SERIAL_STREAM("Entering Loop() now" << endl)
    delay(250);
    OLED_DISPLAY(clearDisplay())
 
-   // binClock.set_isSerialTime(!binClock.buttonDebugTime.read()); // *** DEBUG ***
+   // binClock.set_IsSerialTime(!binClock.buttonDebugTime.read()); // *** DEBUG ***
    timeWatchdog = millis();   // Reset the Watchdog Timer.
    }
 
@@ -148,7 +169,7 @@ void loop()
    else if (!wdtError) // Display just once per WDT fault
       {
       wdtError = true;
-      Serial << F("Watchdog Timer Triggered after ") << deltaMillis / 1000.0 << F("seconds. ") << endl;
+      SERIAL_STREAM(F("Watchdog Timer Triggered after ") << deltaMillis / 1000.0 << F("seconds. ") << endl)
       }
    }
 
@@ -204,9 +225,10 @@ void TimeAlert(DateTime time)
       }
 
    digitalWrite(HeartbeatLED, heartbeat);
-   TimeOLED(time);
+   TIME_OLED(time)
    }
 
+#if DEV_BOARD
 /// @brief Update the OLED display with the current time if we have a DEV_BOARD.
 /// @details The time is dispayed in the current hour format along with the 
 ///          weekday and full date.
@@ -215,7 +237,6 @@ void TimeAlert(DateTime time)
 ///          OLED display, otherwise we do nothing.
 void TimeOLED(DateTime &time)
    {
-   #if DEV_BOARD
    if (!oledValid) { return; } // If OLED display is not valid, do not proceed.
 
    timeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
@@ -234,6 +255,7 @@ void TimeOLED(DateTime &time)
       *spaceAP = '\0'; // Split the string at the space before AM/PM
       spaceAP++;       // set pointer to AM/PM
       }
+
    OLED_DISPLAY(write(timeStr)) // Write just the numbers in size 2
    OLED_DISPLAY(write(" "))     // Add a space after the time to clear.
    OLED_DISPLAY(setTextSize(1))
@@ -262,13 +284,20 @@ void TimeOLED(DateTime &time)
    cursor = strlen("YYYY/MM/DD") * 6; // Each character is 6 pixels wide.
    OLED_DISPLAY(fillRect(cursor, 24, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
    OLED_DISPLAY(display())
-   #endif   // DEV_BOARD 
    }
+#endif   // DEV_BOARD 
 
-/// @brief  Scan the I2C bus for devices and return the number found.
+#ifndef UNO_R3
+/// @brief  Scan the I2C bus for devices and return the number found. We are looking for 
+///         the RTC (and OLED display on dev boards) addresses.
+/// @details The variables: `rtcValid` and `oledValid` are set if the respective
+///          devices are found. These flags just serve to indicate the common I2C addresses
+///          were found. All I2C addresses that were discovered are stored in the array.
 /// @param  addrList Pointer to an array to store found I2C addresses.
 /// @param  listSize Size of the address list array.
 /// @return The number of I2C devices found.
+/// @note Side effect: The `rtcValid` and `oledValid` flags are set if the respective
+///       device addresses were found.  `Wire` is used to access the I2C bus.
 int ScanI2C(byte *addrList, size_t listSize)
    {
    bool saveList = (addrList != nullptr) && (listSize > 0);
@@ -278,29 +307,23 @@ int ScanI2C(byte *addrList, size_t listSize)
    Wire.begin();
    delay(500); // vTaskDelay(pdMS_TO_TICKS(500));
 
-   Serial.println(F("Scanning for I2C devices ..."));
+   SERIAL_PRINTLN(F("Scanning for I2C devices ..."));
    for (address = 0x01; address < 0x7f; address++)
       {
       Wire.beginTransmission(address);
       error = Wire.endTransmission();
       if (error == 0)
          {
-         #if DEV_BOARD
-         Serial << nDevices+1 << F(") I2C device found at address: ") << String(address, HEX) << endl; // *** DEBUG ***
-         #endif
+         SERIAL_STREAM(nDevices + 1 << F(") I2C device found at address: ") << String(address, HEX) << endl)
          if (RTC_ADDR == address)
             {
             rtcValid = true;   // Found the RTC address.
-            #if DEV_CODE
-            Serial << F("    I2C RTC Address 0x") << String(address, HEX) << F(" has been found.") << endl; // *** DEBUG ***
-            #endif
+            SERIAL_STREAM(F("    I2C RTC Address 0x") << String(address, HEX) << F(" has been found.") << endl)
             }
          else if (OLED_IIC_ADDR == address)
             {
             oledValid = true;   // Found the OLED address.
-            #if DEV_CODE
-            Serial << F("    I2C OLED Display Address 0x") << String(address, HEX) << F(" has been found.") << endl; // *** DEBUG ***
-            #endif
+            SERIAL_STREAM(F("    I2C OLED Display Address 0x") << String(address, HEX) << F(" has been found.") << endl)
             }
 
          if (saveList && nDevices < listSize)
@@ -312,20 +335,25 @@ int ScanI2C(byte *addrList, size_t listSize)
          }
       else if (error != 2)
          {
-         #if DEV_CODE
-         Serial << F("Error ") << error << F(" at address 0x") << String(address, HEX) << endl; // *** DEBUG ***
-         #endif
+         SERIAL_STREAM(F("Error ") << error << F(" at address 0x") << String(address, HEX) << endl)
          }
       }
 
    if (nDevices == 0)
       {
-      Serial.println(F("No I2C devices were found"));
+      SERIAL_PRINTLN(F("No I2C devices were found"));
       }
 
    return nDevices;
    }
+#endif
 
-#if DEV_BOARD   
-   #undef OLED_DISPLAY
+#undef OLED_DISPLAY
+// #undef SERIAL_STREAM
+// #undef SERIAL_PRINTLN      // Remove the MACRO definitions
+
+#ifdef UNO_R3
+   #undef oledValid    
+   #undef rtcValid     
+   #undef eepromValid  
 #endif
