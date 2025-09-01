@@ -13,7 +13,7 @@
 // The Binary Clock Shield pins are fixed in their positions, however the name of the pins at
 // each location may be named differently on your board. You can't change the pin locations(*) you just
 // modify/define the pin numbers for your board in the section below for CUSTOM_UNO. This example has
-// the pin assignment for the original Arduino UNO boards sold by Arduino. You'll need to map these
+// the pin assignment for the original Arduino UNO boards sold by Arduino. You'll need to map physical
 // pin locations to the pin numbers used on your board at the same locations. You will also need
 // to indicate if the board is running FreeRTOS and has WiFi or not. Every predefined supported board
 // uses an ESP32 chip of some sort for WiFi and they run FreeRTOS by default.

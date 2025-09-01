@@ -22,7 +22,7 @@ The user needs to define the target board being used for this code to compile. T
 6.   **UNO\_R3** -  The original [Arduino UNO R3](https://store.arduino.cc/collections/uno/products/arduino-uno-rev3) board.
 7.  **CUSTOM\_UNO** - An UNO board you define in [`board_select.h`](./lib/BinaryClock/src/board_select.h) and enable.
 
-Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) at the start of the [BinaryClock.defines.h file](./lib/BinaryClock/src/BinaryClock.Defines.h). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have a custom UNO board, modify the [board\_select.h file](./lib/BinaryClock/src/board_select.h) with the correct definitions for your board.
+Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) in the [board_select.h file](./lib/BinaryClock/src/board_select.h). The first 4 boards listed have builtin WiFi so they will be able to adjust their time over WiFi, while the UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have an UNO board that isn't listed, modify the `CUSTOM_UNO` board definitions in the [board\_select.h file](./lib/BinaryClock/src/board_select.h) with the custom definitions for your board. You will need to `#define CUSTOM_UNO true` before the board definition section to enable the custom board.
 
 The code was developed using the excellent [PlatformIO IDE](https://platformio.org/) extension for the [VSCode](https://code.visualstudio.com/) editor. The file, `platformio.ini`, includes the setup for each of the supported boards so all you need to do is specify which one you're using.
 
@@ -30,26 +30,25 @@ The code was developed using the excellent [PlatformIO IDE](https://platformio.o
 
 The following boards are supported by this code:
 
-*   [The Arduino UNO R4 WiFi is supported](https://store.arduino.cc/collections/uno/products/uno-r4-wifi)  
-    [![The Arduino UNO R4 WiFi](./assets/Arduino_UNO_R4_Wifi.png)](https://store.arduino.cc/collections/uno/products/uno-r4-wifi)
-*   [The Adafruit Metro ESP32-S3 is supported](https://www.adafruit.com/product/5500).  
-    [![The Adafruit Metro ESP32-S3](./assets/Adafruit_Metro_ESP32-S3.png)](https://www.adafruit.com/product/5500).
-*   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout,  
-    [![ESP32-S3 UNO](./assets/ESP32-S3_UNO_Board.png)](./assets/ESP32-S3_UNO_Board.png)  
-    these work well with the Binary Clock Shield. They are available from you favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins.
-*   The Wemos D1 R32 ESP32 UNO  
+*   [The Arduino UNO R4 WiFi is supported](https://store.arduino.cc/collections/uno/products/uno-r4-wifi)  A great board and a vast improvement over the UNO R3. The LED matrix is a great addition however, it seems like a waste to cover it up with the Binary Clock Shield.
+    [![The Arduino UNO R4 WiFi](./assets/Arduino_UNO_R4_Wifi.png)](https://store.arduino.cc/collections/uno/products/uno-r4-wifi)   
+*   [The Adafruit Metro ESP32-S3 is supported](https://www.adafruit.com/product/5500).  This is a great board that has so many capabilities over every other choice. The JTAG port is great for development, the micro SD Card reader is a great addition and QT I2C connector on the side means it can be used with theshield in place. The greatest feature for the Binary Clock Shield is the builtin battery charger circuit. The shield will keep displaying the time while you move it around or when the power goes out. This is the board I recommend if you want to get the most out of the Binary Clock Shield or if you create a case for it and need it to work on battery.  
+    [![The Adafruit Metro ESP32-S3](./assets/Adafruit_Metro_ESP32-S3.png)](https://www.adafruit.com/product/5500).  
+*   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout, these work well with the Binary Clock Shield. They are available from your favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins. If I had created a case for the Binary Clock Shield and wanted to sell a fully functional Binary Clock, this is the board I would use.  
+    [![ESP32-S3 UNO](./assets/ESP32-S3_UNO_Board.png)](./assets/ESP32-S3_UNO_Board.png)   
+*   The Wemos D1 R32 ESP32 UNO  This is the board that got me started on this project. 
     ![The Wemos D1 R32 ESP32 UNO](./assets/Wemos_D1_R32_UNO.png)  
-    board is supported, however it requires a minor [Hardware Modification](#details-and-hardware-modifications) to work with the shield. See the details below.
+    The board is supported, however it requires a minor [Hardware Modification](#hardware-modifications-for-the-wemos-d1-r32-uno) to work with the shield. See the details below.
 
-## Details and Hardware Modifications
+## Hardware Modifications for the Wemos D1 R32 UNO
 
-The Binary Clock Shield is designed to work with the Arduino UNO R3 board, however it can be used with other boards that have the same pinout as the UNO. When I got my first ESP32 based UNO board I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3. I made the changes to the pin numbers and I still had errors compiling, this required further investigation. The Wemos D1 R32 ESP32 based UNO type board seemed like the ideal candidate. I read the datasheet and discovered it had a hardware limitation. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin which is an input only pin. The only other limitation was the builtin LED which is wired to 'GPIO 02' which corresponds to the UNO pin A0 which is used by the shield for pushbutton S3, so just don't use the builtin LED.
+The Binary Clock Shield is designed to work with the Arduino UNO R3 board, however it can be used with other boards that have the same pinout as the UNO. When I got my first ESP32 based UNO board, the Wemos D1 R32, I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3. I made the changes to the pin numbers and I still had errors compiling, this required further investigation. The Wemos D1 R32 ESP32 based UNO type board seemed like the ideal candidate. I read the datasheet and discovered it had a hardware limitation. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin which is an input only pin. The only other limitation was the builtin LED which is wired to 'GPIO 02' which corresponds to the UNO pin A0 which is used by the shield for pushbutton S3, so just don't use the builtin LED.
 
-In order to get this Wemos D1 R32 board to work with the shield, the pin corresponding to A3 on the shield needs to be connected to an output pin such as `GPIO 15`. To do this you need to physically remove the A3/GPIO34 socket from the ESP32 UNO board (cut the plastic and desolder the pin) then connect the corresponding shield pin to `GPIO 15`.
+In order to get this Wemos D1 R32 board to work with the shield, the pin corresponding to A3 on the shield needs to be connected to an output capable pin such as `GPIO 15`. To do this you need to physically remove the A3/GPIO34 socket from the ESP32 UNO board (cut the plastic and desolder the pin) then connect the corresponding shield pin to `GPIO 15`.
 
 ![Wemos D1 R32 ESP32 UNO](./assets/Pinout_Wemos_D1_R32.png)
 
-The alternative is to get an Arduino UNO Development Shield and modify the development shield by bending the 'A3' pin and use a Dupont connector between the bent `A3` pin and `GPIO 15` to use an output capable GPIO pin. This is the easiest but it does add some height, ~12mm or ½ inch, to the assembly.
+The alternative is to get an Arduino UNO Development Shield and modify the development shield by bending the 'A3' pin and use a Dupont connector between the bent `A3` pin and `GPIO 15` to use this output capable GPIO pin. This is the easiest but it does add some height, ~12mm or ½ inch, to the assembly.
 
 ![UNO Development Shield](./assets/Modified_UNO_Shield.png)
 
@@ -60,7 +59,13 @@ The advantages of a development Shield are that you can add additional component
 ### Background
 
 The software was based on the [example/11-BinaryClockRTCInterruptAlarmButtons](https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons) on the GitHub [marcinsaj/Binary-Clock-Shield-for-Arduino](https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino). I kept the core methods and created the `BinaryClock` class to handle all the base operations of the Binary Clock Shield. The class would perform everything related to the Binary Clock Shield, such as setting the time, alarms, and handling the button presses. The class also handles the display of the time and alarms on the NeoPixel LED strip.  
+
+The `BinaryClock` class was designed to be used as a library so it could be part of another project. The class uses callback functions to notify the main program when the time is updated or when an alarm goes off. This allows the main program to handle these events as needed. The main program could be altered for the different board capabilities, or lack of capabilities. The Arduino UNO R3 and R4 Minima boards don't have WiFi so they are limited to setting the time and alarms using the buttons on the shield. The ESP32 based boards have WiFi so they can connect to an NTP server to get the time and adjust for daylight savings time automatically. The ESP32 based boards can also be used to change the LED colors and upload new alarm melodies. The WiFi capabilities are not part of the `BinaryClock` class, they are handled in their own library class, `BinaryClockWiFi`.
+
 ![ESP32 Binary Clock](./assets/BinaryClock_ESP32.png)  
+
+### Features
+
 The `BinaryClock` class extended the basic capabilities of the original code by:
 
 1.  Adding support for many different UNO boards and allowing for users to define their own board:
@@ -92,13 +97,13 @@ The `BinaryClock` class extended the basic capabilities of the original code by:
 4.  Adding support for changing the colors of the NeoPixel LED indicators for the: hours; minutes; and seconds as well as AM and PM indicators.
     *   The user can change the ON color for each individual LED indicator as well as change the OFF color for all the LEDs.
         *   Default ON colors are:
-            *   hours = Blue 🟦 ;
-            *   minutes = Green 🟢 ;
-            *   seconds = Red 🟠 ;
-            *   AM = Black ◉ ;
-            *   PM = Purple 🟣 .
-        *   Default OFF color is: Black F789; .
-            *   Using any color other than black means the LED will always be lit.
+            *   hours = Blue \[🟦\] ;
+            *   minutes = Green \[🟢\] ;
+            *   seconds = Red \[🟠\] ;
+            *   AM = Black \[■\] ;
+            *   PM = Purple \[🟣\] .
+        *   Default **OFF** color is: Black \[■\] .
+            *   Using any color other than black means the LED will always be ON.
 5.  Adding support for playing different, user supplied, melodies for the alarms.
     *   The user can upload their own melodies and use them for the alarms.
         *   The melody is stores as an array of frequencies.

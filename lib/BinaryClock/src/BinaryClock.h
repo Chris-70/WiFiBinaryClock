@@ -79,12 +79,17 @@
 //
 
 #pragma once
-#ifndef _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
-#define _BINARY_CLOCK_RTC_24_ALARM_BUTTONS_
+#ifndef __BINARYCLOCK_H__
+#define __BINARYCLOCK_H__
 
 #include <Arduino.h>             // Arduino core library
 
+#include <stdint.h> 
 #include <FastLED.h>             // https://github.com/FastLED/FastLED
+#include "fl/namespace.h"
+#include <fl/array.h>            // For fl::array
+#include "fl/namespace.h"
+
 #include <RTClib.h>              // Adafruit RTC library: https://github.com/adafruit/RTClib
 #include <Streaming.h>           // https://github.com/janelia-arduino/Streaming                            
 
@@ -98,6 +103,10 @@
    #define TEST_VIRTUAL
    #define PRIVATE private
 #endif
+
+using namespace fl;
+
+typedef unsigned char uint8_t;
 
 /// Protect from any possible name clashes by putting this code in its own namespace.
 namespace BinaryClockShield
@@ -283,7 +292,7 @@ namespace BinaryClockShield
       /// @endverbatim
       ///          When the final selection is made the 'Rainbow' pattern is displayed
       ///          to indicate to the user the changes are over and the settings are 
-      ///          either being saved, indicated by the Green check mark [✅], or the 
+      ///          either being saved, indicated by the Green checkmark [✅], or the 
       ///          changes have been discarded, indicated by the Pink 'X' [❌] on the shield.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       /// @author Chris-80 (2025/07)
@@ -293,47 +302,42 @@ namespace BinaryClockShield
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
       void playAlarm();
 
-      DateTime ReadTime();
-
       //#################################################################################//
       // Public PROPERTIES
       //#################################################################################//
+      // In languages, such as C#, where properties are part of the language, they use
+      // the following patterns to translate between properties and methods:
+      //   _type_ get_PropertyName();
+      //   void set_PropertyName(_type_ value);
+      // Where:
+      //    _type_      : the the data type of the property.
+      //    PropertyName: the name of the property.
+      //    value       : the value to set the property to. The parameter name is always `value`
+      // We are following this pattern for our "properties"
+      //#################################################################################//
 
-      /// @brief The method called to set the current 'Time' property.
+      /// @brief The property methods called to set/get the current 'Time' property.
       /// @param value The DateTime object containing the current time to set.
-      /// @note The DateTime class is defiend in the RTCLib.h header file.
-      /// @author Chris-80 (2025/07)
-      void set_Time(DateTime &value);
-
-      /// @brief The method called to get the current 'Time' property.
       /// @return A DateTime object containing the current time.
       /// @note The DateTime class is defiend in the RTCLib.h header file.
       /// @author Chris-80 (2025/07)
+      void set_Time(DateTime value);
       DateTime get_Time() const;
 
-      /// @brief The method called to set the current 'Alarm' property.
-      /// @param alarmTime The AlarmTime structure containing the alarm time and status.
+      /// @brief The property method called to set/get the current 'Alarm' property.
+      /// @param value The AlarmTime structure containing the alarm time and status.
+      /// @return An AlarmTime structure containing the alarm time and status.
       /// @note The AlarmTime structure contains the hour, minute, and status of the alarm
       ///       The status is 0 for inactive, 1 for active.
       ///       Hours are 0 to 23.
       /// @author Chris-80 (2025/07)
-      void set_Alarm(AlarmTime &value);
-
-      /// @brief The method called to get the default 'Alarm' property
-      /// @return An AlarmTime structure containing the alarm time and status.
-      /// @author Chris-80 (2025/07)
+      void set_Alarm(AlarmTime value);
       AlarmTime get_Alarm() { return GetAlarm(ALARM_2); }
-
-      /// @brief The method called to get the 'AlarmTime' for alarm 'number'
-      /// @param number The alarm number: 1 or 2. Alarm 2 is the default alarm.
-      /// @return An AlarmTime structure containing the alarm time and status.
-      /// @design This method was included as a workaround to allow the user to get alarm 1
-      ///         without breaking the property pattern for the Alarm, so no '_' after get....
-      /// @author Chris-80 (2025/07)
-      AlarmTime GetAlarm(int number);
 
       /// @brief Property pattern for the LED 'Brightness' property.
       ///        This property controls the brightness of the LEDs, 0-255, 20-30 is normal
+      /// @param value The brightness level to set (0-255).
+      /// @return The current brightness level (0-255).
       /// @author Chris-80 (2025/07)
       void set_Brightness(byte value);
       byte get_Brightness();
@@ -341,21 +345,94 @@ namespace BinaryClockShield
       /// @brief Property pattern for the 'is12HourFormat' flag property.
       ///        This property controls whether the time is displayed in 
       ///        12-hour or 24-hour format.
+      /// @param value The flag to set (true for 12-hour format, false for 24-hour format).
+      /// @return The current flag value (true for 12-hour format, false for 24-hour format).
       /// @author Chris-70 (2025-07)
       void set_Is12HourFormat(bool value);
       bool get_Is12HourFormat() const;
 
       /// @brief Property pattern for the 'isSerialSetup' flag property. 
       ///        This property controls whether the serial setup menu is displayed or not.
+      /// @param value The flag to set (true to display the serial setup menu, false to disable it).
+      /// @return The current flag value (true to display the serial setup menu, false to disable it).
       /// @author Chris-80 (2025/07)
-      void set_isSerialSetup(bool value);
-      bool get_isSerialSetup() const;
+      void set_IsSerialSetup(bool value);
+      bool get_IsSerialSetup() const;
 
-      /// @brief Property pattern for the 'isSerialTime' flag property.
+      /// @brief Property pattern for the 'IsSerialTime' flag property.
       ///        This property controls whether the serial time is displayed or not.
+      /// @param value The flag to set (true to display the serial time, false to disable it).
+      /// @return The current flag value (true to display the serial time, false to disable it).
       /// @author Chris-80 (2025/07)
-      void set_isSerialTime(bool value);
-      bool get_isSerialTime() const ;
+      void set_IsSerialTime(bool value);
+      bool get_IsSerialTime() const;
+
+      /// @brief Property pattern for the 'OnColors' property.
+      ///        This property controls the colors of the LEDs when they are on.
+      /// @param value A reference the array of colors to set for the LEDs when they are on.
+      /// @return A const reference to the array of colors for the LEDs when they are on.
+      /// @author Chris-70 (2025/08)
+      void set_OnColors(const array<CRGB, NUM_LEDS>& value);
+      const array<CRGB, NUM_LEDS>& get_OnColors() const;
+
+      /// @brief Property pattern for the 'OffColors' property.
+      ///        This property controls the colors of the LEDs when they are off.
+      /// @param value A reference the array of colors to set for the LEDs when they are off.
+      /// @return A const reference to the array of colors for the LEDs when they are off.
+      /// @note Normally this color is CRGB::Black (i.e. LED is OFF). Any other color will   
+      ///       keep the LED on at all times, always consuming power.
+      /// @author Chris-70 (2025/08)
+      void set_OffColors(const array<CRGB, NUM_LEDS>& value);
+      const array<CRGB, NUM_LEDS>& get_OffColors() const;
+
+      /// @brief Property pattern for the 'OnHours' property.
+      ///        This property controls the colors of the LEDs when they are on for the hour display.
+      /// @details These values are always used for the HOUR LEDs except when `AmColor` is CRGB::Black 
+      ///          AND `Is12HourFormat` is true.
+      /// @param value A reference the array of colors to set for the LEDs when they are on for the hour display.
+      /// @return A const reference to the array of colors for the LEDs when they are on for the hour display.
+      /// @see set_OnHourAM()
+      /// @see get_OnHourAM()
+      /// @author Chris-70 (2025/08)
+      void set_OnHours(const array<CRGB, NUM_HOUR_LEDS>& value);
+      const array<CRGB, NUM_HOUR_LEDS>& get_OnHours() const;
+
+      /// @brief Property pattern for the 'OnHoursAM' property.
+      ///        This property controls the colors of the LEDs when they are on for the hour display in AM mode.
+      /// @details These color are ONLY used when the `AmColor` is CRGB::Black AND `Is12HourFormat` is true.
+      ///          This is to be able to distinguish between 12 midnight in 12 hour mode and 12 noon in 24 hour mode.
+      /// @param value A reference the array of colors to set for the LEDs when they are on for the hour display in AM mode.
+      /// @return A const reference to the array of colors for the LEDs when they are on for the hour display in AM mode.
+      /// @see set_OnHours()
+      /// @see get_OnHours()
+      /// @author Chris-70 (2025/08)
+      void set_OnHoursAM(const array<CRGB, NUM_HOUR_LEDS>& value);
+      const array<CRGB, NUM_HOUR_LEDS>& get_OnHoursAM() const;
+
+      /// @brief Property pattern for the 'AmColor' property.
+      ///        This property controls the color of the AM indicator LED in 12 hour mode.
+      /// @param value The color to set for the AM indicator LED when in 12 hour mode.
+      /// @return The current color of the AM indicator LED when in 12 hour mode.
+      /// @author Chris-70 (2025/08)
+      void set_AmColor(CRGB value);
+      CRGB get_AmColor() const;
+
+      /// @brief Property pattern for the 'PmColor' property.
+      ///        This property controls the color of the PM indicator LED in 12 hour mode.
+      /// @param value The color to set for the PM indicator LED when in 12 hour mode.
+      /// @return The current color of the PM indicator LED when in 12 hour mode.
+      /// @remark This value is normally not Black. Default is CRGB::
+      /// @author Chris-70 (2025/08)
+      void set_PmColor(CRGB value);
+      CRGB get_PmColor() const;
+
+      /// @brief Property: 'DebounceDelay' time (ms) for the button press to stabilize. 
+      ///        Initially set to  DEFAULT_DEBOUNCE_DELAY.
+      /// @param value The debounce delay time in milliseconds.
+      /// @return The current debounce delay time in milliseconds.
+      /// @author Chris-70 (2025/07)
+      void set_DebounceDelay(unsigned long value);
+      unsigned long get_DebounceDelay() const;
 
       #if HW_DEBUG_TIME
       /// @brief Property pattern for the 'DebugOffDelay' property. This controls how fast 
@@ -365,13 +442,19 @@ namespace BinaryClockShield
       unsigned long get_DebugOffDelay() const;
       #endif
 
-      /// @brief The pin number to use for the heartbeat (if enabled) or to signal errors.
-      /// @note  The LED must be wired CC, the pin will go HIGH to turn it ON.
-      static uint8_t HeartbeatLED;
-
       //#################################################################################//
       // Public METHODS
       //#################################################################################//
+
+      /// @brief The method called to get the 'AlarmTime' for alarm 'number'
+      /// @remarks This method reads the alarm values from the RTC and updates the local
+      ///          field values for the alarm selected.
+      /// @param number The alarm number: 1 or 2. Alarm 2 is the default alarm.
+      /// @return An AlarmTime structure containing the alarm time and status.
+      /// @design This method was included as a workaround to allow the user to get alarm 1
+      ///         without breaking the property pattern for the Alarm, so no '_' after get....
+      /// @author Chris-80 (2025/07)
+      AlarmTime GetAlarm(int number);
 
       /// @brief Methods to register/unregister a callback function at every second.
       /// @param callback The function to call every second with the current DateTime.
@@ -449,19 +532,55 @@ namespace BinaryClockShield
       ///       The LED is in the OFF (LOW) state when this method returns.
       /// @remarks A duty cycle outside of the range 10 - 90 or a frequency > 10 will not 
       ///          appear to be flashing. Use a duty cycle between 25 - 75 and a frequency between 1 - 5
+      /// @author Chris-70 (2025/08)
       void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1);
+
+      /// @brief The method to read the time from the RTC (wrapper for RTC.now()). 
+      /// @return A DateTime object containing the current time read from the RTC.
+      DateTime ReadTime();
 
    protected:
       /// @brief Enum to classify the different settings types/levels in the settings menu.
-      enum SettingsType { Undefined, TimeOptions, Hours, Minutes, Seconds, AlarmStatus };
+      enum class SettingsType : uint8_t 
+            { 
+            Undefined,     // Error: value of 0, not in settings menu.
+            TimeOptions,   // Time options: 12 or 24 hour mode; Cancel
+            Hours,         // Setting the hours value.
+            Minutes,       // Setting the minutes value.
+            Seconds,       // Setting the seconds value (time only).
+            AlarmStatus    // Setting the alarm status: ON; OFF; Cancel
+            };
+
+      /// @brief Enum to define the current hour color mode in use.
+      enum class HourColor : uint8_t 
+            { 
+            Hour24 = 0,    ///< 24-hour mode, use OnHour colors for hours.
+            Am,            ///< AM hour colors when the AM indicator is OFF (i.e. Black)
+            Pm             ///< PM hour colors, same as Hour24, default hour colors.
+            };
+
+      enum class LedPattern : uint8_t
+            { 
+            onColors = 0,  // The LED colors when ON (hours; minutes; seconds).
+            offColors,     // The LED colors when OFF (usually Black; no power).
+            onText,        // The big Green `O` for the On pattern.
+            offTxt,        // The big RED sideways `F` for the Off pattern.
+            xAbort,        // The big Pink `X' [❌] for the abort/cancel pattern.
+            okText,        // The big Lime 'checkmark' [✅] for the okay/good pattern.
+            rainbow,       // The colors of the rainbow on the diagnal pattern.
+            #ifdef ESP32_WIFI
+            wText,         // The big RoyalBlue 'W' [📶] for the WPS / WiFi pattern.
+            #endif
+            endTAG         // The end marker, also equal to the number of patterns defined (7 or 8).
+            };
 
       /// @brief Default Constructor for the BinaryClock class. This initializes the 
       ///        button states, settings options, and brightness. It assigns the 
       ///        melody and note durations arrays to the class members.
       BinaryClock(); 
 
-      /// @brief Destructor for the BinaryClock class. This destructor is 
-      ///        empty as there is no dynamic memory allocation in this class.
+      /// @brief Destructor for the BinaryClock class. This destructor performs
+      ///        cleanup of: the interrupts; RTC Square Wave output; FastED.
       virtual ~BinaryClock();
 
       // Singleton pattern - Disable these constructors and assignment operators.
@@ -473,48 +592,104 @@ namespace BinaryClockShield
       /// @brief This method is to isolate the code needed to initialize the Buttons.
       ///        The 'ButtonState.onValue' determines the type: INPUT_PULLUP/DOWN.
       /// @author Chris-70 (2025/07)
-      void initializeButtons();
+      void InitializeButtons();
 
       /// @brief This method is to isolate the code needed to setup for the RTC.
       /// @author Chris-80 (2025/07)
-      bool setupRTC();
+      bool SetupRTC();
 
       /// @brief This method is to isolate the code needed to setup the alarm.
       /// @author Chris-80 (2025/07)
-      void setupAlarm();
+      void SetupAlarm();
 
       /// @brief This method is to isolate the code needed to setup the FastLED library.
       /// @param testLEDs - Flag: Display the LED test patterns.
       /// @author Chris-80 (2025/07)
-      void setupFastLED(bool testLEDs);
-
-      /// @brief Property: 'DebounceDelay' time (ms) for the buttons. Initially set to  DEFAULT_DEBOUNCE_DELAY.
-      /// @author Chris-70 (2025/07)
-      void set_DebounceDelay(unsigned long value);
-      unsigned long get_DebounceDelay() const;
+      void SetupFastLED(bool testLEDs);
 
       #if FREE_RTOS
       /// @brief This method runs the task to handle the RTC time and alarm. It waits for the 
-      ///        1 Hz RTC Interrupt, calls the 'timeDispatch()' method to read the RTC time and
+      ///        1 Hz RTC Interrupt, calls the 'TimeDispatch()' method to read the RTC time and
       ///        check if the alarm has fired. 
       /// @note  This method isn't used on boards that don't run FreeRTOS, they just call the
-      ///        'timeDispatch()' method from within the 'loop()' method.
-      void timeTask();
+      ///        'TimeDispatch()' method from within the 'loop()' method.
+      void TimeTask();
       #endif
       
       /// @brief This method handles the reading of the time from the RTC and checks if the 
       ///        alarm has been triggered (when set). 
       /// @returns bool - Flag indicating the interrupt had fired and time was read from the RTC.
       /// @design - This method exists to be called by boards that don't have FreeRTOS.
-      ///           Instead of executing the code in 'timeTask()' the code is encompassed in 
+      ///           Instead of executing the code in 'TimeTask()' the code is encompassed in 
       ///           this method so that it can be called from within the 'loop()' method.
-      bool timeDispatch();
+      bool TimeDispatch();
 
       /// @brief This method is used to get the settings type based on the options and level.
       /// @param options The current settings options, e.g. TimeOptions (1), AlarmStatus (3).
       /// @param level The current settings level, e.g. 1 - 4.
       /// @return The SettingsType enum value that corresponds to the options and level.
       SettingsType GetSettingsType(int options, int level);
+
+      // ################################################################################
+      // NEW METHODS - 
+      // ################################################################################
+
+      /// @brief This method is called to service the user callback function with the associated time.
+      /// @param triggerFlag The flag that indicates if the callback was fired.
+      /// @param time The associated DateTime object to pass to the callback function (e.g. alarm time / current time).
+      /// @param callback The user callback function to call with the associated DateTime.
+      /// @details This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
+      /// @author Chris-70 (2025/07)
+      void CallbackFtn(volatile bool& triggerFlag, DateTime time, void (*callback)(DateTime));
+
+      /// @brief This method is called to dispatch the callback functions for the alarm and time.
+      /// @details This method calls the 'CallbackFtn()' when the associated trigger is set and
+      ///          the user has registered a callback function for the trigger.
+      /// @author Chris-70 (2025/07)
+      void CallbackDispatch();
+
+      #if FREE_RTOS
+      /// @brief This method is called to run the callback task in a separate thread.
+      /// @details This method is called in a separate thread on UNO boards that run FreeRTOS.
+      ///          This task just calls 'CallbackDispatch()' and briefly pauses execution in a loop.
+      /// @author Chris-70 (2025/07)
+      void CallbackTask();
+      #endif
+
+      /// @brief This method is called when the BinaryClock has died. It signals S.O.S. on the builtin led forever.
+      ///        It turns off the the LEDs on the shield and goes in a loop forever signaling SOS on the builtin LED.
+      ///        This is called for a catastrophic failure such as missing/failed RTC chip. A reboot is required
+      ///        T.his is where the BinaryClock software goes to die.
+      /// @author Chris-70 (2025/07)
+      void PurgatoryTask(const char* message = nullptr);
+
+      /// @brief This method is called to reset the BinaryClock and restart the program.
+      /// @details This method is called when the BinaryClock needs to be reset, e.g. after a fatal error.
+      ///          It calls the reset function at address 0, which is the start of the program.
+      /// @author Chris-70 (2025/08)
+      void(*resetBoard) (void) = 0; // Declare reset function at address 0
+
+      #if DEV_CODE
+      /// @brief This method is called to display all the registers of the RTC chip.
+      ///        The DS3231 registers 0x00 through 0x13 are dumped in: Hex; Binary; and Decimal.
+      void DisplayAllRegisters();
+      #endif
+
+      #if SERIAL_OUTPUT
+      /// @brief This method is called to format the hour for display in 12-hour or 24-hour format.
+      /// @param hour24 The hour in 24-hour format (0-23).
+      /// @param is12HourFormat Flag indicating if 12-hour format is requested.
+      /// @param buffer The character buffer to store the formatted hour.
+      /// @param size The size of the buffer.
+      /// @return A pointer to the given `buffer` containing the formatted hour string.
+      char* FormatHour(int hour24, bool is12HourFormat, char* buffer, size_t size);
+      #endif
+
+      #if HARDWARE_DEBUG
+      /// @brief This method is called to check the hardware debug buttons/switches and set the serial output level.
+      /// @author Chris-80 (2025/07)
+      void CheckHardwareDebugPin();
+      #endif
 
       // ################################################################################
       // ORIGINAL METHODS - 
@@ -548,17 +723,22 @@ namespace BinaryClockShield
       void convertDecToBinaryAndDisplay(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode = false);
 
       /// @brief The method called to display the LED buffer on the LEDs.
-      /// @param ledBuffer The buffer containing the LED colors to display.
-      /// @param size The size of the LED buffer from 'ledBuffer' to the end, e.g. 17.
+      /// @param ledBuffer The array buffer containing the LED colors to display.
       /// @details This method just copies the given 'ledBuffer' contents directly to the 
       ///          FastLED buffer and displays it.
       /// @author Chris-70 (2025/07)
-      void displayLedBuffer(const CRGB* ledBuffer, int size);
+      void displayLedBuffer(const array<CRGB, NUM_LEDS>& ledBuffer);
 
-      /// @brief The method called to set the time on the RTC from the value in the time field.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
-      /// @author Chris-80 (2025/07)
-      void setNewTime();
+      /// @brief The method called to display the LED buffer on the LEDs for
+      ///        the given `patternType`.
+      /// @param patternType The LED pattern type to display.
+      /// @author Chris-70 (2025/08)
+      void displayLedBuffer(LedPattern patternType);
+
+      /// @brief Helper method to return the pointer to the `patternType` in the `ledPatternsP` array.
+      /// @param patternType The LED pattern type to display.
+      /// @author Chris-70 (2025/08)
+      const CRGB* patternLookup(LedPattern patternType);
 
       /// @brief This method is called when the user exceeds the current time element limits.
       ///        The value is rolled over to the next valid value, e.g. 59  -> 0, or 0 -> 59.
@@ -584,6 +764,25 @@ namespace BinaryClockShield
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
       void displayCurrentModifiedValue();
+
+      // void displayTimeOptions(int value);
+
+      // void displayHours(int value);
+
+      // void displayMinutes(int value);
+
+      // void displaySeconds(int value);
+
+      // void displayAlarmStatus(int value);
+
+      /// @brief Helper function to fill a string with a repeated character.
+      /// @remarks This trades a bit of speed for flash memory savings by 
+      ///          creating the string on the fly. If the string is local
+      ///          then it's just temporary ram usage.
+      /// @param ch The character to repeat.
+      /// @param repeat The number of times to repeat the character.
+      /// @return A String filled with the repeated character.
+      static String fillStr(char ch, byte repeat);
 
       #if SERIAL_TIME_CODE
       /// @brief The method called to display the current time, decimal and binary, over the serial monitor.
@@ -615,8 +814,6 @@ namespace BinaryClockShield
       /// @details This method is called when the user is changing the time or alarm time.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       void serialCurrentModifiedValue();
-
-      char* formatHour(int hour24, bool is12HourFormat, char* buffer, size_t size);
       #endif
 
       /// @brief Method to check if the button was pressed ON from OFF since the last call.
@@ -634,76 +831,65 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       bool isButtonOnNew(ButtonState& button);
 
-      #if HARDWARE_DEBUG
-      /// @brief This method is called to check the hardware debug buttons/switches and set the serial output level.
-      /// @author Chris-80 (2025/07)
-      void checkHardwareDebugPin();
-      #endif
+   private:
+      /// @brief This method is called to display the LED pattern, from `ledPatternsP`, for the specified index.
+      /// @remarks This method retrieves the LED pattern from flash memory and displays it on the shield.
+      ///          The `ledPatternsP` is a 2D array in flash memory that has all the predefined LED patterns and 
+      ///          colors for the binary clock.
+      /// @param patternIndex The index of the `ledPatternsP` flash memory for the LED pattern.
+      void displayLedPattern(LedPattern patternType);
 
-      /// @brief This method is called to service the user callback function with the associated time.
-      /// @param triggerFlag The flag that indicates if the callback was fired.
-      /// @param time The associated DateTime object to pass to the callback function (e.g. alarm time / current time).
-      /// @param callback The user callback function to call with the associated DateTime.
-      /// @details This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
-      /// @author Chris-70 (2025/07)
-      void callbackFtn(volatile bool &triggerFlag, DateTime time, void (*callback)(DateTime));
-
-      /// @brief This method is called to dispatch the callback functions for the alarm and time.
-      /// @details This method calls the 'callbackFtn()' when the associated trigger is set and
-      ///          the user has registered a callback function for the trigger.
-      /// @author Chris-70 (2025/07)
-      void callbackDispatch();
-
-      #if FREE_RTOS
-      /// @brief This method is called to run the callback task in a separate thread.
-      /// @details This method is called in a separate thread on UNO boards that run FreeRTOS.
-      ///          This task just calls 'callbackDispatch()' and briefly pauses execution in a loop.
-      /// @author Chris-70 (2025/07)
-      void callbackTask();
-      #endif
-
-      #if DEV_BOARD
-      /// @brief This method is called to display all the registers of the RTC chip.
-      ///        The DS3231 registers 0x00 through 0x13 are dumped in: Hex; Binary; and Decimal.
-      void DisplayAllRegisters();
-      #endif
-
-      /// @brief This method is called when the BinaryClock has died. It signals S.O.S. on the builtin led forever.
-      ///        It turns off the the LEDs on the shield and goes in a loop forever signaling SOS on the builtin LED.
-      ///        This is called for a catastrophic failure such as missing/failed RTC chip. A reboot is required
-      ///        T.his is where the BinaryClock software goes to die.
-      /// @author Chris-70 (2025/07)
-      void purgatoryTask(const char* message = nullptr);
-
-      /// @brief This method is called to reset the BinaryClock and restart the program.
-      /// @details This method is called when the BinaryClock needs to be reset, e.g. after a fatal error.
-      ///          It calls the reset function at address 0, which is the start of the program.
-      /// @author Chris-70 (2025/08)
-      void(* resetBoard) (void) = 0; // Declare reset function at address 0
-         
    public:         
-      static CRGB OnColor [NUM_LEDS];     // Colors for the LEDs when ON
-      static CRGB OffColor[NUM_LEDS];     // Colors for the LEDs when OFF
-      static CRGB PmColor;                // Color for the PM indicator LED, e.g. Gold.
-      static CRGB AmColor;                // Color for the AM indicator (Usually Black/OFF).
+
+      /// @brief The pin number to use for the heartbeat (if enabled) or to signal errors.
+      /// @note  The LED must be wired CC, the pin will go HIGH to turn it ON.
+      static uint8_t HeartbeatLED;
 
    protected:
-      RTCLibPlusDS3231 RTC;               // Create RTC object using Adafruit RTCLib library
+      RTCLibPlusDS3231 RTC;                        // Create RTC object using forked Adafruit RTCLib library
+
+      /// @brief Default: Colors for the LEDs when ON, Seconds, Minutes and Hours
+      /// @details The default colors are Hours: Blue; Minutes: Green; and Seconds: Red 
+      ///@note The hours are defined by `OnHour` color array. These are the colors used for 24 hour mode and for PM.
+      ///      AM is defined by the `OnHourAM` color array when `AmColor` is Black.  This is to remove ambiguity for
+      ///      hour 12. Is it noon in 24 hour mode or midnight in 12 hour mode? Without an AM indicator, who knows?
+      static array<CRGB, NUM_LEDS> OnColor;        // Colors for the LEDs when ON  (Seconds; Minutes; Hours)
+
+      /// @brief Default: Colors for the LEDs Seconds, Minutes and Hours, when OFF (Usually Black i.e. No Power.)
+      /// @note  Using any color other than Black means the LEDs will be consuming power at all times.
+      static array<CRGB, NUM_LEDS> OffColor;       // Colors for the LEDs when OFF (Seconds; Minutes; Hours)
+
+      /// @brief Default: Colors for the AM hour LEDs when `AmColor` is Black. This is to show the clock is in 12 hour
+      ///        mode when there is no AM indicator. 
+      /// @remarks When the AM indicator color is Black, there is no way to differentiate between 12 noon in 
+      ///          24 hour mode and 12 midnight in 12 hour mode. To remove this ambiguity, the AM hours are shown
+      ///          in a different color, e.g. DeepSkyBlue.
+      /// @see OnHour
+      static array<CRGB, NUM_HOUR_LEDS> OnHourAM;  // Colors for the AM hour LEDs when `AmColor` is Black.
+
+      /// @brief Default: LED colors for the PM hours or for all 24 hours.
+      /// @remarks The default hour colors are are used for 24 hour mode and just for PM in 12 hour mode when 
+      ///          `AmColor` is Black. When the `AmColor` is NOT Black, there is no ambiguity between
+      ///          12 midnight in 12 hour mode and 12 noon in 24 hour mode.
+      static array<CRGB, NUM_HOUR_LEDS> OnHour;    // Colors for the PM or 24 hour LEDs.
+
+      static CRGB PmColor;                         // Color for the PM indicator LED, e.g. Indigo.
+      static CRGB AmColor;                         // Color for the AM indicator (Usually Black/OFF).
 
       // The UNO Compiler doesn't support this C++ style object initialization, move it to the constructor.
       AlarmTime Alarm1; // = { .number = ALARM_1, .melody = 0, .status = 0 };  // DS3232 alarm, includes seconds in alarm.
       AlarmTime Alarm2; // = { .number = ALARM_2, .melody = 0, .status = 0 };  // Default alarm, seconds set at 00.
 
-      volatile bool RTCinterruptWasCalled;   // Flag: The RTC interrupt was triggere
-      volatile bool CallbackAlarmTriggered;  // Flag: The 'Alarm' callback needs to be called.
-      volatile bool CallbackTimeTriggered;   // Flag: The 'Time'  callback needs to be called.
+      volatile bool RTCinterruptWasCalled;         // Flag: The RTC interrupt was triggered.
+      volatile bool CallbackAlarmTriggered;        // Flag: The 'Alarm' callback needs to be called.
+      volatile bool CallbackTimeTriggered;         // Flag: The 'Time'  callback needs to be called.
 
-      const char* timeFormat24 = "hh:mm:ss";
-      const char* timeFormat12 = "HH:mm:ss AP";
-      const char* timeFormat = timeFormat24;
-      const char* alarmFormat24 = "hh:mm";
-      const char* alarmFormat12 = "HH:mm AP";
-      const char* alarmFormat = alarmFormat24;
+      const char* timeFormat24 = "hh:mm:ss";       // 24-hour time format string: 00:00:00 to 23:59:59
+      const char* timeFormat12 = "HH:mm:ss AP";    // 12-hour time format string: 12:00:00 AM to 11:59:59 PM
+      const char* timeFormat = timeFormat24;       // Pointer to the current format string for the time.
+      const char* alarmFormat24 = "hh:mm";         // 24-hour alarm format string: 00:00 to 23:59
+      const char* alarmFormat12 = "HH:mm AP";      // 12-hour alarm format string: 12:00 AM to 11:59 PM
+      const char* alarmFormat = alarmFormat24;     // Pointer to the current format string for the alarm.
 
       // Note durations: 4 = quarter note, 8 = eighth note, etc.:
       // Some notes durations have been changed (1, 3, 6) to make them sound better
@@ -712,58 +898,63 @@ namespace BinaryClockShield
       static const size_t        MelodySize; // Size of the melody array
       static const size_t        NoteDurationsSize; // Size of the note durations array
 
-      static CRGB DrawBuffer   [NUM_LEDS];   // Buffer for drawing the LEDs, used for static symbol display.
-      static const CRGB OnText [NUM_LEDS];   // A big       Green 'O'        (for On)
-      static const CRGB OffTxt [NUM_LEDS];   // A sideways  Red   'F'        (for oFF)
-      static const CRGB XAbort [NUM_LEDS];   // A big       Pink  'X'  [❌]  (for abaort/cancel)   /
-      static const CRGB OkText [NUM_LEDS];   // A big       Lime  tick [✅]  (for okay/good)     \/
-      #ifdef ESP32_WIFI
-      static const CRGB W_Text[NUM_LEDS];    // A big       Blue  'W'  [📶]  (for WPS / WiFi)
-      #endif
-      static const CRGB Rainbow[NUM_LEDS];   // Colours of the rainbow.
-
   PRIVATE:
-  public:   // *** DEBUG ***
-      // These variables are initially set to the internal static melody and note durations arrays
+      // Replace the large switch with lookup tables and function pointers
+      struct DisplayAction
+         {
+         void (BinaryClock::* function)(int);
+         uint8_t actionType;  // 0=binary display, 1=pattern display
+         };
+
+      // Compact lookup table stored in PROGMEM
+      static const DisplayAction PROGMEM displayActions[6]; 
+
+     // These variables are initially set to the internal static melody and note durations arrays
       // They can be changed to use different melodies and note durations in the ESP32 flash memory.
       unsigned      *melodyAlarm;         // Pointer to the melody array
       int            melodySize;          // Size of the melody array
       unsigned long *noteDurations;       // Pointer to the note durations array
       int            noteDurationsSize;   // Size of the note durations array
 
-      CRGB leds[NUM_LEDS];                // Array of LED colors to display the current time
-      bool binaryArray[NUM_LEDS];         // Serial Debug: Array for binary representation of time
+      CRGB leds[NUM_LEDS] = {0};          // Array of LED colors to display the current time
+      bool binaryArray[NUM_LEDS];         // Serial Debug: Array for binary representation of the time
 
-      // Define a MACRO to declare the buttons and initialize the 'ButtonState' values.
-      // A macro to reduce cut-n-paste errors so initialization is always correct based on 
+      fl::array<CRGB, NUM_LEDS>& onColors;         // Reference to the current ON  colors.
+      fl::array<CRGB, NUM_LEDS>& offColors;        // Reference to the current OFF colors.
+      fl::array<CRGB, NUM_HOUR_LEDS>& onHours;     // Reference to the color for the hours (except AM).
+      fl::array<CRGB, NUM_HOUR_LEDS>& onHoursAM;   // Reference to the color array for the AM hours.
+
+      // Define a MACRO to declare the buttons and initialize the `ButtonState` values.
+      // A macro to reduce cut-n-paste errors so initialization is always correct based on
       //         if the button input pin is pulled LOW (CC) or HIGH (CA) in the OFF state.
-      // The 'onValue' is set to the value that the button pin sees when pressed, 
+      // The `onValue` is set to the value that the button pin sees when pressed, 
       //      HIGH (i.e. CC_ON, button connects to VCC when pressed) or 
       //      LOW  (i.e. CA_ON, button connects to ground when pressed).
-      // 'NAME' - The suffix to add to 'button' to create the ButtonState object.
-      // 'PIN' - The pin number that the button is connected to.
-      // 'TYPE_CC_CA' - 'CC' when the OFF state is LOW  (i.e. pulled HIGH when pressed), 
-      //              - 'CA' when the OFF state is HIGH (i.e. pulled LOW  when pressed)..
+      // `NAME` - The suffix to add to `button` (i.e. `buttonNAME`) to create the ButtonState object.
+      // `PIN`  - The pin number that the button is connected to.
+      // `TYPE_CC_CA` - `CC` when the OFF state is LOW  (i.e. pulled HIGH when pressed), 
+      //              - `CA` when the OFF state is HIGH (i.e. pulled LOW  when pressed)..
       #define DECLARE_BUTTON(NAME, PIN, TYPE_CC_CA) \
             ButtonState button##NAME = { .pin = PIN, .state = TYPE_CC_CA##_OFF, .lastRead = TYPE_CC_CA##_OFF, \
-                                         .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = TYPE_CC_CA##_ON }
+                                         .lastReadTime = 0UL, .lastDebounceTime = 0UL, .onValue = TYPE_CC_CA##_ON };
 
       // The 3 buttons used to control the Binary Clock Shield menu for setting the time and alarm.
-      DECLARE_BUTTON(S1, S1, CC);         // Declare 'ButtonState::buttonS1'
-      DECLARE_BUTTON(S2, S2, CC);         // Declare 'ButtonState::buttonS2'
-      DECLARE_BUTTON(S3, S3, CC);         // Declare 'ButtonState::buttonS3'
+      DECLARE_BUTTON(S1, S1, CC)         // Declare 'ButtonState::buttonS1'
+      DECLARE_BUTTON(S2, S2, CC)         // Declare 'ButtonState::buttonS2'
+      DECLARE_BUTTON(S3, S3, CC)         // Declare 'ButtonState::buttonS3'
 
       #if DEV_BOARD
-      DECLARE_BUTTON(DOut, 17, CC); // *** DEBUG ***
+      DECLARE_BUTTON(DOut, 17, CC) // *** DEBUG ***
       #endif
             
       #if HW_DEBUG_SETUP
-      DECLARE_BUTTON(DebugSetup, DEBUG_SETUP_PIN, CC);   // Declare 'ButtonState::buttonDebugSetup'
+      DECLARE_BUTTON(DebugSetup, DEBUG_SETUP_PIN, CC)   // Declare 'ButtonState::buttonDebugSetup'
       #endif
 
       #if HW_DEBUG_TIME
-      DECLARE_BUTTON(DebugTime, DEBUG_TIME_PIN, CA);     // Declare 'ButtonState::buttonDebugTime'
+      DECLARE_BUTTON(DebugTime, DEBUG_TIME_PIN, CA)     // Declare 'ButtonState::buttonDebugTime'
       #endif
+
       #undef DECLARE_BUTTON   // Undefine, we only needed it here to write the declarations without errors.
 
       DateTime time;                         // Current time from the RTC, updated every second.
@@ -792,8 +983,78 @@ namespace BinaryClockShield
       char buffer[64] = { 0 };                     // Buffer for the DateTime string conversions
 
       bool isSerialSetup = (SERIAL_SETUP_CODE) && (DEFAULT_SERIAL_SETUP); // Serial setup flag
-      bool isSerialTime  = (SERIAL_TIME_CODE)  && (DEFAULT_SERIAL_TIME);  // Serial time  flag   
+      bool isSerialTime  = (SERIAL_TIME_CODE)  && (DEFAULT_SERIAL_TIME);  // Serial time  flag 
 
+      bool isAmBlack = true;     // Flag: Controls is we switch the hour colors for AM/PM.
+      bool switchColors = false; // Flag to perform the switch of OnHour and OnHourAM hour colors.
+      HourColor curHourColor = HourColor::Hour24; // Current ON hosur colors in use.
+
+      /// @brief A 2D array of LED colors and patterns. stored in flash memory, for the shield.
+      ///          These are the default ON/OFF colors for displaying the time as well as
+      ///          all the patterns used in the settings menu for time and alarm.
+      /// @details The enum `LedPattern` is the index to the color/pattern for that display.
+      /// @paragraph `LedPattern::onColors':  
+      ///          `OnColors` The default colors are Hours: Blue; Minutes: Green; and Seconds: Red 
+      ///          The hours are defined by `OnHour` color array. These are the colors used for 
+      ///          24 hour mode and for PM. AM is defined by the `OnHourAM` color array when the 
+      ///          `AmColor` is Black.  This is to remove ambiguity for hour 12. Is it noon in 
+      ///          24 hour mode or midnight in 12 hour mode? Without an AM indicator, who knows?
+      /// @paragraph `LedPattern::offColors`:    
+      ///          `OffColors` for the LEDs when OFF (Usually Black i.e. No Power.)
+      ///          Using any color other than Black means the LEDs will be consuming power at all times.
+      /// @paragraph `LedPattern::onText`: 
+      ///          `OnText` The screen shaped in an 'O' for 'On' when setting the alarm to 
+      ///          ON in the alarm menu.
+      /// @paragraph `LedPattern::offTxt`: 
+      ///          `OffTxt` The screen shaped in a RED sideways 'F' for 'oFF' when setting the 
+      ///          alarm to OFF in the alarm menu.
+      /// @paragraph `LedPattern::xAbort`:   
+      ///          `XAbort` The screen shaped in a big Pink (Fuchsia) 'X' [❌] for abort/cancel.
+      ///          This is used to cancel the Time and Alarm settings and exit without making any changes.
+      ///          This is also displayed, after the Rainbow (saving/exit) screen to signal nothing saved.
+      /// @paragraph `LedPattern::okText`: 
+      ///          `OkText` The screen shaped in a big Lime 'checkmark' [✅] for okay/good.
+      ///          This is used to signal that the settings have been saved successfully.
+      /// @paragraph `LedPattern::rainbow`:  
+      ///          `Rainbow` The screen shaped in a big Rainbow of colors across all LEDs.
+      ///          This is displayed after the Time or Alarm settings has ended and the
+      ///          program is saving/restoring the settings. This is followed by either
+      ///          the 'checkmark' [✅] for settings saved or the 'X' [❌] for no changes.
+      /// @paragraph `LedPattern::wText`:  
+      ///          `WText` The screen shaped in a big Blue 'W' [📶] for WPS / WiFi
+      ///          This is used to signal that the WiFi needs to setup (e.g. WPS) and is only available
+      ///          when the device supports WiFi (i.e. ESP32_WIFI is defined).
+      /// @see `LedPattern`
+      ///          
+      static const CRGB ledPatternsP[static_cast<uint8_t>(LedPattern::endTAG)][NUM_LEDS] PROGMEM;
+
+      /// @brief A 2D array for colors for just the hours. The `OnHourAM` is the alternative colors used 
+      ///        for the AM hour LEDs when `AmColor` is Black. This is to show the clock is in 12 hour
+      ///        mode when there is no AM indicator. The `OnHour` is the standard hour colors generally used.
+      /// @details The `OnColor` hour section is replaced with either the `OnHourAM` or `OnHour` colors
+      ///          when the time switches from AM to PM and the flag `isAmBlack` is `true`.
+      /// @remarks When the AM indicator color is Black, there is no way to differentiate between 12 noon in 
+      ///          24 hour mode and 12 midnight in 12 hour mode. To remove this ambiguity, the AM hours are shown
+      ///          in a different color, e.g. DeepSkyBlue.
+      /// @paragraph Index 0 - `OnHourAM`
+      /// @paragraph Index 1 - `OnHour`
+      static const CRGB hourColorsP[][NUM_HOUR_LEDS] PROGMEM;
+
+      static const uint8_t ledPatternCount;  // Number of patterns in the 2D array (i.e. value of LedPattern::endTAG).
+
+      static const CRGB* onColorP;     // Pointer to the `OnColor`  colors (index 0) in `ledPatternsP`
+      static const CRGB* offColorP;    // Pointer to the `OffColor` colors (index 1) in `ledPatternsP`
+      static const CRGB* onHourAmP;    // Pointer to the `OnHourAM` colors (index 0) in `hourColorsP`
+      static const CRGB* onHourP;      // Pointer to the `OnHour`   colors (index 1) in `hourColorsP`
+
+      #if SERIAL_SETUP_CODE
+      // Setup strings for seria output that are used multiple times. Balance between flash and ram usage.
+      static const String STR_SEPARATOR;              // Repeated separator string, generated at runtime.
+      static const String STR_BARRIER;                // Repeated barrier string, generated at runtime.
+      static const char PROGMEM STR_TIME_SETTINGS[];  // Repeated time settings string, stored in flash memory.
+      static const char PROGMEM STR_ALARM_SETTINGS[]; // Repeated alarm settings string, stored in flash memory.
+      static const char PROGMEM STR_CURRENT_TIME[];   // Repeated current time string, stored in flash memory.
+      #endif
       // Time to wait after serial time button goes off before stopping the serial output.
       // Set to a long delay if using a momentary button, keep short for a switch. This
       // allows a button to be pressed, released and you still get output for 'debugDelay' ms.

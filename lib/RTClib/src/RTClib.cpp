@@ -414,6 +414,32 @@ bool DateTime::isValid() const {
 
 /**************************************************************************/
 /*!
+    @brief  Check whether the time in this DateTime instance is valid.
+    @return true if the time is valid, false otherwise.
+*/
+/**************************************************************************/
+bool DateTime::isTimeValid() const {
+   return (hh < 24) && (mm < 60) && (ss < 60);
+}
+
+/**************************************************************************/
+/*!
+   @brief  Check whether the date in this DateTime instance is valid.
+   @return true if the date is valid, false otherwise.
+*/
+/**************************************************************************/
+bool DateTime::isDateValid() const {
+   if (yOff >= 200)
+     return false;
+
+   // `other` is just the same date at 00:00:00; converted to UNIX seconds.
+   DateTime other((*this - TimeSpan(0, hh, mm, ss)).unixtime());
+   return yOff == other.yOff && m == other.m && d == other.d;
+}
+
+ 
+/**************************************************************************/
+/*!
     @brief  Writes the DateTime as a string in a user-defined format.
 
     The _buffer_ parameter should be initialized by the caller with a string
@@ -739,6 +765,11 @@ bool DateTime::operator==(const DateTime &right) const {
     `TIMESTAMP_DATE`), the time (`TIMESTAMP_TIME`), or both
     (`TIMESTAMP_FULL`).
 
+    @note `TIMESTAMP_TIME12`; `TIMESTAMP_TIME_HM`; `TIMESTAMP_TIME12_HM`;
+          `TIMESTAMP_DATE_DMY`; and `TIMESTAMP_MDY` are NOT ISO 8601 formats.
+          These formats are common formats used around the world in
+          addition to the `TIMESTAMP_TIME` and `TIMESTAMP_DATE` formats.
+
     @see The `toString()` method provides more general string formatting.
 
     @param opt Format of the timestamp
@@ -746,24 +777,50 @@ bool DateTime::operator==(const DateTime &right) const {
 */
 /**************************************************************************/
 String DateTime::timestamp(timestampOpt opt) const {
-  char buffer[25]; // large enough for any DateTime, including invalid ones
+  #define BUFFER_SIZE 25     // USE a #define instead of a number here.
+   char buffer[BUFFER_SIZE]; // large enough for any DateTime, including invalid ones
 
-  // Generate timestamp according to opt
+  // Generate timestamp according to `opt`
   switch (opt) {
   case TIMESTAMP_TIME:
-    // Only time
-    sprintf(buffer, "%02d:%02d:%02d", hh, mm, ss);
+    // Only time: Hour:Minute:Second
+    snprintf(buffer, BUFFER_SIZE, "%02d:%02d:%02d", hh, mm, ss);
     break;
   case TIMESTAMP_DATE:
-    // Only date
-    sprintf(buffer, "%u-%02d-%02d", 2000U + yOff, m, d);
+    // Only date: Year-Month-Day
+    snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d", 2000U + yOff, m, d);
     break;
+  case TIMESTAMP_TIME12:
+     // Only time: Hour:Minute:Second in 12 hour format with AM/PM
+     snprintf(buffer, BUFFER_SIZE, "%2d:%02d:%02d %s", hh % 12 == 0 ? 12 : hh % 12,
+             mm, ss, hh < 12 ? "AM" : "PM");
+     break;
+  case TIMESTAMP_TIME_HM:
+     // Only time: Hour:Minute
+     snprintf(buffer, BUFFER_SIZE, "%02d:%02d:", hh, mm);
+     break;
+  case TIMESTAMP_TIME12_HM:
+     // Only time: Hour:Minute in 12 hour format with AM/PM
+     snprintf(buffer, BUFFER_SIZE, "%2d:%02d %s", hh % 12 == 0 ? 12 : hh % 12,
+             mm, hh < 12 ? "AM" : "PM");
+     break;
+  case TIMESTAMP_DATE_DMY:
+     // Only date: Day-Month-Year
+     snprintf(buffer, BUFFER_SIZE, "%02d-%02d-%u", d, m, 2000U + yOff);
+     break;
+  case TIMESTAMP_DATE_MDY:
+     // Only date: Month-Day-Year
+     snprintf(buffer, BUFFER_SIZE, "%02d-%02d-%u", m, d, 2000U + yOff);
+     break;
+  case TIMESTAMP_FULL:
   default:
-    // Full
-    sprintf(buffer, "%u-%02d-%02dT%02d:%02d:%02d", 2000U + yOff, m, d, hh, mm,
-            ss);
+    // Full date and time: Year-Month-DayTHour:Minute:Second
+     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02dT%02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
+    break;
   }
+
   return String(buffer);
+  #undef BUFFER_SIZE
 }
 
 // Month in 2000 where the 1st of the month falls on the selected starting day of week.

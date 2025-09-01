@@ -1,8 +1,8 @@
 
 
 #pragma once
-#ifndef _MORSE_CODE_LED_H_
-#define _MORSE_CODE_LED_H_
+#ifndef __MORSE_CODE_LED_H__
+#define __MORSE_CODE_LED_H__
 
 #include <Arduino.h>
 
