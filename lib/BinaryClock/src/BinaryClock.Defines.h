@@ -83,7 +83,7 @@
    #if DEV_BOARD
       #define DEBUG_SETUP_PIN   16   // Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN    27   // Set to -1 to disable the Serial Time display control by H/W (CA)
-      #define LED_HEART         19   
+      #define LED_HEART         19   // Heartbeat LED to show working software and all LED_BUILTIN output.
    #else
       #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
@@ -91,7 +91,7 @@
    // LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
    // In all cases use a PIN that is not used by the shield even if it won't be visible.
    #undef  LED_BUILTIN
-   #define LED_BUILTIN       19
+   #define LED_BUILTIN   LED_HEART
 
 //================================================================================//
 // Adafruit Metro ESP32-S3 board (https://www.adafruit.com/product/5500)
@@ -140,15 +140,11 @@
    #if DEV_BOARD
       #define DEBUG_SETUP_PIN   20   // Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN     3   // Set to -1 to disable the Serial Time display control by H/W (CA)
-      #define LED_HEART         13   // Heartbeat LED to show working software (Dev+H/W)
+      #define LED_HEART         48   // Heartbeat LED to show working software (Dev+H/W)
    #else
       #define DEBUG_SETUP_PIN   -1   // Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
-   // LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
-   // In all cases use a PIN that is not used by the shield even if it won't be visible.
-   #undef  LED_BUILTIN
-   #define LED_BUILTIN       48   // The built-in RGB LED is on pin 48
 
 //================================================================================//
 // Standard Arduino UNO  board definitions for: 
@@ -201,8 +197,8 @@
       #define ESP32_WIFI false
       #define FREE_RTOS  false
    #else
-      #define ESP32_WIFI true
-      #define FREE_RTOS  true
+      #define ESP32_WIFI false
+      #define FREE_RTOS  false
    #endif 
 #endif 
 
@@ -213,6 +209,7 @@
    // Binary Clock Shield.
    #ifdef DEV_BOARD
       #undef DEV_BOARD
+      #undef DEV_CODE
    #endif
    #define SERIAL_TIME_CODE false
 #endif

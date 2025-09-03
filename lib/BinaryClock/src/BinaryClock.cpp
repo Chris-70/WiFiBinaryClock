@@ -1106,6 +1106,11 @@ namespace BinaryClockShield
       {
       // This is where failure comes to die.
       FastLED.clear(true); // Clear the LEDs.
+      #ifdef ESP32_D1_R32_UNO
+      HeartbeatLED = 2;
+      #else
+      HeartbeatLED = LED_BUILTIN;
+      #endif
       pinMode(HeartbeatLED, OUTPUT);
 
       #if SERIAL_OUTPUT
