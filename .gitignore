@@ -5,3 +5,4 @@ BinaryClock_ESP32.code-workspace
 compile_commands.json
 Notes/
 .backup/
+docs/

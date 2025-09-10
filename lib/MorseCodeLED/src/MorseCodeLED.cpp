@@ -3,7 +3,7 @@
 #include "MorseCodeLED.h"
 
 // Use preprocessor defines instead of variables (no RAM usage)
-#define DIT_MS 100
+#define DIT_MS 200
 #define DAH_MS (DIT_MS * 3)
 #define SPACE_MS (DIT_MS * 3)
 #define WORD_SPACE_MS (DIT_MS * 7)
@@ -12,7 +12,7 @@ namespace BinaryClockShield
    {
    MorseCodeLED::MorseCodeLED(int ledPin) : ledPin(ledPin) { }
 
-   void MorseCodeLED::begin()
+   void MorseCodeLED::Begin()
       {
       pinMode(ledPin, OUTPUT);
       digitalWrite(ledPin, LOW);
@@ -49,9 +49,18 @@ namespace BinaryClockShield
       delay(WORD_SPACE_MS);
       }
 
-   // Flash "CQD NO RTC" in Morse code - ultra compact implementation
-   void MorseCodeLED::flash_CQD_NO_RTC()
+   void MorseCodeLED::Flash_CQD_NO_RTC()
       {
+      // Flash "CQD NO RTC" in Morse code - ultra compact implementation
+      // This was designed for the UNO_R3 as RAM and ROM were almost out.
+      // Calling FlashMCode() and a fixed array spelling out: CQD NO RTC
+      // cost an extra 372 bytes of ROM, so this format is used for all.
+      // Keeping this for all other boads costs 208 bytes of ROM but it
+      // doesn't add visual / maintenance complexity by having this code
+      // littered with conditional compilation statements. We have just
+      // one conditional compilation statement to truncate this class to
+      // the minimum needed to display "CQD NO RTC" in Morse code on a LED.
+      // ======================================================================
       // CQD NO RTC = "-.-.  --.-  -..    -.  ---    .-.  -  -.-."
       // Using a compressed format: 0=dot, 1=dash, 2=letter space, 3=word space
 
@@ -89,52 +98,87 @@ namespace BinaryClockShield
       }
 
    #ifndef UNO_R3
+   // void MorseCodeLED::flashMCode(const MCode& morseData)
+   //    {
+   //    uint8_t length = morseData.len;    // Extract length (4 bits)
+   //    uint16_t pattern = morseData.code; // Extract pattern (12 bits)
+   //    if (length > 12) { return; }       // Invalid length check
+
+   //    // Interpret a length of 0 to be a word space, do the delay and exit.
+   //    if (length == 0)
+   //       {
+   //       wordSpace();
+   //       return;
+   //       }
+
+   //    // Flash the pattern from MSB to LSB, 0 for dot, 1 for dash.
+   //    for (int8_t i = length - 1; i >= 0; i--)
+   //       {
+   //       if (pattern & (1 << i))
+   //          {
+   //          dash();  // 1 = dash
+   //          }
+   //       else
+   //          {
+   //          dot();   // 0 = dot
+   //          }
+   //       }
+
+   //    space(); // Space between letters
+   //    }
+
    /*
-      A: .-    (01)     F: ..-.  (0010)   K: -.-   (101)    P: .--.  (0110)   U: ..-   (001)
-      B: -...  (1000)   G: --.   (110)    L: .-..  (0100)   Q: --.-  (1101)   V: ...-  (0001)
-      C: -.-.  (1010)   H: ....  (0000)   M: --    (11)     R: .-.   (010)    W: .--   (011)
-      D: -..   (100)    I: ..    (00)     N: -.    (10)     S: ...   (000)    X: -..-  (1001)
-      E: .     (0)      J: .---  (0111)   O: ---   (111)    T: -     (1)      Y: -.--  (1011)
-                                                                              Z: --..  (1100)
-   */
-   /*
-      morse.flashString("CQD NO RTC");      // Original message
-      morse.flashString("ERROR 404");       // Numbers and letters
-      morse.flashString("HELP!");           // With punctuation
-      morse.flashPredefinedMessage("ROGER"); // Standard radio term
-      morse.flashPredefinedMessage("ERROR"); // Error signal (8 dots)
+      morse.FlashString("CQD NO RTC");      // Original message as a string.
+      morse.FlashString("ERROR 404");       // Numbers and letters
+      morse.FlashString("HELP!");           // With punctuation
+      morse.FlashProSignWord("ROGER");      // Standard radio term
+      morse.FlashProSignWord("ERROR");      // Error/correction signal (8 dots)
    */
    #define NUMBER_OFFSET 26  // Offset for numbers in the lookup table
-   // Morse code lookup table stored in PROGMEM (flash memory)
-   // Format: 4-bit pattern length + 12-bit pattern (dots=0, dashes=1)
-   // Maximum 12 elements per character (more than enough for any letter)
-   // Morse code lookup table stored in PROGMEM (flash memory)
-   // Format: 4-bit pattern length + 12-bit pattern (dots=0, dashes=1)
+
+   /// @brief Morse code lookup table stored in PROGMEM (flash memory)
+   /// @details Format: 4-bit pattern length + 12-bit pattern (dots=0, dashes=1)
+   /// Maximum 12 elements per character (more than enough for any letter)
+   /// Morse code lookup table stored in PROGMEM (flash memory)
+   /*!
+   @verbatim
+      Letters:  
+      `A: .-    (01)     F: ..-.  (0010)   K: -.-   (101)    P: .--.  (0110)   U: ..-   (001)`  
+      `B: -...  (1000)   G: --.   (110)    L: .-..  (0100)   Q: --.-  (1101)   V: ...-  (0001)`  
+      `C: -.-.  (1010)   H: ....  (0000)   M: --    (11)     R: .-.   (010)    W: .--   (011)`  
+      `D: -..   (100)    I: ..    (00)     N: -.    (10)     S: ...   (000)    X: -..-  (1001)`  
+      `E: .     (0)      J: .---  (0111)   O: ---   (111)    T: -     (1)      Y: -.--  (1011)`  
+      `                                                                        Z: --..  (1100)`  
+      Numbers:  
+      `0: -----  1: .----  2: ..---  3: ...--  4: ....- `  
+      `5: .....  6: -....  7: --...  8: ---..  9: ----. `  
+   @endverbatim
+   */
    const MorseCodeLED::MCode PROGMEM MorseCodeLED::morseTable[26 + 10] =
          {
-         0x2002, // A: .-     (len=2, pattern=01)   - CORRECTED
+         0x2002, // A: .-     (len=2, pattern=01)   
          0x4001, // B: -...   (len=4, pattern=1000)
          0x4005, // C: -.-.   (len=4, pattern=1010)
          0x3001, // D: -..    (len=3, pattern=100)
          0x1000, // E: .      (len=1, pattern=0)
-         0x4002, // F: ..-.   (len=4, pattern=0010) - CORRECTED
-         0x3006, // G: --.    (len=3, pattern=110)  - CORRECTED
+         0x4002, // F: ..-.   (len=4, pattern=0010) 
+         0x3006, // G: --.    (len=3, pattern=110)  
          0x4000, // H: ....   (len=4, pattern=0000)
          0x2000, // I: ..     (len=2, pattern=00)
-         0x4007, // J: .---   (len=4, pattern=0111) - CORRECTED
+         0x4007, // J: .---   (len=4, pattern=0111) 
          0x3005, // K: -.-    (len=3, pattern=101)
-         0x4004, // L: .-..   (len=4, pattern=0100) - CORRECTED
+         0x4004, // L: .-..   (len=4, pattern=0100) 
          0x2003, // M: --     (len=2, pattern=11)
-         0x2002, // N: -.     (len=2, pattern=10)   - CORRECTED
+         0x2002, // N: -.     (len=2, pattern=10)   
          0x3007, // O: ---    (len=3, pattern=111)
          0x4006, // P: .--.   (len=4, pattern=0110)
          0x400D, // Q: --.-   (len=4, pattern=1101)
          0x3002, // R: .-.    (len=3, pattern=010)
          0x3000, // S: ...    (len=3, pattern=000)
          0x1001, // T: -      (len=1, pattern=1)
-         0x3001, // U: ..-    (len=3, pattern=001)  - CORRECTED
-         0x4001, // V: ...-   (len=4, pattern=0001) - CORRECTED
-         0x3003, // W: .--    (len=3, pattern=011)  - CORRECTED
+         0x3001, // U: ..-    (len=3, pattern=001)  
+         0x4001, // V: ...-   (len=4, pattern=0001) 
+         0x3003, // W: .--    (len=3, pattern=011)  
          0x4009, // X: -..-   (len=4, pattern=1001)
          0x400B, // Y: -.--   (len=4, pattern=1011)
          0x400C, // Z: --..   (len=4, pattern=1100)
@@ -143,7 +187,7 @@ namespace BinaryClockShield
          0x5001, // 1: .----  (len=5, pattern=01111) ✅ CORRECT
          0x5003, // 2: ..---  (len=5, pattern=00111) ✅ CORRECT
          0x5007, // 3: ...--  (len=5, pattern=00011) ✅ CORRECT
-         0x500F, // 4: ....-  (len=5, pattern=00001) ✅ CORRECTED (was 0x5003)
+         0x500F, // 4: ....-  (len=5, pattern=00001) ✅ CORRECT
          0x501F, // 5: .....  (len=5, pattern=00000) ✅ CORRECT
          0x501E, // 6: -....  (len=5, pattern=10000) ✅ CORRECT
          0x501C, // 7: --...  (len=5, pattern=11000) ✅ CORRECT
@@ -153,26 +197,20 @@ namespace BinaryClockShield
 
    #define MORSETABLE_SIZE sizeof(morseTable) / sizeof(morseTable[0])
 
-   // Memory-efficient string to Morse code converter
-   // Converts string directly to flashing without creating arrays
-   void MorseCodeLED::flashString(const char* text)
-      {
-      // Iterate through each character in the string
-      // Convert each character to uppercase and flash its Morse code
-      for (const char* p = text; *p; p++)
-         {
-         char c = *p;
-         flashCharacter(c);
-         }
-      }
-
    void MorseCodeLED::flashMCode(const MCode& morseData)
       {
-      uint8_t length = morseData.len; // (morseData >> 12) & 0x0F;   // Extract length (4 bits)
-      uint16_t pattern = morseData.code; // morseData & 0x0FFF;       // Extract pattern (12 bits)
-      if (length == 0 || length > 12) { return; } // Invalid length check
+      uint8_t length = morseData.len;    // Extract length (4 bits)
+      uint16_t pattern = morseData.code; // Extract pattern (12 bits)
+      if (length > 12) { return; }       // Invalid length check
 
-      // Flash the pattern from MSB to LSB, 0 for dot, 1 for dash.
+      // Interpret a length of 0 to be a word space, do the delay and exit.
+      if (length == 0) 
+         {
+         wordSpace();
+         return; 
+         }
+
+      // Flash the pattern from MSb to LSb: 0 for dot; 1 for dash.
       for (int8_t i = length - 1; i >= 0; i--)
          {
          if (pattern & (1 << i))
@@ -188,7 +226,7 @@ namespace BinaryClockShield
       space(); // Space between letters
       }
 
-   void MorseCodeLED::flashCharacter(char c)
+   void MorseCodeLED::FlashCharacter(char c)
       {
       // Test the character, c, and call the method to flash it.
       if (c == ' ')
@@ -207,13 +245,20 @@ namespace BinaryClockShield
          {
          flashExtendedCharacter(c); // Handle punctuation and special characters
          }
-         
-      // ToDo: Could add handling for unrecognized characters if needed
+      // else: do nothing.
       }
 
-   // Helper function to flash a single character using lookup table
+   void MorseCodeLED::FlashString(const String& text)
+      {
+      for (auto&& i : text)
+         {
+         FlashCharacter(i);
+         }
+      }
+
    void MorseCodeLED::flashCharIndex(uint8_t charIndex)
       {
+     // Helper function to flash a single character using lookup table
       if (charIndex < MORSETABLE_SIZE) 
          {
          MCode morseData = (MCode)(pgm_read_word(&morseTable[charIndex].pattern));
@@ -221,44 +266,47 @@ namespace BinaryClockShield
          }
       }
 
-   
-   // Helper function for extended characters (numbers, punctuation)
    void MorseCodeLED::flashExtendedCharacter(char c)
       {
+      // Helper function for extended characters (numbers, punctuation)
          
-      /*
-         Numbers:
-         0: -----  1: .----  2: ..---  3: ...--  4: ....-
-         5: .....  6: -....  7: --...  8: ---..  9: ----.
-         
-         Punctuation:
-         . : .-.-.-   , : --..--   ? : ..--..   ' : .----.   ! : -.-.--
-         / : -..-.    ( : -.--.    ) : -.--.-   & : .-...   : : ---...
-         ; : -.-.-.   = : -...-    + : .-.-.    - : -....-  " : .-..-.
-         $ : ...-..-  @ : .--.-.
+      /// @brief Extended lookup table for punctuation and symbol characters
+      /*!
+      @details Common punctuation and symbols
+      @verbatim
+         Punctuation: (18)   
+         ` ! : -.-.--   " : .-..-.   $ : ...-..-  & : .-...    ( : -.--.    '
+         ` ) : -.--.-   + : .-.-.    , : --..--   - : -....-   . : .-.-.-   `
+         ` / : -..-.    : : ---...   ; : -.-.-.   = : -...-    ? : ..--..   `
+         ` @ : .--.-.   \ : .----.   _ : ..--.-                             `
+      @endverbatim
+      @see morseTable
+      @see prosignTable
       */
-                 
-      // Extended lookup table for numbers and special characters
-      static const xLookup PROGMEM extendedLookup[] = {
-             // Punctuation and symbols - MANY CORRECTED
-             {'.', 0x6015}, // .-.-.-    (len=6, pattern=010101) ✅ CORRECT
-             {',', 0x6033}, // --..--    (len=6, pattern=110011) ✅ CORRECT
-             {'?', 0x600C}, // ..--..    (len=6, pattern=001100) ✅ CORRECT
-             {'\'',0x601E}, // .----.    (len=6, pattern=011110) ✅ CORRECTED (was 0x501E)
-             {'!', 0x602B}, // -.-.--    (len=6, pattern=101011) ✅ CORRECT
-             {'/', 0x5012}, // -..-.     (len=5, pattern=10010) ✅ CORRECT - 5009
-             {'(', 0x5016}, // -.--.     (len=5, pattern=10110) ✅ CORRECT
-             {')', 0x602D}, // -.--.-    (len=6, pattern=101101) ✅ CORRECT
-             {'&', 0x5008}, // .-...     (len=5, pattern=01000) ✅ CORRECT - 5002
-             {':', 0x6038}, // ---...    (len=6, pattern=111000) ✅ CORRECT
-             {';', 0x602A}, // -.-.-.    (len=6, pattern=101010) ✅ CORRECT
-             {'=', 0x5011}, // -...-     (len=5, pattern=10001) ✅ CORRECT
-             {'+', 0x500A}, // .-.-.     (len=5, pattern=01010) ✅ CORRECT
-             {'-', 0x6021}, // -....-    (len=6, pattern=100001) ✅ CORRECT
-             {'_', 0x600D}, // ..--.-    (len=6, pattern=001101) ✅ CORRECT
-             {'"', 0x6012}, // .-..-.    (len=6, pattern=010010) ✅ CORRECT
-             {'$', 0x7009}, // ...-..-   (len=7, pattern=0001001) ✅ CORRECTED 7012
-             {'@', 0x601A}, // .--.-.    (len=6, pattern=011010) ✅ CORRECT - 6016
+      static const XcLookup PROGMEM extendedLookup[] = {
+             // Punctuation and symbols - (!"$&()+,-./:;=?@\_)
+             // 
+             // ispunct(!"#$%&'()*+,-./:;<=>?@[\]^_`{|}~) == true
+             // uchar(!"$&()+,-./:;=?@\_)[18] In ASCII order; Missing: "(#%'*<>[]^`{|}~)"
+             {'!', 0x602B}, // -.-.--    (len=6, pattern=110101)  ✅ CORRECT
+             {'"', 0x6012}, // .-..-.    (len=6, pattern=010010)  ✅ CORRECT
+             {'$', 0x7009}, // ...-..-   (len=7, pattern=0001001) ✅ CORRECT
+             {'&', 0x5008}, // .-...     (len=5, pattern=01000)   ✅ CORRECT
+             {'(', 0x5016}, // -.--.     (len=5, pattern=10110)   ✅ CORRECT
+             {')', 0x602D}, // -.--.-    (len=6, pattern=110101)  ✅ CORRECT
+             {'+', 0x500A}, // .-.-.     (len=5, pattern=01010)   ✅ CORRECT
+             {',', 0x6033}, // --..--    (len=6, pattern=110011)  ✅ CORRECT
+             {'-', 0x6021}, // -....-    (len=6, pattern=100001)  ✅ CORRECT
+             {'.', 0x6015}, // .-.-.-    (len=6, pattern=010101)  ✅ CORRECT
+             {'/', 0x5012}, // -..-.     (len=5, pattern=10010)   ✅ CORRECT
+             {':', 0x6038}, // ---...    (len=6, pattern=111000)  ✅ CORRECT
+             {';', 0x602A}, // -.-.-.    (len=6, pattern=101010)  ✅ CORRECT
+             {'=', 0x5011}, // -...-     (len=5, pattern=10001)   ✅ CORRECT
+             {'?', 0x600C}, // ..--..    (len=6, pattern=001100)  ✅ CORRECT
+             {'@', 0x601A}, // .--.-.    (len=6, pattern=011010)  ✅ CORRECT
+             {'\'',0x601E}, // .----.    (len=6, pattern=011110)  ✅ CORRECT
+             {'_', 0x600D}, // ..--.-    (len=6, pattern=001101)  ✅ CORRECT
+             {' ', 0x0000}  // A valid word space to end the lookup table
             };
 
       #define EXTENDED_SIZE sizeof(extendedLookup) / sizeof(extendedLookup[0])
@@ -275,79 +323,123 @@ namespace BinaryClockShield
             return;
             }
          }
-      // ToDo: Character not found - could add a default action here
+
       #undef EXTENDED_SIZE
       }
 
-   void MorseCodeLED::flashControl(ProSign sign)
+   void MorseCodeLED::FlashProSign(ProSign sign)
       {
+      if (sign >= ProSign::EndMark) { return; }
+
       // Control codes for prosigns and special commands
-      static const controlLookup PROGMEM extendedLookup[] = 
+      static const ProSignLookup PROGMEM prosignTable[] = 
             {
             // Prosign codes
-            {ProSign::Start     , 0x5015}, // -.-.-     (len=5, pattern=01010)      []    Start                    
-            {ProSign::End       , 0x500A}, // .-.-.     (len=5, pattern=11001)      [AR]  End of message          
-            {ProSign::FullStop  , 0x5008}, // .-.-.-    (len=5, pattern=00100)      [AS]  Full stop (period)
-            {ProSign::Invite    , 0x3005}, // -.-       (len=3, pattern=101)        [K]   Invitation to transmit 
-            {ProSign::Understood, 0x5002}, // ...-.     (len=5, pattern=00010)      []    Understood
-            {ProSign::AR        , 0x500A}, // .-.-.     (len=5, pattern=01010)      [AR]  End of message          
-            {ProSign::AS        , 0x5008}, // .-...     (len=5, pattern=01000)      [AS]  Wait for response       
-            {ProSign::K         , 0x3005}, // -.-       (len=3, pattern=101)        [K]   Invitation to transmit  
-            {ProSign::R         , 0x3002}, // .-.       (len=3, pattern=010)        [R]   Received OK             
-            {ProSign::C         , 0x4005}, // -.-.      (len=4, pattern=1010)       [C]   Call to specific station
-            {ProSign::SK        , 0x5025}, // ...-.-    (len=5, pattern=00101)      [SK]  End of contact / work
-            {ProSign::BT        , 0x5011}, // -...-     (len=5, pattern=10001)      [BT]  New paragraph, separator
-            {ProSign::SOS       , 0x9038}, // ...---... (len=9, pattern=000111000)  [SOS] International distress signal
-            {ProSign::Error     , 0x5000}, // .....     (len=5, pattern=00000000)   [Error] Error signal (8 dots)
+            {ProSign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
+            {ProSign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
+            {ProSign::EndWork   , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
+            {ProSign::Out       , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
+            {ProSign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
+            {ProSign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
+            {ProSign::Invite    , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, Invitation to transmit 
+            {ProSign::Over      , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, you transmit now
+            {ProSign::Understood, 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
+            {ProSign::SayAgain  , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Say Again?
+            {ProSign::Correction, 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
+            {ProSign::Error     , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
+            {ProSign::R         , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Received OK             
+            {ProSign::K         , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Invitation to transmit  
+            {ProSign::AR        , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message          
+            {ProSign::AS        , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, busy       
+            {ProSign::VE        , 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
+            {ProSign::HH        , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction
+            {ProSign::BT        , 0x5011}, ///< [` -...-     `] (len=5, pattern=10001)      [BT]  New paragraph, separator
+            {ProSign::KA        , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
+            {ProSign::SK        , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
+            {ProSign::C         , 0x4005}, ///< [` -.-.      `] (len=4, pattern=1010)       [C]   Correct, Confirm, Yes
+            {ProSign::N         , 0x2002}, ///< [` -.        `] (len=2, pattern=10)         [N]   Negative, No
+            {ProSign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International distress signal
             // End marker
-            {ProSign::EndMark   , 0xFFFF} // End of command list
             };
 
-      #define CONTROL_SIZE sizeof(extendedLookup) / sizeof(extendedLookup[0])
-      // Control flashing behavior based on index
-      for (uint8_t i = 0; i < CONTROL_SIZE; i++)
-         {
-         ProSign lookup = (ProSign)(pgm_read_byte(&extendedLookup[i].sign));
-         if (lookup == sign)
-            {
-            MCode morseData = (MCode)(pgm_read_word(&extendedLookup[i].mc.pattern));
-            flashMCode(morseData);
+      #define TABLE_SIZE sizeof(prosignTable) / sizeof(prosignTable[0])
+      static_assert((uint8_t)(ProSign::EndMark) == TABLE_SIZE, "Size of the enum ProSign (i.e. value of EndMark) must match `prosignTable` array size");
 
-            return;
-            }
+      uint8_t index = (uint8_t)(sign);
+      ProSign lookup = (ProSign)(pgm_read_byte(&prosignTable[index].sign));
+
+      // Coding error check: The `prosignTable` lookup index value, `ProSignLookup::sign`, is not in the correct order.
+      // The index order MUST match the `ProSign` enum order. This assert indicates an error was found.
+      assert(lookup == sign); 
+      if (lookup == sign)
+         {
+         // All good, spend the time to read from flash memory and display the code.
+         MCode morseData = (MCode)(pgm_read_word(&prosignTable[index].mc.pattern));
+         flashMCode(morseData);
          }
-      // ToDo: If not found, do nothing or handle error
-      #undef CONTROL_SIZE
+      #undef TABLE_SIZE
       }
 
-   void MorseCodeLED::flashPredefinedMessage(const char* keyword)
+   void MorseCodeLED::FlashProSignWord(String keyString)
       {
-      // This isn't very efficient in terms of memory usagean  and speed but
+      if (keyString.isEmpty()) { return; }
+
+      keyString.toUpperCase();
+      const char* keyword = keyString.c_str();
+      // This isn't very efficient in terms of memory usage and speed but
       // there are very few predefined messages so it is acceptable.
-      if (strcmp(keyword, "END") == 0 || strcmp(keyword, "OK") == 0)
+      if (strcmp(keyword, "START") == 0 || strcmp(keyword, "STARTING") == 0)
          {
-         flashControl(ProSign::End); // Standard prosign for END/OK: .-.-.
+         FlashProSign(ProSign::KA); // Standard prosign for START: [-.-.-]
          }
-      else if (strcmp(keyword, "OVER") == 0)
+      else if (strcmp_P(keyword, "END") == 0 || strcmp(keyword, "OK") == 0)
          {
-         flashControl(ProSign::K); // Standard prosign for OVER: -.-.
+         FlashProSign(ProSign::AR); // Standard prosign for END/OK: [.-.-.]
+         }
+      else if (strcmp_P(keyword, "ENDWORK") == 0 || strcmp(keyword, "OUT") == 0)
+         {
+         FlashProSign(ProSign::SK); // Standard prosign for ENDWORK: [...-.-]
+         }
+      else if (strcmp(keyword, "OVER") == 0 || strcmp(keyword, "INVITE") == 0)
+         {
+         FlashProSign(ProSign::K); // Standard prosign for OVER: [-.-]
+         }
+      else if (strcmp(keyword, "UNDERSTOOD") == 0)
+         {
+         FlashProSign(ProSign::VE); // Standard prosign for UNDERSTOOD: [..-.]
+         }
+      else if (strcmp(keyword, "SAYAGAIN") == 0)
+         {
+         FlashProSign(ProSign::SayAgain); // Standard prosign for SAYAGAIN: "?" [..--..]
          }
       else if (strcmp(keyword, "ROGER") == 0)
          {
-         flashControl(ProSign::R); // Standard prosign for ROGER: .-.
+         FlashProSign(ProSign::R); // Standard prosign for ROGER: [.-.]
          }
-      else if (strcmp(keyword, "STARTING") == 0)
+      else if (strcmp(keyword, "ERROR") == 0 || strcmp(keyword, "CORRECTION") == 0)
          {
-         flashControl(ProSign::Start); // Standard prosign for STARTING: -.-.-
+         FlashProSign(ProSign::HH); // Standard error signal: [........]
          }
-      else if (strcmp(keyword, "ERROR") == 0)
+      else if (strcmp(keyword, "OUT") == 0)
          {
-         flashControl(ProSign::Error); // Standard error signal: ......
+         FlashProSign(ProSign::SK); // Standard prosign for OUT: [...-.-]
+         }
+      else if (strcmp(keyword, "CORRECT") == 0 || strcmp(keyword, "CONFIRM") == 0 || strcmp(keyword, "YES") == 0)
+         {
+         FlashProSign(ProSign::C); // Standard Conrect signal: "C" [-.-.]
+         }
+      else if (strcmp(keyword, "NEGATIVE") == 0 || strcmp(keyword, "NO") == 0)
+         {
+         FlashProSign(ProSign::C); // Standard Negative signal: "N" [-.]
+         }
+      else if (strcmp(keyword, "SOS") == 0)
+         {
+         FlashProSign(ProSign::SOS); // Standard distress signal: [...---...]
          }
       else
          {
          // Default to flashing the keyword as text
-         flashString(keyword);
+         FlashString(keyword);
          }
       }
    #endif // END ...#ifndef UNO_R3
