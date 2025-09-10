@@ -415,6 +415,7 @@ bool RTC_DS3231::setAlarm1(const DateTime& alarmTime, Ds3231Alarm1Mode alarm_mod
 
 bool RTC_DS3231::setAlarm1(const DateTime &alarmTime, Ds3231Alarm1Mode alarm_mode, bool use12HourMode) {
   if (!alarmTime.isValid()) { return false; } // Invalid date, do not set alarm
+  
   uint8_t ctrl = read_register(DS3231_CONTROL);
 
   // Set the 'alarmTime' year and month so day of week and day of month match (1 - 7)
