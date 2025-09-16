@@ -33,10 +33,6 @@
    #define OLED_DISPLAY(CMD) 
    #define TIME_OLED(DATE_N_TIME)
 #endif
-#if DEV_BOARD
-#else
-#endif
-
 
 #define I2C_SIZE      16
 #define RTC_ADDR      0x68
@@ -46,26 +42,12 @@
    // LED used to communicate status / errors.
    #define LED_HEART LED_BUILTIN 
 #endif
-// #if DEV_CODE
-//    // Debugging macros for development. These are defined as MACROs to simplify the code.
-//    // This avoids surrounding the code with #if DEV_CODE directives. An additional 
-//    // advantage is that the code is not compiled at all if DEV_CODE is false or undefined.
-//    // Code that contains the `Serial.println()` or `Serial <<` statements are there for
-//    // informing the user with the desired information over the serial console.
-//    #define SERIAL_PRINTLN(STRING) Serial.println(STRING);
-//    #define SERIAL_STREAM(CMD_STRING) Serial << CMD_STRING;
-// #else
-//    // Removes the code from compilation, replaced with whitespace.
-//    #define SERIAL_PRINTLN(STRING)
-//    #define SERIAL_STREAM(CMD_STRING)
-// #endif
 
 using namespace BinaryClockShield;
-// #define BINARYCLOCK  BinaryClock::get_Instance()   // *** DEBUG ***
 
 // All function declarations here (Req'd for PlatformIO):
-void setup();
-void loop();
+void setup(void);
+void loop(void);
 bool checkWatchdog();
 void TimeAlert(DateTime time);
 #ifdef UNO_R3
@@ -78,18 +60,24 @@ int ScanI2C(byte* addrList, size_t listSize);
 char buffer[32] = {0};
 const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
 const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
-const char *timeFormat = format24;
+const char *TimeFormat = format24;
 const char *daysOfTheWeek[7] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 #endif 
 
-BinaryClock& binClock = BinaryClock::get_Instance(); // Get the singleton instance of BinaryClock
+// Get the singleton instance of BinaryClock
+BinaryClock& binClock = BinaryClock::get_Instance();
+
+// Initialize the watchdog field values.
 static long watchdogTimeout = 2100; 
 volatile long timeWatchdog = 0;
 bool wdtFault = false;
+
 long curMillis = 0;
 long deltaMillis = 0;
+
 int HeartbeatLED = LED_HEART;
 int heartbeat = LOW;             // Heartbeat LED state: OFF
+
 #ifdef UNO_R3
    #define oledValid    false 
    #define rtcValid     true     // Assume we have the shield
@@ -101,14 +89,16 @@ bool eepromValid = false;
 byte i2cList[I2C_SIZE] = { 0 };
 #endif
 
-void setup()
+__attribute__((used)) void setup()
    {
    Serial.begin(115200); // Start the serial communication at 115200 baud rate
 
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
    Wire.begin();
+
    #ifndef UNO_R3
+   // Scan the I2C bus looking for the devices we use.
    int i2cDevices = ScanI2C(i2cList, I2C_SIZE);
    SERIAL_STREAM(endl << "Found: " << i2cDevices << " I2C Devices." << endl << "  Known devices are:" << endl)
    for (int i = 0; i < i2cDevices; i++)
@@ -117,16 +107,17 @@ void setup()
       if (i2cList[i] == RTC_ADDR)       { rtcValid = true; SERIAL_PRINTLN("  - RTC is present.")          } 
       if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; SERIAL_PRINTLN("  - RTC EEPROM is present.")   } 
       }
-   delay(500);
+   delay(500); 
    #endif
 
    #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
    // display.begin(SSD1306_SWITCHCAPVCC, OLED_IIC_ADDR);  // initialize with the I2C addr 0x3C (for the 128x32)
    bool displayResult = false;
-   if (oledValid)
+   if (oledValid) // If we found the I2C OLED display; try to initialize it.
       {
       displayResult = BEGIN(I2C_ADDRESS, true);
+      // Update the flag: OLED is only valid if we can initialize it.
       oledValid = displayResult;
       }
    OLED_DISPLAY(setTextColor(WHITE, BLACK))
@@ -135,8 +126,8 @@ void setup()
    OLED_DISPLAY(display())
    delay(500);
    #else
-   // Non-dev board configuration, no OLED display, define the `displayResult` to be false.
-   #define displayResult false
+      // Non-dev board configuration, no OLED display, define the `displayResult` to be false.
+      #define displayResult false
    #endif
 
    SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") 
@@ -146,17 +137,19 @@ void setup()
    binClock.setup(!oledValid);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);
 
-   binClock.registerTimeCallback(&TimeAlert);
-   delay(250);
+   // Register `TimeAlert()` to get called every second.
+   binClock.RegisterTimeCallback(&TimeAlert);
+   delay(125);
+
    SERIAL_STREAM("Entering Loop() now" << endl)
-   delay(250);
+   delay(125);
    OLED_DISPLAY(clearDisplay())
 
    // binClock.set_IsSerialTime(!binClock.buttonDebugTime.read()); // *** DEBUG ***
    timeWatchdog = millis();   // Reset the Watchdog Timer.
    }
 
-void loop()
+__attribute__((used)) void loop()
    {
    static bool wdtError = false;
 
@@ -239,14 +232,14 @@ void TimeOLED(DateTime &time)
    {
    if (!oledValid) { return; } // If OLED display is not valid, do not proceed.
 
-   timeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
+   TimeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
    int cursor;
 
    OLED_DISPLAY(setCursor(0, 0))
    OLED_DISPLAY(setTextSize(2))
    char timeBuf[32] = { 0 };
    char *timeStr = timeBuf;
-   strncpy (timeBuf, time.toString(buffer, sizeof(buffer), timeFormat), 32);
+   strncpy (timeBuf, time.toString(buffer, sizeof(buffer), TimeFormat), 32);
    
    if (timeStr[0] == ' ') { timeStr++; }
    char* spaceAP = strchr(timeStr, ' ');

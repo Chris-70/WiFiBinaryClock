@@ -1,4 +1,4 @@
-# RTClib - Modified fork
+# RTClibPlus - Modified fork
 
 This is a fork of [Adafruit's RTClib](https://github.com/adafruit/RTClib) library with modifications to: DS3231; DS1307; and DateTime. These modifications were made to support:
 
@@ -20,7 +20,7 @@ This is a fork of [Adafruit's RTClib](https://github.com/adafruit/RTClib) librar
 
 ## Day of the week
 
-   The starting day of the week can be set by changing the `FIRST_WEEKDAY_` define in the [RTClib.h](./src/RTClib.h) file. The default is "Mon" for Monday. The valid values are: "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", and "Sun". This value is used in the `DateTime::dayOfTheWeek()` method and the `DateTime::toString()` methods.
+   The starting day of the week can be set by changing the `FIRST_WEEKDAY` define in the [RTClib.h](./src/RTClib.h) file. The default is "Mon" for Monday. The valid values are: "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", and "Sun". This value is used in the `DateTime::dayOfTheWeek()` method and the `DateTime::toString()` methods.
 
    The `DateTime::dayOfTheWeek()` method returns the day of the week as an integer value from 0 to 6, where 0 is the first day of the week as defined by the `FIRST_WEEKDAY` define. For example, if `FIRST_WEEKDAY` is set to "Mon", then Monday is 0, Tuesday is 1, Wednesday is 2, Thursday is 3, Friday is 4, Saturday is 5, and Sunday is 6.
 
