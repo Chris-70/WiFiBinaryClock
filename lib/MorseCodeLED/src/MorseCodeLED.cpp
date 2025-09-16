@@ -85,6 +85,13 @@ namespace BinaryClockShield
       {
       MC code;
 
+      #if defined(__GNUC__)
+      #pragma GCC diagnostic push
+      // Keeping the switch compact for UNO_R3 where this is used.
+      // The while()... statement handles the MC::EndMarker
+      #pragma GCC diagnostic ignored "-Wswitch"
+      #endif
+
       while ((code = (MC)(pgm_read_byte(morseData++))) != MC::EndMarker)
          {
          switch ((MC)code)
@@ -95,6 +102,10 @@ namespace BinaryClockShield
             case MC::Word:  wordSpace(); break;  // Word space
             }
          }
+
+      #if defined(__GNUC__)
+      #pragma GCC diagnostic pop
+      #endif
       }
 
    #ifndef UNO_R3

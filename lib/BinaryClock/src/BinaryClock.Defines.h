@@ -7,20 +7,22 @@
 #endif
 /// @file BinaryClock.Defines.h  
 ///###############################################################################################///  
-/// @brief  
-/// This is a 'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com
-///           (https://nixietester.com/products/binary-clock-shield-for-arduino/)
+/// @brief  System defines and MACROs, needed as part of the software to run the:
+/// @verbatim
+///         'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com   
+///           (https://nixietester.com/products/binary-clock-shield-for-arduino/)   
 ///  
+/// @endverbatim
 /// This file isn't designed to be modified by the user. Instead, the user should
 /// create/modify the file:  
-///                         "board_select.h"  
-/// (https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/board_select.h)  
+///                         **`board_select.h`**  
+/// (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h)  
 /// @details
 /// to include the define that identifies the target board for your project.
-/// The sample "board_select.h" file is included and contains a template for a custom UNO 
-/// board definition. You can also add additional defines there for the project if needed.  
+/// The sample **`board_select.h`** file is included that also contains a template for a user's
+/// custom UNO board definition. You can also add additional defines there for the project if needed.  
 ///-----------------------------------------------------------------------------------------------//  
-/// Below are partial contents of the "board_select.h" file plus a custom board template:  
+/// Below are partial contents of the `board_select.h` file plus a custom board template:  
 ///
 /// The following are defines for the currently supported boards. One must be used to compile, or
 /// create your own CUSTOM_UNO style board definitions for any different UNO style board you have.  
@@ -34,15 +36,23 @@
 /// #define UNO_R4_MINIMA      // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
 /// #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
 ///
-///###############################################################################################//
+///###############################################################################################//   
 /// @endverbatim
+/// Modify the **`board_select.h`** file to uncomment the define for your board.  
+/// If your board isn't listed, create your own CUSTOM_UNO style board definitions
+/// for any undefined UNO style board you have. The Binary Clock Shield pins are fixed in their
+/// positions, however the name of the pins at each location may be named differently on your board.
+/// You can't change the pin locations(*) you just modify/define the pin numbers for your board.
+///   
+/// ================================================================================   
+/// @par Development Boards 
 /// Binary Clock Shield Development Boards were used in the development and testing of this software.
-/// They have an OLED display and additional buttons to control the software.
+/// They have an OLED display and additional buttons to control the software.  
 /// The development boards are not part of the Binary Clock Shield, but used to develop and test the code.
 /// The development boards replace/sandwich the Binary Clock Shield during development. Additional code is included
 /// to support the development boards, e.g. OLED display, additional buttons, etc. during development
 /// `DEVELOPMENT`; `DEV_CODE`; and `DEV_BOARD` are used to control the inclusion of the development code.
-/// When compiled for the `Binary Clock Shield` the development code is not included.
+/// When compiled for the `Binary Clock Shield` the development code is usually not included.
 /// The Debug Time PIN is used to print out the current time over serial monitor (if ON)
 /// The debug time and setup pins are used to enable/disable the serial output at runtime.
 /// without the need to change the software. The Serial Time is a switch to enable/disable 
@@ -51,14 +61,37 @@
 /// When the PIN values  are -1 (-ve) the associated code is removed.  
 ///   
 /// ================================================================================    
-/// The SERIAL_MENU and/or SERIAL_TIME_CODE are defined (i.e. true) in order
+/// @par Serial Output Control
+/// The SERIAL_SETUP_CODE and/or SERIAL_TIME_CODE are defined (i.e. true) in order
 /// to compile the code and make them available. They can each be set in the
 /// software by calling: 'void BinaryClock::set_IsSerialSetup(bool value)' and
 /// 'void BinaryClock::set_IsSerialTime(bool value)' methods.
-/// The SERIAL_MENU_CODE is used to control the display of the serial menu to 
+/// The SERIAL_SETUP_CODE is used to control the display of the serial menu to 
 /// change the settings of the Binary Clock Shield for Time and Alarm.
 /// This can be helpful to users who are just learning how to set the Binary Clock Shield
 /// time and/or alarm.
+
+// ##################################################################################### //
+/// These methods/functions can be redefined if the definition is placed BEFORE the 
+/// #include "BinaryClock.Defines.h" statement in the source file where it is used.
+#ifndef SERIAL_SETUP_TEST
+#define SERIAL_SETUP_TEST get_IsSerialSetup()
+#endif
+#ifndef SERIAL_TIME_TEST
+#define SERIAL_TIME_TEST get_IsSerialTime()
+#endif
+#ifndef SERIAL_TIME_FTN
+#define SERIAL_TIME_FTN  serialTime()
+#endif
+
+// ##################################################################################### //
+// These defines can be overridden by defining them BEFORE this header file is included.
+// The supported boards are defined such that these values are set UNLESS they are overridden.
+// ##################################################################################### //
+// #define LED_HEART           19   ///< Heartbeat LED to show working software or LED_BUILTIN output.
+// #define STL_USED          true   ///< Flag to use the C++ STL library, usually true. 
+// #define ESP32_WIFI        true   ///< Flag to include the WiFi code.
+// #define FREE_RTOS         true   ///< Flag to indicate the FreeRTOS is being used.
 
 /// @addtogroup BoardDefines UNO Board Definitions
 /// @{
@@ -66,7 +99,7 @@
 ///             Defines for the different UNO sized boards                         //  
 ///################################################################################//  
 /// @}
-/// @name ESP32_D1_R32_UNO
+/// name ESP32_D1_R32_UNO
 /// @ingroup BoardDefines
 /// @{
 /// Generic AliExpress copy of Wemos D1 R32 ESP32 based UNO board (validate against the board you receive)
@@ -79,30 +112,35 @@
    #define RTC_INT           25   ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
    #define PIEZO             23   ///< The number of the Piezo pin
    #define LED_PIN           15   ///< Data pin that LEDs data will be written out. Requires board modification to use pin 15
-                                  ///< You need to modify the board by removing the connector at pin 34 (A3)
-                                  ///< Solder a jumper wire from PIN 15 to the LED pin (A3 location) on the shield. 
-                                  ///< The Wemos ESP32 UNO PIN 34 is Read-Only and cannot be used for output.
+                                  ///  You need to modify the board by removing the connector at pin 34 (A3)
+                                  ///  Solder a jumper wire from PIN 15 to the LED pin (A3 location) on the shield. 
+                                  ///  The Wemos ESP32 UNO PIN 34 is Read-Only and cannot be used for output.
 
-   #define S1                35   ///< Push buttons connected to the A2, A1, A0 Arduino pins (CC)
-   #define S2                 4   ///< A1
-   #define S3                 2   ///< A0
+   // Push buttons S1; S2; and S3 connected to the pin numbers equivalent to: A2, A1, A0 Arduino pins
+   #define S1                35   ///< A2: S1 button: Time set & Decrement button   
+   #define S2                 4   ///< A1: S2 button: Select & Confirm/Save button  
+   #define S3                 2   ///< A0: S3 button: Alarm set & Increment button  
 
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   ///< Define for INPUT with an internal pull-down resistor
 
    #if DEV_BOARD
       #define DEBUG_SETUP_PIN   16   ///< Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN    27   ///< Set to -1 to disable the Serial Time display control by H/W (CA)
-      #define LED_HEART         19   ///< Heartbeat LED to show working software and all LED_BUILTIN output.
    #else
       #define DEBUG_SETUP_PIN   -1   ///< Set to -1 to disable the Serial Setup display control by H/W (CC)
       #define DEBUG_TIME_PIN    -1   ///< Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
-   ///< LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
-   ///< In all cases use a PIN that is not used by the shield even if it won't be visible.
+
+   #ifndef LED_HEART
+      #define LED_HEART         19   ///< Heartbeat LED to show working software and all LED_BUILTIN output.
+   #endif
+   
+   /// LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
+   /// In all cases use a PIN that is not used by the shield even if it won't be visible.
    #undef  LED_BUILTIN
    #define LED_BUILTIN   LED_HEART
 /// @}
-/// @name METRO_ESP32_S3
+/// name METRO_ESP32_S3
 /// @ingroup BoardDefines
 /// @{
 ///================================================================================//
@@ -116,9 +154,10 @@
    #define PIEZO             11   ///< The number of the Piezo pin
    #define LED_PIN           A3   ///< Data pin that LEDs data will be written out.
 
-   #define S1                A2   ///< Push buttons connected to the A2, A1, A0 Arduino pins (CC)
-   #define S2                A1   ///< A1
-   #define S3                A0   ///< A0
+   // Push buttons S1; S2; and S3 connected to the pin numbers equivalent to: A2, A1, A0 Arduino pins
+   #define S1                A2   ///< A2: S1 button: Time set & Decrement button   
+   #define S2                A1   ///< A1: S2 button: Select & Confirm/Save button  
+   #define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
 
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   ///< Define for INPUT with an internal pull-down resistor
 
@@ -131,7 +170,7 @@
       #define DEBUG_TIME_PIN    -1   ///< Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
 /// @}
-/// @name ESP32_S3_UNO
+/// name ESP32_S3_UNO
 /// @ingroup BoardDefines
 /// @{
 ///================================================================================//   
@@ -146,9 +185,10 @@
    #define PIEZO             11   ///< The number of the Piezo pin
    #define LED_PIN            6   ///< Data pin that LEDs data will be written out.
 
-   #define S1                 7   ///< Push buttons connected to the A2, A1, A0 Arduino pins (CC)
-   #define S2                 1   ///< A1
-   #define S3                 2   ///< A0
+   // Push buttons S1; S2; and S3 connected to the pin numbers equivalent to: A2, A1, A0 Arduino pins
+   #define S1                 7   ///< A2: S1 button: Time set & Decrement button   
+   #define S2                 1   ///< A1: S2 button: Select & Confirm/Save button  
+   #define S3                 2   ///< A0: S3 button: Alarm set & Increment button  
 
    #define ESP32_INPUT_PULLDOWN   INPUT_PULLDOWN   // Define for INPUT with an internal pull-down resistor
 
@@ -161,7 +201,7 @@
       #define DEBUG_TIME_PIN    -1   // Set to -1 to disable the Serial Time display control by H/W (CA)
    #endif
 /// @}
-/// @name Arduino_Uno
+/// name Arduino_Uno
 /// @ingroup BoardDefines
 /// @{
 ///================================================================================//
@@ -175,9 +215,10 @@
    #define PIEZO             11   ///< The number of the Piezo pin
    #define LED_PIN           A3   ///< Data pin that LEDs data will be written out over
 
-   #define S1                A2   ///< Push buttons connected to the A2, A1, A0 Arduino pins
-   #define S2                A1   ///< A1
-   #define S3                A0   ///< A0
+   // Push buttons S1; S2; and S3 connected to the: A2, A1, A0 Arduino pins
+   #define S1                A2   ///< A2: S1 button: Time set & Decrement button
+   #define S2                A1   ///< A1: S2 button: Select & Confirm/Save button
+   #define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
 
    #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor
 
@@ -211,29 +252,43 @@
 #endif
 /// @}
 
-#if !defined(CUSTOM_UNO) || !CUSTOM_UNO            ///< Supported boards; set WiFi and FreeRTOS flags.
+#if defined(CUSTOM_UNO) && CUSTOM_UNO
+   #ifndef ESP32_WIFI
+      #define ESP32_WIFI false   ///< Assume no WiFi capability if not defined.
+   #endif
+   #ifndef FREE_RTOS
+      #define FREE_RTOS  false   ///< Assume no FreeRTOS support if not defined.
+   #endif
+   #ifndef ESP32_INPUT_PULLDOWN
+      #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor
+   #endif
+#else                            ///< Supported boards; set WiFi and FreeRTOS flags.
    #if defined(UNO_R3) || defined(UNO_R4_MINIMA)   ///< For the UNO R3 and R4 Minima boards, no WiFi/FreeRTOS.
       // These defines are used for boards without WiFi and the FreeRTOS library.
+      #undef ESP32_WIFI
+      #undef FREE_RTOS
       #define ESP32_WIFI false
       #define FREE_RTOS  false
    #else
-      #define ESP32_WIFI false
-      #define FREE_RTOS  false
-   #endif 
-#endif 
+      #ifndef ESP32_WIFI            ///  IF the WiFi hasn't been defined:
+         #define ESP32_WIFI false   ///< Assume all other supported boards have WiFi capability.
+      #endif
+      #ifndef FREE_RTOS             ///  IF FreeRTOS hasn't been defined:
+         #define FREE_RTOS  false   ///< Assume all other supported boards have FreeRTOS support.
+      #endif
+   #endif // else #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
+#endif // else #if defined(CUSTOM_UNO) && !CUSTOM_UNO
 
 #if defined(UNO_R3)
    /// Not enough resources on the UNO R3 board to use the development board code.
    /// The UNO R3 board doesn't have the resources to include the code for an
    /// OLED display (on the development board) in addition to the code for the 
    /// Binary Clock Shield.
-   #ifdef DEV_BOARD
-      #undef DEV_BOARD
-      #undef DEV_CODE
-   #endif
+   #undef DEV_BOARD
+   #undef DEV_CODE
    #define SERIAL_TIME_CODE false
    #define STL_USED         false
-#else
+#elif !defined(STL_USED)
    #define STL_USED         true    ///< Use the STL library if not using the UNO R3 board.
 #endif
 
@@ -246,9 +301,9 @@
    #define DEV_CODE false     ///< If DEV_CODE hasn't been defined, don't include the development code
 #endif
 
-#if DEV_BOARD
-   #define SERIAL_SETUP_CODE       true
-   #define SERIAL_TIME_CODE        true
+#if DEV_CODE
+   #define SERIAL_SETUP_CODE       true   ///< If using a development board/code, include the Serial Setup code
+   #define SERIAL_TIME_CODE        true   ///< If using a development board/code, include the Serial Time  code
 #else     // else #if !(DEV_BOARD)
    #undef DEBUG_SETUP_PIN
    #undef DEBUG_TIME_PIN
@@ -292,8 +347,8 @@
 /// This avoids surrounding the code with #if `*defined*` directives. An additional
 /// advantage is that the code is not compiled at all if `*defined*` is false or undefined.
 /// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
-///       This required to avoid empty statements (i.e. ';') when the code is removed.
-///       It is also an indicator/reminder to the developer that this code might be excluded.
+///       This is required to avoid empty statements (i.e. ';') when the code is removed.
+///       It is also an indicator/reminder to the developer that this code might be removed.
 #if DEV_CODE || SERIAL_OUTPUT
    #define SERIAL_PRINT_MACRO(STRING) Serial.print(STRING);
    #define SERIAL_PRINTLN_MACRO(STRING) Serial.println(STRING);
@@ -312,7 +367,7 @@
 /// adds an `if ()` statement to each line.
 #if SERIAL_SETUP_CODE
    #define SERIAL_SETUP_STREAM(CMD_STRING) \
-         if (get_IsSerialSetup()) { SERIAL_STREAM_MACRO(CMD_STRING) }
+         if (SERIAL_SETUP_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
 #else
    #define SERIAL_SETUP_STREAM(CMD_STRING)
 #endif
@@ -324,9 +379,9 @@
 /// adds an `if ()` statement to each line.
 #if SERIAL_TIME_CODE
    #define SERIAL_TIME() \
-         if (get_IsSerialTime()) { serialTime(); }
+         if (SERIAL_TIME_TEST) { SERIAL_TIME_FTN; }
    #define SERIAL_TIME_STREAM(CMD_STRING) \
-         if (get_IsSerialTime()) { SERIAL_STREAM_MACRO(CMD_STRING) }
+         if (SERIAL_TIME_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
 #else
    #define SERIAL_TIME()
    #define SERIAL_TIME_STREAM(CMD_STRING)
@@ -358,9 +413,9 @@
 #endif
 
 // The physical layout of the LEDs on the shield, one row each.
-#define NUM_HOUR_LEDS   5              ///< The LEDs on the top row of the shield.
-#define NUM_MINUTE_LEDS 6              ///< The LEDs on the middle row of the shield.
-#define NUM_SECOND_LEDS 6              ///< The LEDs on the bottom row of the shield.
+#define NUM_HOUR_LEDS     5            ///< The LEDs on the top row of the shield.
+#define NUM_MINUTE_LEDS   6            ///< The LEDs on the middle row of the shield.
+#define NUM_SECOND_LEDS   6            ///< The LEDs on the bottom row of the shield.
 #define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
 #define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
 #define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
@@ -371,7 +426,7 @@
 
 #define DEFAULT_DEBOUNCE_DELAY    75   ///< The default debounce delay in milliseconds for the buttons
 #define DEFAULT_BRIGHTNESS        30   ///< The best tested LEDs brightness range: 20-60
-#define DEFAULT_ALARM_REPEAT       3   ///< How many times play the melody alarm
+#define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
 #define ALARM_1                    1   ///< Alarm 1. available on the RTC DS3231, adds seconds.
 #define ALARM_2                    2   ///< Alarm 2, the default alarm used by the shield.
 

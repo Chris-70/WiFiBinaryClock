@@ -1,5 +1,7 @@
 /// @file board_select.h
-/// 
+/// @brief This file is used to select the target board or create your own custom board defines for the 
+///        Binary Clock Shield library.
+/// @details This file is included by the BinaryClock.Defines.h file if it exists.
 /// @verbatim 
 /// ##################################################################################################################### //
 /// The following are defines for the currently supported boards. One must be used to compile, or create a CUSTOM_UNO
@@ -37,17 +39,31 @@
    // Arduino UNO based pin definitions (R3 & R4) Modify for your board.
    #define RTC_INT            3   ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
    #define PIEZO             11   ///< The number of the Piezo pin
-   #define LED_PIN           A3   ///< Data pin that LEDs data will be written out over
+   #define LED_PIN           A3   ///< Data Out pin that the LED data will be written to.
 
-   #define S1                A2   ///< Push buttons connected to the A2, A1, A0 Arduino pins
-   #define S2                A1   ///< A1
-   #define S3                A0   ///< A0
+   // Push buttons S1; S2; and S3 connected to the: A2, A1, A0 Arduino pins
+   #define S1                A2   ///< A2: S1 button: Time set & Decrement button   
+   #define S2                A1   ///< A1: S2 button: Select & Confirm/Save button  
+   #define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
 
    #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor or INPUT_PULLDOWN
 
    #define FREE_RTOS       true   ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
    #define ESP32_WIFI      true   ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
+   #define STL_USED        true   ///< Set to true if the board uses the C++ STL library.
 
+   /// This determines if the menu and/or time are also displayed on the serial monitor.
+   /// - If SERIAL_SETUP_CODE is defined, code to display the serial menu is included in the project.
+   /// - If SERIAL_TIME_CODE  is defined, code to display the serial time, every second, is included in the project.
+   /// - The SERIAL_SETUP_CODE and/or SERIAL_TIME_CODE values are just used to determine if the code is included or not.
+   ///                 Setup messages are displayed by default and can be controlled by setting the 
+   ///                 `IsSerialSetup` property to true. The Time messages are NOT displayed initially on startup.
+   ///                 They can be displayed by setting the `IsSerialTime` property to true.
+   /// @see `set_IsSerialSetup()` 
+   /// @see `set_IsSerialTime()` 
+   #define SERIAL_SETUP_CODE true   ///< If (true) - serial setup code included, (false) - code removed
+   #define SERIAL_TIME_CODE  true   ///< If (true) - serial time  code included, (false) - code removed
+   
 #endif
 
 /// (*) It is only possible to remap the pin location by using an UNO development shield and 
