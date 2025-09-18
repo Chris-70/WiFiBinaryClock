@@ -2,7 +2,8 @@
 
 ## Binary Clock Shield for Arduino
 
-[![Binary Clock Shield](./assets/BinaryClockShield.jpg)](https://nixietester.com/product/binary-clock-shield-for-arduino/) [![Binary Clock Shield](./assets/Binary-Clock-Shield-for-Arduino-UNO.jpg)](https://nixietester.com/product/binary-clock-shield-for-arduino/)
+[![Binary Clock Shield](./assets/BinaryClockShield.jpg)](https://nixietester.com/product/binary-clock-shield-for-arduino/)   
+[![Binary Clock Shield](./assets/Binary-Clock-Shield-for-Arduino-UNO.jpg)](https://nixietester.com/product/binary-clock-shield-for-arduino/)
 
 [The Binary Clock Shield for Arduino](https://nixietester.com/product/binary-clock-shield-for-arduino/) is the best LED Binary Clock I've seen and I own way too many binary clocks.
 
@@ -39,7 +40,7 @@ The following is a list of the boards that are directly supported by this code:
 *   [The Adafruit Metro ESP32-S3 is supported](https://www.adafruit.com/product/5500).  This is a great board that has so many capabilities over every other choice. The JTAG port is good for development, the micro SD Card reader is a great addition and QT I2C connector on the side means it can be used with the shield in place. This opens up many additional capabilities that can be added, such as sensors for light and human presence. The greatest feature I like for the Binary Clock Shield is the builtin battery charger circuit. The shield will keep displaying the time while you move it around or when the power goes out. **This is the board I recommend** if you want to get the most out of the Binary Clock Shield especially if you create a case for it and have it work on battery.  
     [![The Adafruit Metro ESP32-S3](./assets/Adafruit_Metro_ESP32-S3.jpg)](https://www.adafruit.com/product/5500).  
 *   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout, these work well with the Binary Clock Shield. They are available from your favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins. If I had created a case for the Binary Clock Shield and wanted to sell a fully functional Binary Clock, this is the board I would use.  
-    [![ESP32-S3 UNO](./assets/ESP32-S3_UNO_Board.jpg)](./assets/ESP32-S3_UNO_Board.jpg)   
+    ![ESP32-S3 UNO](./assets/ESP32-S3_UNO_Board.jpg)
 *   The Wemos D1 R32 ESP32 UNO  This is the board that got me started on this project. On face value it has a lot of features compared to the Arduino UNO R3, more memory and WiFi. There are key differences that make it suitable only for those who are willing to make a minor hardware modification and already have this board.  
     ![The Wemos D1 R32 ESP32 UNO](./assets/Wemos_D1_R32_UNO.jpg)  
     While the board is supported, however it does require a minor [Hardware Modification](#hardware-modifications) to work with the shield. See the details below.
