@@ -9,10 +9,11 @@
 /// #define ESP32_D1_R32_UNO   // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions     (ESP32 WiFi)
 /// #define METRO_ESP32_S3     // If defined, the code will use Adafruit Metro ESP32-S3 board definitions    (ESP32 WiFi)
 /// #define ESP32_S3_UNO       // If defined, the code will use generic ESP32-S3 UNO board definitions       (ESP32 WiFi)
-/// #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (ESP32 WiFi)
+/// #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (WiFiS3)
 /// #define UNO_R4_MINIMA      // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
 /// #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
 ///
+/// ##################################################################################################################### //
 /// @endverbatim 
 /// @addtogroup BoardDefines UNO Board Definitions
 /// @name Custom UNO Boards 
@@ -48,8 +49,9 @@
 
    #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor or INPUT_PULLDOWN
 
-   #define FREE_RTOS       true   ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
    #define ESP32_WIFI      true   ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
+   #define WIFIS3          false  ///< Assume no WIFIS3 Arduino capability. If using UNO R4 WiFi, set to true.
+   #define FREE_RTOS       true   ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
    #define STL_USED        true   ///< Set to true if the board uses the C++ STL library.
 
    /// This determines if the menu and/or time are also displayed on the serial monitor.
@@ -66,6 +68,24 @@
    
 #endif
 
+/// @name Additional_Defines
+/// The following defines from `BinaryClock.Defines.h` can be overridden by defining them in this header file.
+///
+/// ##################################################################################################################### //
+/// 
+/// #define NTP_SERVERS_LIST { "time.nrc.ca", "pool.ntp.org", "time.nist.gov" }  // The list of NTP servers example, 
+/// #define DEFAULT_TIMEZONE "EST+5EDT,M3.2.0/2,M11.1.0/2"  // Example timezone string (Canada Eastern Time with DST)
+/// #define NTP_DEFAULT_PORT 123                            // Standard NTP port number.
+/// -----------------------------------------------------------------------------------------------
+/// #define ESP32_WIFI            true  ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
+/// #define WIFIS3                false ///< Set to true if the board has onboard WIFIS3 based WiFi (UNO R4 WiFi); false otherwise.
+/// #define FREE_RTOS             true  ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
+/// #define STL_USED              true  ///< Set to true if the board can use the C++ STL library (i.e. has enough memory).
+/// #define ESP32_INPUT_PULLDOWN  INPUT_PULLDOWN   ///< Pin has an internal pull-down resistor (e.g. ESP32) or just use `INPUT` (e.g. Arduino).
+/// #define HEARTBEAT_LED_PIN     48    ///< Heartbeat LED to show working software, errors, or use LED_BUILTIN for output.
+/// ##################################################################################################################### //
+/// -----------------------------------------------------------------------------------------------
+/// @remarks
 /// (*) It is only possible to remap the pin location by using an UNO development shield and 
 ///     soldering different paths from the board to the Binary Clock Shield. The development
 ///     shield is connected between the board and the Binary Clock Shield. This is 
@@ -73,6 +93,7 @@
 ///     data pin moved to pin 15 as the LED_PIN, physically on analog pin A3, is pin 34 on the
 ///     board which is input only. 
 ///     
-///     See the README.md file for a detailed description of the change.
-///     (https://github.com/Chris-70/WiFiBinaryClock)
+///     See the README.md file for a detailed description of the change.  
+///     (https://github.com/Chris-70/WiFiBinaryClock), section: "Hardware modifications"   
+///     (https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications)
 /// @}

@@ -2,6 +2,16 @@
 
 #include "BinaryClock.h"
 
+#if STL_USED
+   #include <string>
+   #include <vector>
+   #include <functional>
+#endif
+
+#if WIFI
+   #include "BinaryClockWiFi.h"
+#endif
+
 // Development board specific; has additional hardware buttons and OLED display.
 // Not part of the Binary Clock Shield, but used to develop and test the code.
 // This board replaces the Binary Clock Shield during development.
@@ -26,7 +36,7 @@
    #define OLED_DISPLAY(CMD) if (oledValid) { display.CMD; }
    // Wrap this method in a MACRO definition only used with a dev. board that has an OLED display.
    #define TIME_OLED(DATE_N_TIME) TimeOLED(DATE_N_TIME);
-   void TimeOLED(DateTime & time);
+   void TimeOLED(const DateTime & time);
 #else
    // Removes the code from compilation, replaced with whitespace.
    #define BEGIN(ADDR, RESET)
@@ -49,7 +59,7 @@ using namespace BinaryClockShield;
 void setup(void);
 void loop(void);
 bool checkWatchdog();
-void TimeAlert(DateTime time);
+void TimeAlert(const DateTime& time);
 #ifdef UNO_R3
    #define ScanI2C(ARRAY, SIZE) 0
 #else
@@ -58,9 +68,9 @@ int ScanI2C(byte* addrList, size_t listSize);
 
 #if (DEVELOPMENT || SERIAL_OUTPUT) && !defined(UNO_R3)
 char buffer[32] = {0};
-const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
-const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
-const char *TimeFormat = format24;
+// const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
+// const char *format24 = { "hh:mm:ss" };    // 24 Hour time format
+const char *timeFormat = nullptr; // format24;
 const char *daysOfTheWeek[7] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 #endif 
 
@@ -87,6 +97,7 @@ bool oledValid = false;
 bool rtcValid = false;
 bool eepromValid = false;
 byte i2cList[I2C_SIZE] = { 0 };
+// std::vector<WiFiInfo> wifiApList; // Vector to hold the found WiFi access point info.
 #endif
 
 __attribute__((used)) void setup()
@@ -108,8 +119,11 @@ __attribute__((used)) void setup()
       if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; SERIAL_PRINTLN("  - RTC EEPROM is present.")   } 
       }
    delay(500); 
+
+   timeFormat = binClock.get_TimeFormat();
    #endif
 
+   SERIAL_PRINTLN("")
    #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
    // display.begin(SSD1306_SWITCHCAPVCC, OLED_IIC_ADDR);  // initialize with the I2C addr 0x3C (for the 128x32)
@@ -118,19 +132,21 @@ __attribute__((used)) void setup()
       {
       displayResult = BEGIN(I2C_ADDRESS, true);
       // Update the flag: OLED is only valid if we can initialize it.
-      oledValid = displayResult;
+      if ((oledValid = displayResult) == true)
+         {
+         display.setTextColor(WHITE, BLACK);
+         display.setTextSize(1);
+         display.setTextWrap(false);
+         display.display();
+         }
       }
-   OLED_DISPLAY(setTextColor(WHITE, BLACK))
-   OLED_DISPLAY(setTextSize(1))
-   OLED_DISPLAY(setTextWrap(false))
-   OLED_DISPLAY(display())
    delay(500);
    #else
       // Non-dev board configuration, no OLED display, define the `displayResult` to be false.
       #define displayResult false
    #endif
 
-   SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "Begin: " << (displayResult? "Success: " : "Failure: ") 
+   SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "OLED Begin: " << (displayResult? "Success: " : "Failure: ") 
                 << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
    SERIAL_STREAM("Starting the BinaryClock Setup" << endl)
 
@@ -138,10 +154,43 @@ __attribute__((used)) void setup()
    binClock.set_Brightness(20);
 
    // Register `TimeAlert()` to get called every second.
-   binClock.RegisterTimeCallback(&TimeAlert);
+   auto callback = [](const DateTime& time) {
+         TimeAlert(time);
+         };
+   bool regResult = binClock.RegisterTimeCallback(callback);
+   SERIAL_STREAM("Registered time callback: " << (regResult? "True" : "False") << endl)
    delay(125);
 
-   SERIAL_STREAM("Entering Loop() now" << endl)
+   #if WIFI
+   static BinaryClockWiFi wifi(binClock);
+   bool wifiResult = wifi.Begin();
+   delay(125);
+////////////////////////////////////
+// Add WiFi event handler for reconnection
+   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
+      Serial.printf("[%lu] [WiFi] ", millis());
+         switch (event)
+            {
+            case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
+               Serial.println("Disconnected - attempting reconnection");
+               delay(1000);
+               WiFi.reconnect();
+               break;
+            case ARDUINO_EVENT_WIFI_STA_CONNECTED:
+               Serial.println("Reconnected successfully");
+               break;
+            default:
+               Serial.print("Default case for: ");
+               Serial.println(event);
+               break;
+            }
+         });
+////////////////////////////////////
+   APCreds creds = wifi.get_WiFiCreds();
+   SERIAL_STREAM("[" << millis() << "] WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
+   #endif 
+
+   SERIAL_STREAM("[" << millis() << "] Entering Loop() now" << endl)
    delay(125);
    OLED_DISPLAY(clearDisplay())
 
@@ -152,9 +201,36 @@ __attribute__((used)) void setup()
 __attribute__((used)) void loop()
    {
    static bool wdtError = false;
+   //////////////////////////////////////
+   static bool firstLoop = true;
+   if (firstLoop)
+      {
+      Serial << "[" << millis() << "] === FIRST LOOP ITERATION ===" << endl;
+      firstLoop = false;
+      }
+
+   // Serial << "[" << millis() << "] Loop start" << endl;
+
+   static uint32_t wifiCheckTime = 0;
+   static bool wasConnected = true;
+
+   // Check WiFi status every second
+   if (millis() - wifiCheckTime > 1000)
+      {
+      bool isConnected = WiFi.isConnected();
+      if (wasConnected && !isConnected)
+         {
+         Serial << "[" << millis() << "] !!! WiFi DISCONNECTED in main loop !!!" << endl;
+         yield();  // Give WiFi time to process
+         }
+      wasConnected = isConnected;
+      wifiCheckTime = millis();
+      }
+   //////////////////////////////////////
 
    binClock.loop();
-   checkWatchdog();
+   yield();  // Give WiFi time to process
+   // checkWatchdog();
    if (checkWatchdog())
       {
       wdtError = false;
@@ -162,8 +238,14 @@ __attribute__((used)) void loop()
    else if (!wdtError) // Display just once per WDT fault
       {
       wdtError = true;
-      SERIAL_STREAM(F("Watchdog Timer Triggered after ") << deltaMillis / 1000.0 << F("seconds. ") << endl)
+      SERIAL_STREAM("[" << millis() << F("] Watchdog Timer Triggered after ") << deltaMillis / 1000.0 << F("seconds. ") << endl)
       }
+
+   yield();  // Give WiFi time to process
+   //////////////////////////////////////
+   // Serial << "[" << millis() << "] Loop end" << endl;
+   // delay(100);  // Small delay to see timing
+   //////////////////////////////////////
    }
 
 /// @brief Check the Watchdog Timer and alert it if necessary.
@@ -188,11 +270,14 @@ bool checkWatchdog()
       digitalWrite(HeartbeatLED, LOW);
 
       #if DEV_BOARD
-      OLED_DISPLAY(clearDisplay())
-      OLED_DISPLAY(setCursor(0, 0))
-      OLED_DISPLAY(setTextSize(4))
-      OLED_DISPLAY(write("Fault"))
-      OLED_DISPLAY(display())
+      if (oledValid)
+         {
+         display.clearDisplay();
+         display.setCursor(0, 0);
+         display.setTextSize(4);
+         display.write("Fault");
+         display.display();
+         }
       #endif
       }
 
@@ -203,13 +288,14 @@ bool checkWatchdog()
 /// @details This method is supervised by the watchdog which only tolerates
 ///          one missed call. A 5% allowence is given for code execution 
 ///          timing delays, so after ~2.1 seconds the WDT activates.
-/// @param time The current time from the `BinaryClock` instance.
-/// @remarks The `TimeAlert()` function is called every to update the time on
-///          the OLED display if we have the DEV_BOARD.
-void TimeAlert(DateTime time)
+/// @param time The current time reference from the `BinaryClock` instance.
+/// @remarks The `TimeAlert()` function is called every second to update the 
+///          time on the OLED display if we have the DEV_BOARD.
+void TimeAlert(const DateTime& time)
    {
    timeWatchdog = millis();
    heartbeat = (heartbeat == LOW ? HIGH : LOW);
+   // If there was a watchdog fault, clear it and resume, we're getting time again.
    if (wdtFault)
       {
       wdtFault = false;
@@ -228,18 +314,26 @@ void TimeAlert(DateTime time)
 /// @param time The current time reference from `TimeAlert()` method.
 /// @remarks This method is only used if we have a DEV_BOARD which has an 
 ///          OLED display, otherwise we do nothing.
-void TimeOLED(DateTime &time)
+void TimeOLED(const DateTime &time)
    {
    if (!oledValid) { return; } // If OLED display is not valid, do not proceed.
 
-   TimeFormat = binClock.get_Is12HourFormat() ? format12 : format24;
+   timeFormat = binClock.get_TimeFormat();
+   if (timeFormat == nullptr)
+      { timeFormat = "HH:mm:ss AP"; }
+
    int cursor;
 
-   OLED_DISPLAY(setCursor(0, 0))
-   OLED_DISPLAY(setTextSize(2))
+   display.setCursor(0, 0);
+   display.setTextSize(2);
    char timeBuf[32] = { 0 };
    char *timeStr = timeBuf;
-   strncpy (timeBuf, time.toString(buffer, sizeof(buffer), TimeFormat), 32);
+   const char* timeStrTemp = time.toString(buffer, sizeof(buffer), timeFormat);
+   if (timeStrTemp == nullptr)
+      {
+      timeStrTemp = "xx:xx:xx";
+      }  
+   strncpy (timeBuf, timeStrTemp, 32);
    
    if (timeStr[0] == ' ') { timeStr++; }
    char* spaceAP = strchr(timeStr, ' ');
@@ -249,34 +343,34 @@ void TimeOLED(DateTime &time)
       spaceAP++;       // set pointer to AM/PM
       }
 
-   OLED_DISPLAY(write(timeStr)) // Write just the numbers in size 2
-   OLED_DISPLAY(write(" "))     // Add a space after the time to clear.
-   OLED_DISPLAY(setTextSize(1))
+   display.write(timeStr); // Write just the numbers in size 2
+   display.write(" ");     // Add a space after the time to clear.
+   display.setTextSize(1);
 
    if (spaceAP) 
       { 
-      OLED_DISPLAY(write(" "))    
+      display.write(" ");
       int timeStrLen = strlen(timeStr);
       int cursor = (timeStrLen) * 12;     // Each character is 6 pixels wide * TextSize (2) = 12;
       cursor += 4;                        // only 1/2 a small space before we write the AM/PM.
-      OLED_DISPLAY(setCursor(cursor, 8))  // Position at the end of the 1/2 space.
-      OLED_DISPLAY(fillRect(cursor, 0, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
-      OLED_DISPLAY(write(spaceAP)) 
+      display.setCursor(cursor, 8);  // Position at the end of the 1/2 space.
+      display.fillRect(cursor, 0, 128 - cursor, 8, BLACK); // Clear the rest of the line.
+      display.write(spaceAP);
       cursor += 2 * 6; // Move cursor to the end of the (1/2 " ") + AM/PM string
-      OLED_DISPLAY(setCursor(cursor, 8)) // Position at the end of the AM/PM string.
-      OLED_DISPLAY(fillRect(cursor, 8, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
+      display.setCursor(cursor, 8); // Position at the end of the AM/PM string.
+      display.fillRect(cursor, 8, 128 - cursor, 8, BLACK); // Clear the rest of the line.
       }
 
-   OLED_DISPLAY(setCursor(0, 16))
+   display.setCursor(0, 16);
    int dow = (time.dayOfTheWeek() + DateTime::dayNameOffset()) % 7;
-   OLED_DISPLAY(write(daysOfTheWeek[dow]))
+   display.write(daysOfTheWeek[dow]);
    cursor = strlen(daysOfTheWeek[dow]) * 6;
-   OLED_DISPLAY(fillRect(cursor, 16, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
-   OLED_DISPLAY(setCursor(0, 24))
-   OLED_DISPLAY(write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD")))
+   display.fillRect(cursor, 16, 128 - cursor, 8, BLACK); // Clear the rest of the line.
+   display.setCursor(0, 24);
+   display.write(time.toString(buffer, sizeof(buffer), "YYYY/MM/DD"));
    cursor = strlen("YYYY/MM/DD") * 6; // Each character is 6 pixels wide.
-   OLED_DISPLAY(fillRect(cursor, 24, 128 - cursor, 8, BLACK)) // Clear the rest of the line.
-   OLED_DISPLAY(display())
+   display.fillRect(cursor, 24, 128 - cursor, 8, BLACK); // Clear the rest of the line.
+   display.display();
    }
 #endif   // DEV_BOARD 
 

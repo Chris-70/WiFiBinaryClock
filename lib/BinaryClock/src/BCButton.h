@@ -2,7 +2,9 @@
 /// @brief This file contains the declaration of the `BCButton` class
 /// @details The `BCButton` class encapsulates the functionality of a button including
 ///          state management, debouncing, and hardware interaction.   
-///          The class supports buttons wired as Common Cathode (CC) or Common Anode (CA).
+///          The class supports buttons wired as Common Cathode (CC) or Common Anode (CA).  
+///          - Common Cathode (CC) buttons are normally LOW and connect the pin to HIGH when pressed.  
+///          - Common Anode (CA) buttons are normally HIGH and connect the pin to LOW when pressed.
 /// @author Chris-70 (2025/09)
 
 #pragma once

@@ -1,3 +1,10 @@
+/// @file MorseCodeLED.cpp
+/// @brief Implementation file for the MorseCodeLED class.
+/// @details  This file contains the implementation of the MorseCodeLED class, 
+///           which is used to flash an LED in Morse code. The class supports 
+///           flashing predefined messages, as well as arbitrary strings of text.
+/// @author Chris-80 (2025/08)          
+
 #include <ctype.h>
 
 #include "MorseCodeLED.h"
@@ -86,10 +93,10 @@ namespace BinaryClockShield
       MC code;
 
       #if defined(__GNUC__)
-      #pragma GCC diagnostic push
-      // Keeping the switch compact for UNO_R3 where this is used.
-      // The while()... statement handles the MC::EndMarker
-      #pragma GCC diagnostic ignored "-Wswitch"
+         #pragma GCC diagnostic push
+         // Keeping the switch compact for UNO_R3 where this is used.
+         // The while()... statement handles the MC::EndMarker
+         #pragma GCC diagnostic ignored "-Wswitch"
       #endif
 
       while ((code = (MC)(pgm_read_byte(morseData++))) != MC::EndMarker)
@@ -104,46 +111,17 @@ namespace BinaryClockShield
          }
 
       #if defined(__GNUC__)
-      #pragma GCC diagnostic pop
+         #pragma GCC diagnostic pop
       #endif
       }
 
    #ifndef UNO_R3
-   // void MorseCodeLED::flashMCode(const MCode& morseData)
-   //    {
-   //    uint8_t length = morseData.len;    // Extract length (4 bits)
-   //    uint16_t pattern = morseData.code; // Extract pattern (12 bits)
-   //    if (length > 12) { return; }       // Invalid length check
-
-   //    // Interpret a length of 0 to be a word space, do the delay and exit.
-   //    if (length == 0)
-   //       {
-   //       wordSpace();
-   //       return;
-   //       }
-
-   //    // Flash the pattern from MSB to LSB, 0 for dot, 1 for dash.
-   //    for (int8_t i = length - 1; i >= 0; i--)
-   //       {
-   //       if (pattern & (1 << i))
-   //          {
-   //          dash();  // 1 = dash
-   //          }
-   //       else
-   //          {
-   //          dot();   // 0 = dot
-   //          }
-   //       }
-
-   //    space(); // Space between letters
-   //    }
-
    /*
       morse.FlashString("CQD NO RTC");      // Original message as a string.
       morse.FlashString("ERROR 404");       // Numbers and letters
       morse.FlashString("HELP!");           // With punctuation
-      morse.FlashProSignWord("ROGER");      // Standard radio term
-      morse.FlashProSignWord("ERROR");      // Error/correction signal (8 dots)
+      morse.FlashProsignWord("ROGER");      // Standard radio term
+      morse.FlashProsignWord("ERROR");      // Error/correction signal (8 dots)
    */
    #define NUMBER_OFFSET 26  // Offset for numbers in the lookup table
 
@@ -338,49 +316,49 @@ namespace BinaryClockShield
       #undef EXTENDED_SIZE
       }
 
-   void MorseCodeLED::FlashProSign(ProSign sign)
+   void MorseCodeLED::FlashProsign(Prosign sign)
       {
-      if (sign >= ProSign::EndMark) { return; }
+      if (sign >= Prosign::EndMark) { return; }
 
       // Control codes for prosigns and special commands
-      static const ProSignLookup PROGMEM prosignTable[] = 
+      static const ProsignLookup PROGMEM prosignTable[] = 
             {
             // Prosign codes
-            {ProSign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
-            {ProSign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
-            {ProSign::EndWork   , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
-            {ProSign::Out       , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
-            {ProSign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
-            {ProSign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
-            {ProSign::Invite    , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, Invitation to transmit 
-            {ProSign::Over      , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, you transmit now
-            {ProSign::Understood, 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
-            {ProSign::SayAgain  , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Say Again?
-            {ProSign::Correction, 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
-            {ProSign::Error     , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
-            {ProSign::R         , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Received OK             
-            {ProSign::K         , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Invitation to transmit  
-            {ProSign::AR        , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message          
-            {ProSign::AS        , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, busy       
-            {ProSign::VE        , 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
-            {ProSign::HH        , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction
-            {ProSign::BT        , 0x5011}, ///< [` -...-     `] (len=5, pattern=10001)      [BT]  New paragraph, separator
-            {ProSign::KA        , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
-            {ProSign::SK        , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
-            {ProSign::C         , 0x4005}, ///< [` -.-.      `] (len=4, pattern=1010)       [C]   Correct, Confirm, Yes
-            {ProSign::N         , 0x2002}, ///< [` -.        `] (len=2, pattern=10)         [N]   Negative, No
-            {ProSign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International distress signal
+            {Prosign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
+            {Prosign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
+            {Prosign::EndWork   , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
+            {Prosign::Out       , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
+            {Prosign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
+            {Prosign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
+            {Prosign::Invite    , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, Invitation to transmit 
+            {Prosign::Over      , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, you transmit now
+            {Prosign::Understood, 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
+            {Prosign::SayAgain  , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Say Again?
+            {Prosign::Correction, 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
+            {Prosign::Error     , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
+            {Prosign::R         , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Received OK             
+            {Prosign::K         , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Invitation to transmit  
+            {Prosign::AR        , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message          
+            {Prosign::AS        , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, busy       
+            {Prosign::VE        , 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
+            {Prosign::HH        , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction
+            {Prosign::BT        , 0x5011}, ///< [` -...-     `] (len=5, pattern=10001)      [BT]  New paragraph, separator
+            {Prosign::KA        , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
+            {Prosign::SK        , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
+            {Prosign::C         , 0x4005}, ///< [` -.-.      `] (len=4, pattern=1010)       [C]   Correct, Confirm, Yes
+            {Prosign::N         , 0x2002}, ///< [` -.        `] (len=2, pattern=10)         [N]   Negative, No
+            {Prosign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International distress signal
             // End marker
             };
 
       #define TABLE_SIZE sizeof(prosignTable) / sizeof(prosignTable[0])
-      static_assert((uint8_t)(ProSign::EndMark) == TABLE_SIZE, "Size of the enum ProSign (i.e. value of EndMark) must match `prosignTable` array size");
+      static_assert((uint8_t)(Prosign::EndMark) == TABLE_SIZE, "Size of the enum Prosign (i.e. value of EndMark) must match `prosignTable` array size");
 
       uint8_t index = (uint8_t)(sign);
-      ProSign lookup = (ProSign)(pgm_read_byte(&prosignTable[index].sign));
+      Prosign lookup = (Prosign)(pgm_read_byte(&prosignTable[index].sign));
 
-      // Coding error check: The `prosignTable` lookup index value, `ProSignLookup::sign`, is not in the correct order.
-      // The index order MUST match the `ProSign` enum order. This assert indicates an error was found.
+      // Coding error check: The `prosignTable` lookup index value, `ProsignLookup::sign`, is not in the correct order.
+      // The index order MUST match the `Prosign` enum order. This assert indicates an error was found.
       assert(lookup == sign); 
       if (lookup == sign)
          {
@@ -391,7 +369,7 @@ namespace BinaryClockShield
       #undef TABLE_SIZE
       }
 
-   void MorseCodeLED::FlashProSignWord(String keyString)
+   void MorseCodeLED::FlashProsignWord(String keyString)
       {
       if (keyString.isEmpty()) { return; }
 
@@ -401,51 +379,51 @@ namespace BinaryClockShield
       // there are very few predefined messages so it is acceptable.
       if (strcmp(keyword, "START") == 0 || strcmp(keyword, "STARTING") == 0)
          {
-         FlashProSign(ProSign::KA); // Standard prosign for START: [-.-.-]
+         FlashProsign(Prosign::KA); // Standard prosign for START: [-.-.-]
          }
       else if (strcmp_P(keyword, "END") == 0 || strcmp(keyword, "OK") == 0)
          {
-         FlashProSign(ProSign::AR); // Standard prosign for END/OK: [.-.-.]
+         FlashProsign(Prosign::AR); // Standard prosign for END/OK: [.-.-.]
          }
       else if (strcmp_P(keyword, "ENDWORK") == 0 || strcmp(keyword, "OUT") == 0)
          {
-         FlashProSign(ProSign::SK); // Standard prosign for ENDWORK: [...-.-]
+         FlashProsign(Prosign::SK); // Standard prosign for ENDWORK: [...-.-]
          }
       else if (strcmp(keyword, "OVER") == 0 || strcmp(keyword, "INVITE") == 0)
          {
-         FlashProSign(ProSign::K); // Standard prosign for OVER: [-.-]
+         FlashProsign(Prosign::K); // Standard prosign for OVER: [-.-]
          }
       else if (strcmp(keyword, "UNDERSTOOD") == 0)
          {
-         FlashProSign(ProSign::VE); // Standard prosign for UNDERSTOOD: [..-.]
+         FlashProsign(Prosign::VE); // Standard prosign for UNDERSTOOD: [..-.]
          }
       else if (strcmp(keyword, "SAYAGAIN") == 0)
          {
-         FlashProSign(ProSign::SayAgain); // Standard prosign for SAYAGAIN: "?" [..--..]
+         FlashProsign(Prosign::SayAgain); // Standard prosign for SAYAGAIN: "?" [..--..]
          }
       else if (strcmp(keyword, "ROGER") == 0)
          {
-         FlashProSign(ProSign::R); // Standard prosign for ROGER: [.-.]
+         FlashProsign(Prosign::R); // Standard prosign for ROGER: [.-.]
          }
       else if (strcmp(keyword, "ERROR") == 0 || strcmp(keyword, "CORRECTION") == 0)
          {
-         FlashProSign(ProSign::HH); // Standard error signal: [........]
+         FlashProsign(Prosign::HH); // Standard error signal: [........]
          }
       else if (strcmp(keyword, "OUT") == 0)
          {
-         FlashProSign(ProSign::SK); // Standard prosign for OUT: [...-.-]
+         FlashProsign(Prosign::SK); // Standard prosign for OUT: [...-.-]
          }
       else if (strcmp(keyword, "CORRECT") == 0 || strcmp(keyword, "CONFIRM") == 0 || strcmp(keyword, "YES") == 0)
          {
-         FlashProSign(ProSign::C); // Standard Conrect signal: "C" [-.-.]
+         FlashProsign(Prosign::C); // Standard Conrect signal: "C" [-.-.]
          }
       else if (strcmp(keyword, "NEGATIVE") == 0 || strcmp(keyword, "NO") == 0)
          {
-         FlashProSign(ProSign::C); // Standard Negative signal: "N" [-.]
+         FlashProsign(Prosign::C); // Standard Negative signal: "N" [-.]
          }
       else if (strcmp(keyword, "SOS") == 0)
          {
-         FlashProSign(ProSign::SOS); // Standard distress signal: [...---...]
+         FlashProsign(Prosign::SOS); // Standard distress signal: [...---...]
          }
       else
          {

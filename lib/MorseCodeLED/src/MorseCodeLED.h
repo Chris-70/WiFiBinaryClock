@@ -1,12 +1,24 @@
-
-
+/// @file MorseCodeLED.h
+/// @brief Header file for the MorseCodeLED class.
+/// @details This file contains the declaration of the MorseCodeLED class, which is used to
+///          flash an LED in Morse code. The class supports flashing predefined messages,
+///          as well as arbitrary strings of text. The class is designed to be used with
+///          the Arduino framework and can be easily integrated into existing projects.
+/// @author  Chris-80 (2025/08)
 #pragma once
 #ifndef __MORSE_CODE_LED_H__
 #define __MORSE_CODE_LED_H__
 
 #include <Arduino.h>
 
-#include "BinaryClock.Defines.h"    // Needed for the current board definitions.
+// This is used by the WiFiBinaryClock project to include the board definitions.
+// It is used to exclude most code if the target is an Arduino UNO R3.
+// i.e.     #define UNO_R3
+// The UNO R3 has very limited RAM and ROM, so the Morse code functionality
+// is greatly reduced to fit in the project. Default is to include everything.
+#if __has_include("BinaryClock.Defines.h")
+   #include "BinaryClock.Defines.h"    // Needed just for the current board definitions.
+#endif
 
 namespace BinaryClockShield
    {
@@ -35,7 +47,7 @@ namespace BinaryClockShield
    ///         rewrite most of the code to make it work properly. I also added the ability to flash
    ///         arbitrary strings of text, which was not in the original code. Overall, it was a good
    ///         learning experience, but I would not rely on CoPilot to generate production code.
-   /// @author Chris-70 (2025/08)
+   /// @author Chris-80 (2025/08)
    class MorseCodeLED
       {
    public:
@@ -46,6 +58,9 @@ namespace BinaryClockShield
       ///         - Space: A space between letters (3 Dot duration pause).
       ///         - Word: A space between words (7 Dot duration pause).
       ///         - EndMarker: A marker just to indicate the end of the Morse code sequence.
+      /// @remarks  This enumeration is used internally by the MorseCodeLED class to define the
+      ///           Morse code patterns and their timing. It is used when `UNO_R3` is defined
+      ///           as part of limited functionality available in an UNO R3 BinaryClock.
       enum class MC : uint8_t
          {
          Dot = 0,          ///< Dot (dit)    [**`.`**] (~200ms)
@@ -87,10 +102,10 @@ namespace BinaryClockShield
       ///         | SOS        |` ...---...  `|  {0x9038}  | (len=9, code=000111000) |` [SOS]   `| Distress signal          |                        |
       ///         | EndMark    |`            `|  End of command list. ||||
       /// -----
-      /// @note Some `ProSign`s have multiple representations or are not strictly prosigns (like FullStop). 
+      /// @note Some `Prosign`s have multiple representations or are not strictly prosigns (like FullStop). 
       ///       These common signs and word representations are included for the caller's benefit to make the 
       ///       code readable and/or reduce errors by developers who haven't memorized the prosign codes.
-      enum class ProSign : uint8_t
+      enum class Prosign : uint8_t
          {              //  '| Morse code   | Pattern    | Size and Code           | Prosign | Description              |`
                         //  `| :----------- | :--------: | :---------------------- | :------ | :----------------------- |`
          Start     ,   ///< `|  -.-.-       |  {0x5015}  | (len=5, code=10101)     | [KA]    | Start of transmission    |`
@@ -125,6 +140,10 @@ namespace BinaryClockShield
       ///          a 12-bit Morse code pattern and a 4-bit length field.
       ///          The union of a bit structure and a uint16_t allows easy access
       ///          to the individual components of the Morse code pattern.
+      /// @remarks This is the main structure used in the class when not limited
+      ///           by `UNO_R3`. It allows efficient storage and retrieval of 
+      ///           Morse code patterns and is the base structure for the 
+      ///           extended characters and prosigns.
       union MCode
          {
          uint16_t pattern;       ///< The full 16 bit pattern (len + code).
@@ -157,12 +176,12 @@ namespace BinaryClockShield
          MCode mc;         ///< The `MCode` for the character
          };
 
-      /// @brief Structure to hold the lookup table for the ProSigns (Procedural Signals)
+      /// @brief Structure to hold the lookup table for the Prosigns (Procedural Signals)
       ///        control characters in Morse code.
-      /// @details The structure holds a ProSign and its corresponding Morse code pattern.
-      struct ProSignLookup
+      /// @details The structure holds a Prosign and its corresponding Morse code pattern.
+      struct ProsignLookup
          {
-         ProSign sign;     ///< The `ProSign` (Procedural Signal) entity to lookup
+         Prosign sign;     ///< The `Prosign` (Procedural Signal) entity to lookup
          MCode mc;         ///< The `MCode` for the sign.
          };
 
@@ -180,8 +199,6 @@ namespace BinaryClockShield
       ///          that is available on the UNO R3 board, as it lacks resources for more.
       void Flash_CQD_NO_RTC();  // Predefined message
 
-      #ifdef UNO_R3
-      #endif
       /// @brief Method to flash an array of raw Morse code components.
       /// @details This method flashes the LED according to the Morse code pattern for the 
       ///          given array of MC enumerated types. It uses the dot, dash, space, and wordSpace methods
@@ -229,17 +246,17 @@ namespace BinaryClockShield
       /// @param text The null terminated C string to flash in Morse code.
       void FlashString(const String& text); 
 
-      /// @brief Method to flash a Morse code ProSign (Procedural SIgnal) as defined in the `ProSign` enumeration.
-      /// @details This method flashes the LED according to the Morse code pattern for the given ProSign.
+      /// @brief Method to flash a Morse code Prosign (Procedural SIgnal) as defined in the `Prosign` enumeration.
+      /// @details This method flashes the LED according to the Morse code pattern for the given Prosign.
       ///          It uses the flashMCode() method to flash the prosign.
-      /// @param sign The ProSign (Procedural Signal) to flash in Morse code.
-      /// @remarks This method does not contain all ProSigns but can be extended to include more.  
+      /// @param sign The Prosign (Procedural Signal) to flash in Morse code.
+      /// @remarks This method does not contain all Prosigns but can be extended to include more.  
       ///          Some of the defined prosigns are two representations of the same Morse code, 
       ///          e.g. `Error` and `HH` where HH is the prosign and Error is the spoken equivalent.
-      /// @see ProSign
-      void FlashProSign(ProSign sign);
+      /// @see Prosign
+      void FlashProsign(Prosign sign);
 
-      /// @brief Method to flash a ProSign keyword string in Morse code. Keywords that are equivalent a `ProSign`
+      /// @brief Method to flash a Prosign keyword string in Morse code. Keywords that are equivalent a `Prosign`
       ///        enum value, they are flashed using the prosign instead of flashing the individual keyword characters.
       /// @param keyword The prosign keyword string to flash in Morse code.
       /// @remarks The predefined messages that correspond to a prosign are checked first, and if found,
@@ -259,7 +276,7 @@ namespace BinaryClockShield
       ///            - "YES", "CORRECT" or "CONFIRM" for the prosign C [.-.]
       ///            - "NO" or "NEGATIVE" for the prosign N [-..-]
       ///            - "SOS" for the prosign SOS [...---...]
-      void FlashProSignWord(String keyword);
+      void FlashProsignWord(String keyword);
 
    protected:
       /// @brief Method to flash a given `MCode` structure instance, `morseData`
@@ -293,8 +310,6 @@ namespace BinaryClockShield
 
    private:
       static const MCode morseTable[26 + 10];  ///< Morse code lookup table for letters and numbers (A-Z, 0-9).
-//      static const XcLookup extendedLookup[];   ///< Extended character lookup table for punctuation and special characters.
-//      static const ProSignLookup prosignTable[]; ///< Extended control character lookup table for prosigns
       #endif   // END ...#ifndef UNO_R3
       };
 
