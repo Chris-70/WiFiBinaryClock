@@ -17,86 +17,21 @@
 #ifndef __IBINARYCLOCK_H__
 #define __IBINARYCLOCK_H__
 
-#include <Arduino.h>
-#include <RTClib.h>
+#include <stdint.h>                 /// Integer types: size_t; uint8_t; uint16_t; etc.
 
-#include "BinaryClock.Defines.h"
-#include "BCButton.h"
+#include "DateTime.h"               /// For the `DateTime` and `TimeSpan` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
+
+#include "BinaryClock.Defines.h"    /// BinaryClock project-wide definitions and MACROs.
+#include "BinaryClock.Structs.h"    /// Global structures and enums used by the Binary Clock project.
+#include "BCButton.h"               /// Binary Clock Button class: handles all button related functionality.
 
 #if STL_USED
-#include <vector> 
+   // STL classes required to be included (when using the STL):
+   #include <vector> 
 #endif
 
 namespace BinaryClockShield
    {
-   /// @brief The structure holds all the Alarm information used by the Binary Clock.
-   /// @details This structure contains all the information related to a specific alarm, including
-   ///          the alarm number, time, melody, status, and whether it has fired or not.   
-   ///          While repeating the alarm based the date or day of the week instead of just daily is
-   ///          supported by the DS3231 RTC, ... @todo finish.
-   /// @note  The 'melody' selection has been implemented for most boards that support STL.    
-   ///        The UNO_R3 will use the internal melody or one other user supplied melody.
-   /// @author Chris-80 (2025/07)
-   typedef struct alarmTime
-      {
-      enum Repeat             ///< Alarm repeation when ON. Default is Daily.
-         {
-         Never = 0,           ///< The alarm is turned OFF after it has fired.
-         Hourly,              ///< The alarm repeats every hour at the selected minute
-         Daily,               ///< The alarm repeats every day at the same time. This is the default.
-         Weekly,              ///< The alarm repeats every week on the given day and time.
-         Monthly,             ///< The alarm repeats every month on the given date and time.
-         endTag               ///< Always the last enum value, defines the size.
-         };
-
-      uint8_t  number;        ///< The number of the alarm: 1 or 2
-      DateTime time;          ///< The time of the alarm as a DateTime object
-      uint8_t  melody;        ///< The melody to play when the alarm is triggered, 0 = internal melody
-      uint8_t  status;        ///< Status of the alarm: 0 - inactive, 1 - active
-      Repeat   freq;          ///< The alarm repeat frequency, default: Daily.
-      bool     fired;         ///< The alarm has fired (e.g. alarm is 'ringing').
-      void clear()            ///< Clear all data except the alarm 'number'
-         {
-         time = DateTime();   // 00:00:00 (2000-01-01)
-         melody = 0;          // Default melody number, internal
-         status = 0;          // OFF, alarm is not set.
-         freq = Daily;        // The alarm repeats every day when ON.
-         fired = false;       // Alarm is not ringing (OFF)
-         }
-      } AlarmTime;
-  
-   /// @brief The structure to create a note with a sound frequency and duration.
-   /// @details The melody used to signal an alarm uses an array of these to create
-   ///          the alarm sound.
-   struct Note
-      {
-      unsigned tone;          ///< The tone frequency in Hz.
-      unsigned long duration; ///< The duration of the tone in ms.
-      };
-
-   /// @brief Enum class to define the index to different LED patterns. Type: uint8_t
-   /// @remarks The enum values correspond to the first index of the 2D `ledPatternsP` 
-   ///          array of `CRGB` colors stored in flash memory.
-   /// @note  The `endTAG` is equal to the number of patterns defined (7 or 8) and must
-   ///        be the last entry in the enum. To reduce the use of flash memory for overhead,
-   ///        all full shield patters are stored together on the 2D array. The enum acts
-   ///        as the index to each pattern/color set so care must be taken to ensure
-   ///        the correct pattern/color set is stored at the correct index.
-   enum class LedPattern : uint8_t
-         { 
-         onColors = 0,  ///< The LED colors when ON (hours; minutes; seconds).
-         offColors,     ///< The LED colors when OFF (usually Black; no power).
-         onText,        ///< The big Green **`O`** for the On pattern.
-         offTxt,        ///< The big RED sideways **`F`** for the oFF pattern.
-         xAbort,       ///< The big Pink **`X`** [❌] for the abort/cancel pattern.
-         okText,       ///< The big Lime **`✓`** [✅] for the okay/good pattern.
-         rainbow,      ///< The colors of the rainbow on the diagnal pattern.
-         #if ESP32_WIFI
-         wText,         ///< The big RoyalBlue **`W`** [📶] for the WPS / WiFi pattern.
-         #endif
-         endTAG         ///< The end marker, also equal to the number of patterns defined (7 or 8).
-         };
-
    /// @brief Pure abstract interface for BinaryClock functionality to reduce dependancies
    ///        and make testing easier. This follows the Interface pattern.
    /// @details We are using the Interface pattern to decouple the implementation class
@@ -125,13 +60,13 @@ namespace BinaryClockShield
       /// @{
       /// @brief The property methods called to set/get the current 'Time' property.
       /// @param value The DateTime object containing the current time to set.
-      /// @return A DateTime object containing the current time.
       /// @note The DateTime class is defiend in the RTCLib.h header file.
       /// @see get_Time()
       /// @see ReadTime()
       /// @author Chris-80 (2025/07)
       virtual void set_Time(DateTime value) = 0;
       /// @copydoc set_Time()
+      /// @return A `DateTime` object containing the current time.
       /// @ingroup properties
       virtual DateTime get_Time() const = 0;
 
@@ -196,26 +131,26 @@ namespace BinaryClockShield
       /// @brief Read only property pattern to get a const reference to the `S1`
       ///        `BCButton` object used for setting time and decrementing a value.
       /// @return A const reference to the `BCButton` for S1 on the shield.
-      /// @see get_SaveStopS2()
-      /// @see get_AlarmIncS3()
+      /// @see get_S2SaveStop()
+      /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_TimeDecS1() const = 0;
+      virtual const BCButton& get_S1TimeDec() const = 0;
 
       /// @brief Read only property pattern to get a const reference to the `S2`
       ///        `BCButton` object used for saving a selection or stopping an alarm.
       /// @return A const reference to the `BCButton` for S2 on the shield.
-      /// @see get_TimeDecS1()
-      /// @see get_AlarmIncS3()
+      /// @see get_S1TimeDec()
+      /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_SaveStopS2() const = 0;
+      virtual const BCButton& get_S2SaveStop() const = 0;
 
       /// @brief Read only property pattern to get a const reference to the `S3`
       ///        `BCButton` object used for setting alarm and incrementing a value.
       /// @return A const reference to the `BCButton` for S3 on the shield.
-      /// @see get_TimeDecS1()
-      /// @see get_SaveStopS2()
+      /// @see get_S1TimeDec()
+      /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_AlarmIncS3() const = 0;
+      virtual const BCButton& get_S3AlarmInc() const = 0;
       /// @}
 
       /// @brief The method to read the time from the RTC (e.g. wrapper for RTC.now()). 
@@ -224,36 +159,57 @@ namespace BinaryClockShield
       ///          This method may need to communicate with the RTC over an I2C or SPI bus.
       /// @return A DateTime object containing the current time read from the RTC.
       /// @see get_Time()
+      /// @author Chris-70 (2025/07)
       virtual DateTime ReadTime() = 0;
 
       // Display operations
+      /// @brief Display the given LED pattern `patternType` on the shield.
+      /// @details The patterns are defined in the `LedPattern` enum.  
+      /// @param patternType The LED pattern to display.
+      /// @see LedPattern
+      /// @author Chris-70 (2025/08)
       virtual void DisplayLedPattern(LedPattern patternType) = 0;
+
+      /// @brief The method called to convert the time to binary and update the LEDs.
+      /// @details This method converts the current time to binary and updates the LEDs 
+      ///          using the color values defined in the arrays 'OnColor' and 'OffColor'
+      /// @param hoursRow The value for the top, to display the hour LEDs (16-12).
+      /// @param minutesRow The value for the middle, to display the minute LEDs (11-6).
+      /// @param secondRow The value for the bottom, to display the second LEDs (5-0).
+      /// @param use12HourMode Flag indicating whether to use 12-hour format.
+      /// @see set_Brightness() for the brightness of the LEDs.
+      /// @see DisplayLedPattern() for displaying the full LED buffer as defined.
+      /// @author Chris-80 (2025/07)
       virtual void DisplayBinaryTime(int hours, int minutes, int seconds, bool use12Hour = false) = 0;
 
       /// @brief Methods to register/unregister a callback function at every second.
+      /// @details The callback function will be called with the current DateTime every second.
+      ///          The callback function should match the signature: `void callback(const DateTime&)`.
       /// @param callback The function to call every second with the current DateTime.
       /// @return Flag: true - success; false - failure (e.g. if the callback is null).
       /// @see UnregisterTimeCallback()
       /// @see RegisterAlarmCallback()
       /// @author Chris-70 (2025/07)
-      virtual bool RegisterTimeCallback(void (*callback)(DateTime)) = 0;
+      virtual bool RegisterTimeCallback(void (*callback)(const DateTime&)) = 0;
       /// @copydoc RegisterTimeCallback()
       /// @see RegisterTimeCallback()
       /// @see UnregisterAlarmCallback()
-      virtual bool UnregisterTimeCallback(void (*callback)(DateTime)) = 0;
+      virtual bool UnregisterTimeCallback(void (*callback)(const DateTime&)) = 0;
 
       /// @brief  Methods to register/unregister a callback function for the alarm.
       ///         The callback function is called when the alarm is triggered.
+      /// @details The callback function will be called with the Alarm DateTime that triggered the alarm.
+      ///          The callback function should match the signature: `void callback(const DateTime&)`.
       /// @param callback The function to call when the alarm is triggered with the current DateTime.
       /// @return Flag: true - success; false - failure (e.g. if the callback is null).
       /// @see RegisterTimeCallback()
       /// @see UnregisterAlarmCallback()
       /// @author Chris-70 (2025/07)
-      virtual bool RegisterAlarmCallback(void (*callback)(DateTime)) = 0;
+      virtual bool RegisterAlarmCallback(void (*callback)(const DateTime&)) = 0;
       /// @copydoc RegisterAlarmCallback()
       /// @see RegisterAlarmCallback()
       /// @see UnregisterTimeCallback()
-      virtual bool UnregisterAlarmCallback(void (*callback)(DateTime)) = 0;
+      virtual bool UnregisterAlarmCallback(void (*callback)(const DateTime&)) = 0;
 
       // Utility
       virtual void PlayAlarm(const AlarmTime& alarm) const = 0;

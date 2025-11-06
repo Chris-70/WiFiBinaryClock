@@ -3,20 +3,20 @@
 ///        which manages the settings menu for the Binary Clock Shield.
 /// @author Chris-70 (2025/09)
 
-#include <Arduino.h>
+#include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
-#include "BCSettings.h"
+#include "BCSettings.h"          /// Binary Clock Settings class: handles all settings and serial output.
 
-#include <Streaming.h>           // https://github.com/janelia-arduino/Streaming
-#include <assert.h>              // Catch code logic errors during development.
+#include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
+#include <assert.h>              /// Catch code logic errors during development.
 
 namespace BinaryClockShield
    {
-   BCSettings::BCSettings(IBinaryClock& clockInterface) : 
-         clock(clockInterface),
-         buttonS1(clock.get_TimeDecS1()),
-         buttonS2(clock.get_SaveStopS2()),
-         buttonS3(clock.get_AlarmIncS3())
+   BCSettings::BCSettings(IBinaryClock& clockInterface)
+         : clock(clockInterface)
+         , buttonS1(clock.get_S1TimeDec())
+         , buttonS2(clock.get_S2SaveStop())
+         , buttonS3(clock.get_S3AlarmInc())
       {
       }
 
@@ -184,7 +184,7 @@ namespace BinaryClockShield
          handleMainMenu();
          }
 
-         // Settings level handling
+      // Settings level handling
       if (settingsLevel != 0)
          {
          if (exit)
@@ -204,7 +204,7 @@ namespace BinaryClockShield
 
    /////////////////////////////////////////////////////////////////////////////////
 
-  #if SERIAL_SETUP_CODE
+   #if SERIAL_SETUP_CODE
       // Define the strings that are used multiple times throughout the serial setup code. 
       const String BCSettings::STR_SEPARATOR = BCSettings::fillStr('-', 44); // "--------------------------------------------";
       const String BCSettings::STR_BARRIER   = BCSettings::fillStr('#', 44); // "############################################";
@@ -278,7 +278,7 @@ namespace BinaryClockShield
          #endif
          }
 
-         // Increment - S3 button
+      // Increment - S3 button
       if (const_cast<BCButton&>(buttonS3).IsPressedNew() && (curMillis > delayTimer))
          {
          countButtonPressed++;
@@ -290,7 +290,7 @@ namespace BinaryClockShield
          #endif
          }
 
-         // Save - S2 button
+      // Save - S2 button
       if ((curMillis > delayTimer) && (continueS2 || const_cast<BCButton&>(buttonS2).IsPressedNew()))
          {
          if (!continueS2)
@@ -298,7 +298,7 @@ namespace BinaryClockShield
             saveCurrentModifiedValue();
             }
 
-            // Handle special case for time mode selection
+         // Handle special case for time mode selection
          bool displayOK = false;
          if (settingsOption == 1 && settingsLevel == 1)
             {
@@ -310,7 +310,7 @@ namespace BinaryClockShield
             settingsLevel++;
             }
 
-            // Check if done with settings
+         // Check if done with settings
          if ((settingsOption == 3) && (settingsLevel > 3))
             {
             exit = true;
@@ -374,7 +374,7 @@ namespace BinaryClockShield
 
       if (exitStage == 0)
          {
-             // Display rainbow pattern to signal start of exit process
+         // Display rainbow pattern to signal start of exit process
          clock.DisplayLedPattern(LedPattern::rainbow);
          delayTimer = curTimer + 750UL;  // Display rainbow for 750ms
          exitStage++;
@@ -382,7 +382,7 @@ namespace BinaryClockShield
 
       if ((exitStage == 1U) && (curTimer > delayTimer))
          {
-             // Display success or abort confirmation
+         // Display success or abort confirmation
          if (abort)
             {
             clock.DisplayLedPattern(LedPattern::xAbort);  // Pink X for abort/cancel

@@ -1,7 +1,9 @@
 /// @file BCSettings.h
-/// @brief This file contains the declaration of the `BCSettings` class
+/// @brief This file contains the declaration of the `BCSettings` class for the menu.
 /// @details The `BCSettings` class manages the settings menu for the Binary Clock Shield.
 ///          It allows the user to set the time and alarm using the shield buttons.   
+///          The `IBinaryClock` interface is used to interact with the clock hardware.  
+///          The settings menu is a state machine that processes button presses.  
 ///          This class also handles the serial output of the settings menu.
 /// @author Chris-70 (2025/09)
 
@@ -13,7 +15,10 @@
 
 namespace BinaryClockShield
    {
-   /// @brief Enum class to indicate the current settings state
+   /// @brief Enum class to indicate the current settings state.
+   /// @details This enum class is used to indicate the current state of the settings menu.
+   ///          It is used in the `ProcessMenu()` method to determine where we are in the 
+   ///          settings menu processing. 
    enum class SettingsState : uint8_t
       {
       Inactive = 0,       ///< Settings menu is not active
@@ -23,7 +28,41 @@ namespace BinaryClockShield
       Exiting             ///< Exiting settings menu
       };
 
-   /// @brief Handles all settings menu functionality for the Binary Clock
+   /// @brief Handles all settings menu functionality for the Binary Clock Shield.
+   /// @details This class manages the settings menu and serial output of the menu.
+   ///          It allows the user to set the time and alarm using the shield buttons.
+   ///          The settings menu is a state machine that processes button presses
+   ///          and updates the settings state accordingly. This class is designed
+   ///          to be called from the main loop of the program every few ms.  
+   /// @par IBinaryClock Interface
+   ///          This class requires an implementation of the `IBinaryClock` interface
+   ///          to interact with the clock hardware. This is passed in the constructor.  
+   ///          The `IBinaryClock` interface provides methods to get and set the time, alarm,
+   ///          12/24 hour mode and display the menu items on the shield.
+   /// @par Menu Navigation
+   ///          The alarm settings have 3 stages: 
+   ///          1. Alarm ON; Alarm OFF; Cancel.
+   ///          2. Set Hour (0-23 or 1-12 AM/PM).
+   ///          3. Set Minute (0-59).  
+   ///          The time settings have 4 stages:   
+   ///          1. 12 Hour mode; 24 Hour mode; Cancel.
+   ///          2. Set Hour (0-23 or 1-12 AM/PM).
+   ///          3. Set Minute (0-59).
+   ///          4. Set Second (0-59).
+   /// @par Button Functions
+   ///          The following button functions are available for navigating the settings menu:
+   ///          - S1: Time set/Decrement value
+   ///          - S2: Stop alarm/Save current value and move to next level
+   ///          - S3: Alarm set/Increment value
+   /// @par Display
+   ///          The current setting being modified is displayed on the shield LEDs.   
+   ///          The normal binary time display is suspended while in the settings menu.   
+   ///          When exiting the settings menu, the display shows a Green **✓** [✅] if 
+   ///          the settings were saved, or a Pink **X** [❌] if the settings were discarded.  
+   ///          The 12 hour mode is displayed as `12` (LED[14]+LED[15]) with an `Indigo` `PM` 
+   ///          indicator (LED[16]),  
+   ///          The 24 hour mode is displayed as `24` (LED[15]+LED[16]).  
+   ///          A green **✓** [✅] is displayed after mode selection before setting the time.
    /// @author Chris-70 (2025/09)
    class BCSettings
       {
@@ -48,6 +87,7 @@ namespace BinaryClockShield
       //################################################################################//
       // SETTINGS
       //################################################################################//
+
       /*!
       @brief The method called to set the time and/or alarm from the shield
                The S1 button sets the Time, S3 sets the Alarm, S2 accepts
@@ -129,17 +169,8 @@ namespace BinaryClockShield
             `SettingsState::Inactive` - i.e. we are not in the settings menu.
             The settings menu uses the display for setting the time/alarm 
             thus the normal time display is suspended while in the menu.
-      @author Marcin Saj - From the original Binary Clock Shield for Arduino
-      @author Chris-80 (2025/07)
+      @author Chris-70 (2025/09)
       */
-      /// @brief Main settings menu handler - call this from the main loop.
-      /// @details This method handles the state machine for the settings menu.
-      ///          It calls the methods that process the settings state.  
-      ///          Inactive - Check for button press to set time/alarm  
-      ///          Exit - Handle exit process  
-      ///          Anything else - Handle the settings level processing.
-      /// @returns Current settings state.
-      /// @author Chris-70 (2025/09)
       SettingsState ProcessMenu();
 
       /// @brief Force exit from settings mode (for an emergency exit)
@@ -187,6 +218,10 @@ namespace BinaryClockShield
     
    protected:
       /// @brief Enum class to classify the different settings types/levels in the settings menu. Type: uint8_t
+      /// @details This enum class is used to classify the different settings types/levels in the settings menu.
+      ///          It is used in the `GetSettingsType(int options, int level)` method to determine the current
+      ///          settings type based on the options and level.
+      /// @author Chris-70 (2025/08)
       enum class SettingsType : uint8_t 
             { 
             Undefined,     ///< Error: value of 0, not in settings menu.
@@ -307,16 +342,6 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void serialCurrentModifiedValue();
       #endif
-
-      // #if SERIAL_TIME_CODE
-      // /// @brief The method called to display the current time, decimal and binary, over the serial monitor.
-      // /// @details While this method can still be removed at compile time, it can also be controlled, at run-time, 
-      // ///          in software and hardware. This method is usually called every second so being able to control the         
-      // ///          output in software and hardware, by using a switch or jumper, can start/stop the serial time display.
-      // /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
-      // /// @author Chris-80 (2025/07)
-      // void SerialTime(DateTime time, char* format) const;
-      // #endif
 
    private:
       // Reference to the clock interface

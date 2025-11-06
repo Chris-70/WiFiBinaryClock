@@ -221,11 +221,26 @@ DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
   // When calculating dayOfTheWeek the 'WeekdayEpoch' is subtracted from the date.
   // The WeekdayEpoch is always in the year 2000, so the date must be later.
   yOff = (year > 0) ? year % 200U : (day == 1 ? 0 : 1U);
-  m = month % 12;
-  d = day % 31;
+  m = month;
+  d = day;
   hh = hour % 24;
   mm = min % 60;
   ss = sec % 60;
+}
+
+/*!
+    @brief Constructor from the `tm` structure (standard time.h).
+    @param rtmTime Reference to `tm` structure.
+    @remarks The `tm` year is an offset from 1900, we subtract 100 to bring the offset to 2000.   
+             The `tm` month range is 0-11, we add 1 to make it 1-12.
+*/
+DateTime::DateTime(struct tm& rtmTime) {
+  yOff = (rtmTime.tm_year + 1900 - 2000);   // Move year offset from 1900 to 2000 (i.e -100)
+  m    = (rtmTime.tm_mon + 1);   // convert from 0-11 to 1-12 month format.
+  d    = rtmTime.tm_mday;
+  hh   = rtmTime.tm_hour;
+  mm   = rtmTime.tm_min;
+  ss   = rtmTime.tm_sec;
 }
 
 /**************************************************************************/
@@ -595,7 +610,8 @@ char *DateTime::toString(char *buffer) const {
          and/or time.
    
       @return A pointer to the provided buffer, which contains the formatted
-         date and/or time. The buffer is guaranteed to be null-terminated.
+         date and/or time. The buffer is guaranteed to be null-terminated
+         provided the input is valid, otherwise a `nullptr` is returned.
 */
 /**************************************************************************/
 char* DateTime::toString(char* buffer, size_t size, const char* format) const {
@@ -790,6 +806,15 @@ String DateTime::timestamp(timestampOpt opt) const {
     // Only date: Year-Month-Day
     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d", 2000U + yOff, m, d);
     break;
+  case TIMESTAMP_DATETIME:
+    // Date and time: Year-Month-Day Hour:Minute:Second
+     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d %02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
+     break;
+  case TIMESTAMP_DATETIME12:
+     // Date and time: Year-Month-Day Hour:Minute:Second in 12 hour format with AM/PM
+     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d %2d:%02d:%02d %s", 2000U + yOff, m, d,
+             hh % 12 == 0 ? 12 : hh % 12, mm, ss, hh < 12 ? "AM" : "PM");
+     break;
   case TIMESTAMP_TIME12:
      // Only time: Hour:Minute:Second in 12 hour format with AM/PM
      snprintf(buffer, BUFFER_SIZE, "%2d:%02d:%02d %s", hh % 12 == 0 ? 12 : hh % 12,
@@ -815,7 +840,7 @@ String DateTime::timestamp(timestampOpt opt) const {
   case TIMESTAMP_FULL:
   default:
     // Full date and time: Year-Month-DayTHour:Minute:Second
-     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02dT%02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
+    snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02dT%02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
     break;
   }
 

@@ -10,13 +10,13 @@ namespace BinaryClockShield
    // Initialize static member
    unsigned long BCButton::bounceDelay = DEFAULT_DEBOUNCE_DELAY;
 
-   BCButton::BCButton(uint8_t pin, uint8_t onValue) : 
-         pin(pin), 
-         onValue(onValue), 
-         state(onValue == HIGH ? LOW : HIGH),
-         lastRead(onValue == HIGH ? LOW : HIGH), 
-         lastReadTime(0), 
-         lastDebounceTime(0)
+   BCButton::BCButton(uint8_t pin, uint8_t onValue) 
+         : pin(pin)
+         , onValue(onValue)
+         , state(onValue == CC_ON ? CC_OFF : CA_OFF)
+         , lastRead(onValue == CC_ON ? CC_OFF : CA_OFF)
+         , lastReadTime(0)
+         , lastDebounceTime(0)
       { }
 
    void BCButton::Initialize()

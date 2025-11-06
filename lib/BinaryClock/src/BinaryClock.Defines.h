@@ -7,22 +7,34 @@
 #endif
 /// @file BinaryClock.Defines.h  
 ///###############################################################################################///  
-/// @brief  System defines and MACROs, needed as part of the software to run the:
+/// @brief  System defines and MACROs, needed as part of the software to run the shield.
 /// @verbatim
 ///         'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com   
 ///           (https://nixietester.com/products/binary-clock-shield-for-arduino/)   
 ///  
 /// @endverbatim
+/// @details This is a large and complex file that contains many defines and MACROs
+///          that are used throughout the Binary Clock project. The file is designed
+///          to be included in all source files that need access to these defines and MACROs.  
+///          The complexity comes from the need to support multiple boards and configurations,
+///          while keeping the source files understandable and maintainable.  
+///          Many of the MACROs are designed to become whitespace when not included in the
+///          configuration/compilation. Boards such as the UNO R3 are limited in memory
+///          and resources, so any code that isn't needed must be removed to save memory.  
+///          This file is very flexible to allow for simple changes to base defines to alter
+///          the code that is compiled. These changes can be made outside this file, 
+///          in the `board_select.h` file or another file that is included in `board_select.h`.
+/// 
 /// This file isn't designed to be modified by the user. Instead, the user should
-/// create/modify the file:  
+/// modify/create the file:  
 ///                         **`board_select.h`**  
 /// (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h)  
-/// @details
 /// to include the define that identifies the target board for your project.
-/// The sample **`board_select.h`** file is included that also contains a template for a user's
-/// custom UNO board definition. You can also add additional defines there for the project if needed.  
+/// The `board_select.h` file is automatically included at the start of this file if it exists.
+/// A sample **`board_select.h`** file is provided that also contains a template for a user's
+/// custom UNO board definition. You can also add additional defines there for the project as needed.  
 ///-----------------------------------------------------------------------------------------------//  
-/// Below are partial contents of the `board_select.h` file plus a custom board template:  
+/// Below are partial contents of the `board_select.h` file. The file contains a custom board template:  
 ///
 /// The following are defines for the currently supported boards. One must be used to compile, or
 /// create your own CUSTOM_UNO style board definitions for any different UNO style board you have.  
@@ -32,7 +44,7 @@
 /// #define ESP32_D1_R32_UNO   // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions     (ESP32 WiFi)
 /// #define METRO_ESP32_S3     // If defined, the code will use Adafruit Metro ESP32-S3 board definitions    (ESP32 WiFi)
 /// #define ESP32_S3_UNO       // If defined, the code will use generic ESP32-S3 UNO board definitions       (ESP32 WiFi)
-/// #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (ESP32 WiFi)
+/// #define UNO_R4_WIFI        // If defined, the code will use Arduino UNO R4 WiFi board definitions        (WiFiS3)
 /// #define UNO_R4_MINIMA      // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
 /// #define UNO_R3             // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
 ///
@@ -44,6 +56,12 @@
 /// positions, however the name of the pins at each location may be named differently on your board.
 /// You can't change the pin locations(*) you just modify/define the pin numbers for your board.
 ///   
+/// ================================================================================   
+/// @par (*) Hardware Modifications
+/// Changing pin locations requires a hardware modification or an UNO development board
+/// sandwiched between the UNO board and the shield. see the `README.md` file for details.   
+/// (https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications)
+///
 /// ================================================================================   
 /// @par Development Boards 
 /// Binary Clock Shield Development Boards were used in the development and testing of this software.
@@ -58,7 +76,7 @@
 /// without the need to change the software. The Serial Time is a switch to enable/disable 
 /// the serial time display, displays while switch is ON. The Serial Setup is a momentary button
 /// to toggle enable/disable the serial setup display. 
-/// When the PIN values  are -1 (-ve) the associated code is removed.  
+/// When the PIN values are -1 (-ve) the associated code is removed.  
 ///   
 /// ================================================================================    
 /// @par Serial Output Control
@@ -74,6 +92,11 @@
 // ##################################################################################### //
 /// These methods/functions can be redefined if the definition is placed BEFORE the 
 /// #include "BinaryClock.Defines.h" statement in the source file where it is used.
+/// Define any of these in the "board_select.h" file as it is included first.
+/// Note: These defines are for developers who are modifying/extending the library and
+///       need to tailor the `SERIAL_TIME()`; `SERIAL_TIME_STREAM()`; and `SERIAL_SETUP_STREAM()`
+///       MACROs for their own code. This can be done by defining them BEFORE this file is included.
+// ##################################################################################### //
 #ifndef SERIAL_SETUP_TEST
 #define SERIAL_SETUP_TEST get_IsSerialSetup()
 #endif
@@ -85,12 +108,14 @@
 #endif
 
 // ##################################################################################### //
-// These defines can be overridden by defining them BEFORE this header file is included.
+// These defines can be overridden by defining them BEFORE this header file is included, 
+// usually in the `board_select.h` file which is included at the start of this file.
 // The supported boards are defined such that these values are set UNLESS they are overridden.
 // ##################################################################################### //
-// #define LED_HEART           19   ///< Heartbeat LED to show working software or LED_BUILTIN output.
+// #define LED_HEART           48   ///< Heartbeat LED to show working software or LED_BUILTIN output.
 // #define STL_USED          true   ///< Flag to use the C++ STL library, usually true. 
-// #define ESP32_WIFI        true   ///< Flag to include the WiFi code.
+// #define ESP32_WIFI        true   ///< Flag to include the ESP32 WiFi code.
+// #define WIFIS3            false  ///< Flag to include the WIFIS3 code for UNO R4 WiFi.
 // #define FREE_RTOS         true   ///< Flag to indicate the FreeRTOS is being used.
 
 /// @addtogroup BoardDefines UNO Board Definitions
@@ -135,10 +160,6 @@
       #define LED_HEART         19   ///< Heartbeat LED to show working software and all LED_BUILTIN output.
    #endif
    
-   /// LED, can't used LED_BUILTIN as it's on pin 02, that is used for S3 button.
-   /// In all cases use a PIN that is not used by the shield even if it won't be visible.
-   #undef  LED_BUILTIN
-   #define LED_BUILTIN   LED_HEART
 /// @}
 /// name METRO_ESP32_S3
 /// @ingroup BoardDefines
@@ -211,16 +232,26 @@
 ///    UNO R4 Minima  (https://store.arduino.cc/products/uno-r4-minima)   
 #elif defined(UNO_R3) || defined(UNO_R4_WIFI) || defined(UNO_R4_MINIMA)
    // Arduino UNO based pin definitions (R3 & R4)
-   #define RTC_INT            3   ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
-   #define PIEZO             11   ///< The number of the Piezo pin
-   #define LED_PIN           A3   ///< Data pin that LEDs data will be written out over
+   #define RTC_INT            3     ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+   #define PIEZO             11     ///< The number of the Piezo pin
+   #define LED_PIN           A3     ///< Data pin that LEDs data will be written out over
 
    // Push buttons S1; S2; and S3 connected to the: A2, A1, A0 Arduino pins
-   #define S1                A2   ///< A2: S1 button: Time set & Decrement button
-   #define S2                A1   ///< A1: S2 button: Select & Confirm/Save button
-   #define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
+   #define S1                A2     ///< A2: S1 button: Time set & Decrement button
+   #define S2                A1     ///< A1: S2 button: Select & Confirm/Save button
+   #define S3                A0     ///< A0: S3 button: Alarm set & Increment button
 
    #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor
+
+   #define ESP32_WIFI false         ///< No ESP32 WiFi on any Arduino boards, only WIFIS3 for UNO R4 WIFI.
+   #if defined(UNO_R3)
+      #define FREE_RTOS  false
+   #else
+      #define FREE_RTOS  true
+      #if defined(UNO_R4_WIFI)
+         #define WIFIS3    false // true    ///< The UNO R4 WiFi board uses WIFIS3.h; similar to ESP32 WiFi but different, no WPS. 
+      #endif
+   #endif
 
    #if DEV_BOARD && !defined(UNO_R3)
       #define DEBUG_SETUP_PIN    5  ///< Set to -1 to disable the Serial Setup display control by H/W (CC)
@@ -252,33 +283,46 @@
 #endif
 /// @}
 
+//################################################################################//  
+/// Defines for WiFi and FreeRTOS support based on the selected board.
+/// These can be overridden by defining them in the "board_select.h" file.
 #if defined(CUSTOM_UNO) && CUSTOM_UNO
    #ifndef ESP32_WIFI
-      #define ESP32_WIFI false   ///< Assume no WiFi capability if not defined.
+      #define ESP32_WIFI false   /// Assume no WiFi capability if not defined.
+   #endif
+   #ifndef WIFIS3
+      #define WIFIS3 false       /// Assume no WIFIS3 capability if not defined.
    #endif
    #ifndef FREE_RTOS
-      #define FREE_RTOS  false   ///< Assume no FreeRTOS support if not defined.
+      #define FREE_RTOS  false   /// Assume no FreeRTOS support if not defined.
    #endif
    #ifndef ESP32_INPUT_PULLDOWN
-      #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor
+      #define ESP32_INPUT_PULLDOWN  INPUT   /// Define for INPUT without an internal pull-down resistor
    #endif
 #else                            ///< Supported boards; set WiFi and FreeRTOS flags.
-   #if defined(UNO_R3) || defined(UNO_R4_MINIMA)   ///< For the UNO R3 and R4 Minima boards, no WiFi/FreeRTOS.
-      // These defines are used for boards without WiFi and the FreeRTOS library.
-      #undef ESP32_WIFI
-      #undef FREE_RTOS
-      #define ESP32_WIFI false
-      #define FREE_RTOS  false
-   #else
-      #ifndef ESP32_WIFI            ///  IF the WiFi hasn't been defined:
-         #define ESP32_WIFI false   ///< Assume all other supported boards have WiFi capability.
-      #endif
-      #ifndef FREE_RTOS             ///  IF FreeRTOS hasn't been defined:
-         #define FREE_RTOS  false   ///< Assume all other supported boards have FreeRTOS support.
-      #endif
-   #endif // else #if defined(UNO_R3) || defined(UNO_R4_MINIMA)
+   #ifndef WIFIS3
+      #define WIFIS3      false  /// Assume no WIFIS3 capability for Arduino boards if not defined.
+   #endif
+   #ifndef ESP32_WIFI            /// IF the WiFi hasn't been defined:
+      #define ESP32_WIFI  true   /// Assume all other supported boards have WiFi capability.
+   #endif
+   #ifndef FREE_RTOS             /// IF FreeRTOS hasn't been defined:
+      #define FREE_RTOS   true   /// Assume all other supported boards have FreeRTOS support.
+   #endif
 #endif // else #if defined(CUSTOM_UNO) && !CUSTOM_UNO
 
+#if ESP32_WIFI && WIFIS3
+   #error "Both ESP32_WIFI and WIFIS3 cannot be true at the same time. Please check your board definitions."
+   #include <MultipleWiFiDefinitions_StopCompilationNow> // Include a dummy header file to stop compilation
+#endif
+
+#ifndef WIFI
+   #define WIFI (ESP32_WIFI || WIFIS3)   ///< WiFi is used if either ESP32_WIFI or WIFIS3 is true.
+#endif
+
+//################################################################################//  
+/// Defines to control the use of the STL library and printf code use and to 
+/// disable as much code as possible for the UNO_R3 boards.
 #if defined(UNO_R3)
    /// Not enough resources on the UNO R3 board to use the development board code.
    /// The UNO R3 board doesn't have the resources to include the code for an
@@ -288,10 +332,17 @@
    #undef DEV_CODE
    #define SERIAL_TIME_CODE false
    #define STL_USED         false
+   #define PRINTF_OK        false
 #elif !defined(STL_USED)
    #define STL_USED         true    ///< Use the STL library if not using the UNO R3 board.
 #endif
 
+#ifndef PRINTF_OK
+   #define PRINTF_OK       true     ///< If PRINTF_OK hasn't been defined, assume printf is available.
+#endif
+
+//################################################################################//  
+/// Defines to control the inclusion/removal of development board code.
 #ifndef DEV_BOARD
    #define DEV_BOARD false    ///< If DEV_BOARD hasn't been defined, don't include code for the development board
 #elif defined(DEV_BOARD) && DEV_BOARD
@@ -343,28 +394,89 @@
 
 #define FOREVER while(true)            ///< Infinite loop, e.g. used in task methods.
 
-/// These are defined as MACROs to simplify the code.
-/// This avoids surrounding the code with #if `*defined*` directives. An additional
-/// advantage is that the code is not compiled at all if `*defined*` is false or undefined.
+//#####################################################################################//  
+/// These output statements are defined as MACROs to simplify the code.
+/// This avoids surrounding the code with #if `__defined__` directives. An additional
+/// advantage is that the code is not compiled at all if `__defined__` is false or undefined.  
+/// This code contains output statements that are used for different development and debugging
+/// purposes. The output statements can be enabled/disabled by defining the appropriate
+/// macros.
 /// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
 ///       This is required to avoid empty statements (i.e. ';') when the code is removed.
 ///       It is also an indicator/reminder to the developer that this code might be removed.
+/// 
+/// The base macros are defined first, then the higher level macros are defined that
+/// use the base macros. This allows for more flexibility in controlling the output.
+/// The output commands can be changed here if needed, e.g. to change from Serial to another output method.
 #if DEV_CODE || SERIAL_OUTPUT
    #define SERIAL_PRINT_MACRO(STRING) Serial.print(STRING);
    #define SERIAL_PRINTLN_MACRO(STRING) Serial.println(STRING);
    #define SERIAL_STREAM_MACRO(CMD_STRING) Serial << CMD_STRING;
+   #if PRINTF_OK
+      #define SERIAL_PRINTF_MACRO(FORMAT, ...) Serial.printf(FORMAT, __VA_ARGS__);
+   #else
+      #define SERIAL_PRINTF_MACRO(FORMAT, ...)
+   #endif
 #else
    // Removes the code from compilation, replaced with whitespace.
-   #dfefine SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_PRINT_MACRO(STRING)
    #define SERIAL_PRINTLN_MACRO(STRING)
    #define SERIAL_STREAM_MACRO(CMD_STRING)
+   #define SERIAL_PRINTF_MACRO(FORMAT, ...)
 #endif
 
+/// These output MACROs are available for all general serial output.
+/// SERIAL_OUTPUT is defined true if either SERIAL_SETUP_CODE or SERIAL_TIME_CODE is true.
+#if SERIAL_OUTPUT
+   #define SERIAL_OUT_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_OUT_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
+   #define SERIAL_OUT_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
+   #define SERIAL_OUT_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
+#else
+   #define SERIAL_OUT_PRINT(STRING)
+   #define SERIAL_OUT_PRINTLN(STRING)
+   #define SERIAL_OUT_STREAM(CMD_STRING)
+   #define SERIAL_OUT_PRINTF(FORMAT, ...)
+#endif
+
+/// Debugging and development only output statements.
+/// These output MACROs are only defined if DEV_CODE is true.
+/// This allows for debugging output to be included in the code
+/// only during development, but removed from the final code. 
+#if DEV_CODE
+   #define SERIAL_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
+   #define SERIAL_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
+   #define SERIAL_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
+   #define SERIAL_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
+#else
+   #define SERIAL_PRINT(STRING)
+   #define SERIAL_PRINTLN(STRING)
+   #define SERIAL_STREAM(CMD_STRING)
+   #define SERIAL_PRINTF(FORMAT, ...)
+#endif
+
+/// Temporary debug output statements controlled by the DEBUG_OUTPUT define.
+/// These are defined for temporary debug statements that are never
+/// included in code that is released. The `DEBUG_...` statements should
+/// be removed from the code BEFORE committing to the repo.
+#if DEBUG_OUTPUT
+   #define DEBUG_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
+   #define DEBUG_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
+   #define DEBUG_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
+   #define DEBUG_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
+#else
+   #define DEBUG_PRINT(STRING)
+   #define DEBUG_PRINTLN(STRING)
+   #define DEBUG_STREAM(CMD_STRING)
+   #define DEBUG_PRINTF(FORMAT, ...)
+#endif
+
+//#####################################################################################//  
 /// Wrapper macro for single serial print statements to check the
 /// `IsSerialSetup` properety flag for printing and eleminates the
 /// need to surrond the statements with `#if SERIAL_SETUP_CODE...#endif`
 /// directives. Don't use for multiple statements as it unnecessarly
-/// adds an `if ()` statement to each line.
+/// adds an `if ()` statement to each line, use conditional compilation `#if ...` instead.
 #if SERIAL_SETUP_CODE
    #define SERIAL_SETUP_STREAM(CMD_STRING) \
          if (SERIAL_SETUP_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
@@ -376,7 +488,7 @@
 /// `IsSerialTime` properety flag for printing and eleminates the
 /// need to surrond the statements with `#if SERIAL_TIME_CODE...#endif`
 /// directives. Don't use for multiple statements as it unnecessarly
-/// adds an `if ()` statement to each line.
+/// adds an `if ()` statement to each line, use conditional compilation `#if ...` instead.
 #if SERIAL_TIME_CODE
    #define SERIAL_TIME() \
          if (SERIAL_TIME_TEST) { SERIAL_TIME_FTN; }
@@ -387,31 +499,8 @@
    #define SERIAL_TIME_STREAM(CMD_STRING)
 #endif
 
-#if SERIAL_OUTPUT
-   #define SERIAL_OUT_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
-   #define SERIAL_OUT_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
-   #define SERIAL_OUT_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
-#else
-   #define SERIAL_OUT_PRINT(STRING)
-   #define SERIAL_OUT_PRINTLN(STRING)
-   #define SERIAL_OUT_STREAM(CMD_STRING)
-#endif
-/// Debugging macros for development.
-/// Eleminates the need to wrap each Serial print statement with
-/// `#if DEV_CODE...#endif` directives.
-/// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
-///       This required to avoid empty statements (i.e. ';') when the code is removed.
-///       It's also an indicator/reminder to the developer that this code might be excluded.
-#if DEV_CODE
-   #define SERIAL_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
-   #define SERIAL_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
-   #define SERIAL_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
-#else
-   #define SERIAL_PRINT(STRING)
-   #define SERIAL_PRINTLN(STRING)
-   #define SERIAL_STREAM(CMD_STRING)
-#endif
-
+//#####################################################################################//  
+/// General defines for the Binary Clock Shield
 // The physical layout of the LEDs on the shield, one row each.
 #define NUM_HOUR_LEDS     5            ///< The LEDs on the top row of the shield.
 #define NUM_MINUTE_LEDS   6            ///< The LEDs on the middle row of the shield.
@@ -420,6 +509,10 @@
 #define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
 #define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
 #define SECOND_LED_OFFSET 0
+#define HOUR_MASK_24      0x1F         ///< Mask for the 24 hour format (5 bits)
+#define HOUR_MASK_12      0x0F         ///< Mask for the 12 hour format (4 bits)
+#define MINUTE_MASK       0x3F         ///< Mask for the minutes (6 bits)
+#define SECOND_MASK       0x3F         ///< Mask for the seconds (6 bits)
 
 #define LED_TYPE           WS2812B     ///< Datasheet: http://bit.ly/LED-WS2812B
 #define COLOR_ORDER          GRB       ///< For color ordering use this sketch: http://bit.ly/RGBCalibrate   
@@ -436,6 +529,8 @@
 #define CC_OFF                   LOW   ///< The value when OFF for CC connections
 
 #define MAX_BUFFER_SIZE           64   ///< Maximum size of temporary buffers.
+#define DEFAULT_TIME_FORMAT   "HH:mm:ss AP"  ///< Default time  format when not defined.
+#define DEFAULT_ALARM_FORMAT  "HH:mm AP"     ///< Default alarm format when not defined.
 
 /// @addtogroup DefinesDS3231 Defines for the DS3231 RTC registers and bit masks
 /// @{
@@ -448,9 +543,9 @@
 // to signal the oscillator has stopped and can only be cleared, while on the DS3232 
 // it is a control bit to enable/disable the oscillator. The DS3232 has a selectable
 // temperature conversion rate, while the DS3231 has a fixed 10 seconds conversion rate.
-// while on battery. On VCC, both chips have a 1 second conversion rate.
+// on battery. On VCC, both chips have a 1 second conversion rate.
 // From: (https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf)
-//       (https://www.analog.com/media/en/technical-documentation/data-sheets/DS3232.pdf)
+//       (https://www.analog.com/media/en/technical-documentation/data-sheets/DS1307.pdf)
 //=====================================================================================//
 /// @name DS3231 RTC register numbers:
 #define DS3231_TIME                 0x00  ///< Time register start (0x00 - 0x06)
