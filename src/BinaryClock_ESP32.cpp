@@ -9,7 +9,7 @@
 #endif
 
 #if WIFI
-   #include "BinaryClockWiFi.h"
+   #include "BinaryClockWAN.h"
 #endif
 
 // Development board specific; has additional hardware buttons and OLED display.
@@ -162,7 +162,7 @@ __attribute__((used)) void setup()
    delay(125);
 
    #if WIFI
-   static BinaryClockWiFi wifi(binClock);
+   static BinaryClockWAN wifi(binClock);
    bool wifiResult = wifi.Begin();
    delay(125);
 ////////////////////////////////////

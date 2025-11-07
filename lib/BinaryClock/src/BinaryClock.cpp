@@ -27,7 +27,7 @@
    The original modifications to the `Example-11` file was to use a generic `Wemos-D1-R32 UNO, ESP32` board
    instead of the UNO R3. This was a challange due to some hardware limitations, see the
    [README.md](https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications-for-the-wemos-d1-r32-uno) file.
-   The code for the WiFi connection is encapsulated in its own class, `BinaryClockWiFi`, which is not included in this file.
+   The code for the WiFi connection is encapsulated in its own class, `BinaryClockWAN`, which is not included in this file.
    It uses WPS to connect to a WiFi network and stores the credentials in the ESP32's flash memory.
 
   @section classes Available classes
@@ -50,7 +50,7 @@
   - Custom library dependencies:
     - [**RTClibPlus**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/RTClibPlus) A modified fork of
                       [Adafruit's RTClib](https://github.com/adafruit/RTClib) to expand the functionality and support 12 hour mode.
-    - [**BinaryClockWiFi**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWiFi)
+    - [**BinaryClockWAN**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN)
                            WiFi connection and syncing with an NTP server.
     - [**MorseCodeLED**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED):
                         Display error messages over the _LED_BUILTIN_. A fun communication alternative when there is no screen.

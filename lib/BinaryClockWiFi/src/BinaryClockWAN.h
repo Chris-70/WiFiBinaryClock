@@ -1,6 +1,6 @@
-/// @file BinaryClockWiFi.h
-/// @brief The header file for the BinaryClockWiFi class.
-/// @details This file contains the declaration of the BinaryClockWiFi class, which provides WiFi connectivity
+/// @file BinaryClockWAN.h
+/// @brief The header file for the BinaryClockWAN class.
+/// @details This file contains the declaration of the BinaryClockWAN class, which provides WiFi connectivity
 ///          and time synchronization features for the Binary Clock project.
 /// @author Chris-70 (2025/09)
 #pragma once
@@ -24,7 +24,7 @@
 
 namespace BinaryClockShield
    {
-   /// @brief The BinaryClockWiFi class provides WiFi connectivity and time synchronization 
+   /// @brief The BinaryClockWAN class provides WiFi connectivity and time synchronization 
    ///        features for the Binary Clock project.
    /// @details This class manages WiFi connections, including connecting to known access points, 
    ///          handling disconnections, and maintaining the connection state.  
@@ -35,12 +35,12 @@ namespace BinaryClockShield
    /// @note    This class requires the `BinaryClockSettings` class to manage access point credentials.
    ///          It also requires an `IBinaryClock` instance to update the time.
    /// @author Chris-70 (2025/09)
-   class BinaryClockWiFi
+   class BinaryClockWAN
       {
    public:
-      /// @brief Construct a `BinaryClockWiFi` instance with a reference to the `IBinaryClock` 
+      /// @brief Construct a `BinaryClockWAN` instance with a reference to the `IBinaryClock` 
       ///        Interface implementation (e.g `BinaryClock`).
-      /// @details This constructor initializes the `BinaryClockWiFi` instance with a reference
+      /// @details This constructor initializes the `BinaryClockWAN` instance with a reference
       ///          to an `IBinaryClock` implementation. It also initializes the `BinaryClockSettings`
       ///          instance to manage access point credentials. The constructor scans for all
       ///          available WiFi networks and saves this list.   
@@ -49,12 +49,12 @@ namespace BinaryClockShield
       /// @see Begin()
       /// @see GetAvailableNetworks()
       /// @author Chris-70 (2025/09)
-      BinaryClockWiFi(IBinaryClock& clock);
+      BinaryClockWAN(IBinaryClock& clock);
 
-      /// @brief Destructor for the BinaryClockWiFi class.
+      /// @brief Destructor for the BinaryClockWAN class.
       /// @details The destructor ensures that the WiFi connection is properly closed and resources are released.
       /// @author Chris-70 (2025/09)
-      virtual ~BinaryClockWiFi();
+      virtual ~BinaryClockWAN();
 
    //#################################################################################//  
    // Public METHODS                                                                  //   
@@ -241,7 +241,7 @@ namespace BinaryClockShield
       TimeSpan zuluOffset;             ///< Current time offset to UTC/Zulu time.
 
       std::vector<WiFiInfo> localAPs;  ///< List of local WiFi access points.
-      }; // class BinaryClockWiFi
+      }; // class BinaryClockWAN
    } // namespace BinaryClockShield
 
 #endif // __BINARYCLOCKWIFI_H__

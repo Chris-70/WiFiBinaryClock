@@ -1,5 +1,5 @@
-/// @file BinaryClockWiFi.cpp
-/// @details This file contains the implementation of the `BinaryClockWiFi` class which
+/// @file BinaryClockWAN.cpp
+/// @details This file contains the implementation of the `BinaryClockWAN` class which
 ///          manages the WiFi connection for the Binary Clock. It handles connecting to
 ///          WiFi networks and managing the connection state.
 /// @author Chris-70 (2025/09)
@@ -9,7 +9,7 @@
 // If you need the class definition in the same file, e.g. for CoPilot, 
 // just copy-paste the contents of the header file here and change the define.
 #else
-   #include "BinaryClockWiFi.h"
+   #include "BinaryClockWAN.h"
 #endif 
 
 #include "freertos/FreeRTOS.h"
@@ -23,26 +23,26 @@
 
 namespace BinaryClockShield
    {
-   BinaryClockWiFi::BinaryClockWiFi(IBinaryClock& clock) : binClock(clock), settings(), wps(WPS_TIMEOUT_MS)
+   BinaryClockWAN::BinaryClockWAN(IBinaryClock& clock) : binClock(clock), settings(), wps(WPS_TIMEOUT_MS)
       {
       settings.Begin();    // Read the settings from the Non-Volatile Storage.
       WiFi.mode(WIFI_STA);
       localAPs = GetAvailableNetworks();  // Find all the APs in the area.
-      Serial << "BinaryClockWiFi() found " << localAPs.size() << " networks" << endl;
+      Serial << "BinaryClockWAN() found " << localAPs.size() << " networks" << endl;
       zuluOffset = TimeSpan(0, -4, 0, 0); // Default to EDT (UTC-4)
       }
 
-   BinaryClockWiFi::~BinaryClockWiFi()
+   BinaryClockWAN::~BinaryClockWAN()
       {
       End(false);
       }
 
-   bool BinaryClockWiFi::Connect(APCreds& creds)
+   bool BinaryClockWAN::Connect(APCreds& creds)
       {
       bool result = false;
       // Connect to the specified WiFi network using the provided credentials.
       auto status = WiFi.begin(creds.ssid.c_str(), creds.pw.c_str());
-      Serial << "BinaryClockWiFi() connecting to " << creds.ssid << ", result: " << WiFiStatusString(status) << endl;
+      Serial << "BinaryClockWAN() connecting to " << creds.ssid << ", result: " << WiFiStatusString(status) << endl;
       if (status == WL_CONNECTED)
          {
          Serial << "Connected to " << creds.ssid << " with IP address " << WiFi.localIP() << endl;
@@ -55,7 +55,7 @@ namespace BinaryClockShield
       return result;
       }
 
-   bool BinaryClockWiFi::ConnectLocal()
+   bool BinaryClockWAN::ConnectLocal()
       {
       bool result = false;
       bool sta = WiFi.mode(WIFI_STA);
@@ -79,13 +79,13 @@ namespace BinaryClockShield
             {
             // Single WiFi.begin() call with BSSID
             status = WiFi.begin(cred.ssid.c_str(), cred.pw.c_str(), info.channel, bssidArray, true);
-            Serial << "BinaryClockWiFi() connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl;   // *** DEBUG ***
+            Serial << "BinaryClockWAN() connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl;   // *** DEBUG ***
             }
          else
             {
             Serial << "    Missing/Invalid BSSID format in credentials: [" << cred.bssid << "]" << endl; // *** DEBUG ***
             status = WiFi.begin(cred.ssid.c_str(), cred.pw.c_str());
-            Serial << "BinaryClockWiFi() connecting to " << cred.ssid << " without BSSID" << endl; // *** DEBUG ***
+            Serial << "BinaryClockWAN() connecting to " << cred.ssid << " without BSSID" << endl; // *** DEBUG ***
             }
 
          // Wait for connection with proper timeout
@@ -114,7 +114,7 @@ namespace BinaryClockShield
 
          // Check final status
          wl_status_t finalStatus = WiFi.status();
-         Serial << "BinaryClockWiFi() final result: " << WiFiStatusString(finalStatus) << endl; // *** DEBUG ***
+         Serial << "BinaryClockWAN() final result: " << WiFiStatusString(finalStatus) << endl; // *** DEBUG ***
 
          if (finalStatus == WL_CONNECTED)
             {
@@ -138,7 +138,7 @@ namespace BinaryClockShield
       return result;
       }
 
-   std::vector<WiFiInfo> BinaryClockWiFi::GetAvailableNetworks()
+   std::vector<WiFiInfo> BinaryClockWAN::GetAvailableNetworks()
       {
       size_t n = WiFi.scanNetworks(false, true);
       Serial << "GetAvailableNetworks() - scan done, found " << n << " networks" << endl; // *** DEBUG ***
@@ -163,7 +163,7 @@ namespace BinaryClockShield
       return networks;
       }
 
-   bool BinaryClockWiFi::Begin(bool autoConnect)
+   bool BinaryClockWAN::Begin(bool autoConnect)
       {
       bool result = !autoConnect;
       // Register the `WiFiEvent()` instance method, through a lambda, to get all events.
@@ -208,7 +208,7 @@ namespace BinaryClockShield
       return result;
       }
 
-   void BinaryClockWiFi::End(bool save)
+   void BinaryClockWAN::End(bool save)
       {
       ntp.UnregisterSyncCallback();
       WiFi.disconnect();
@@ -217,7 +217,7 @@ namespace BinaryClockShield
       settings.End(save);
       }
       
-   bool BinaryClockWiFi::UpdateTime()
+   bool BinaryClockWAN::UpdateTime()
       {
       bool result = false;
       DateTime time = ntp.get_LocalNtpTime();
@@ -231,31 +231,31 @@ namespace BinaryClockShield
       return result;
       }
 
-   DateTime BinaryClockWiFi::SyncTimeNTP()
+   DateTime BinaryClockWAN::SyncTimeNTP()
       {
       return DateTime();  // TODO: Method body.
       }
 
-   void BinaryClockWiFi::SyncAlert(const DateTime& dateTime)
+   void BinaryClockWAN::SyncAlert(const DateTime& dateTime)
       {
       binClock.set_Time(dateTime);
       Serial << "SyncAlert(): Time synchronized: " << dateTime.timestamp(binClock.get_Is12HourFormat()
             ? DateTime::TIMESTAMP_DATETIME12 : DateTime::TIMESTAMP_DATETIME) << endl;  // *** DEBUG ***
       }
 
-   void BinaryClockWiFi::set_Timezone(String value)
+   void BinaryClockWAN::set_Timezone(String value)
       {
       settings.set_Timezone(value);
       ntp.set_Timezone(value.c_str());
       }
 
-   String BinaryClockWiFi::get_Timezone() const
+   String BinaryClockWAN::get_Timezone() const
       {
       return String(ntp.get_Timezone());
       }
 
    // WARNING: This function is called from a separate FreeRTOS task (thread)!
-   void BinaryClockWiFi::WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
+   void BinaryClockWAN::WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       {
       Serial.printf("[%lu] {WiFi-event} event %2d: ", millis(), event); // *** DEBUG ***
       // Serial.printf("[WiFi-event] event %2d \"%s\" - ", event, WiFiEventToString(event));
@@ -297,7 +297,7 @@ namespace BinaryClockShield
       }
 
    // WARNING: This function is called from a separate FreeRTOS task (thread)!
-   void BinaryClockWiFi::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
+   void BinaryClockWAN::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
       {
       Serial.printf("[%7lu] {WiFiGotIp} event %2d: ", millis(), event); // *** DEBUG ***
       Serial.println("        WiFi connected");

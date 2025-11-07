@@ -208,13 +208,13 @@ namespace BinaryClockShield
    ///                            for communication of messages that can be understood by 0.001% of people 
    ///                            and by 100% of online Morse code interpreters, and it was a fun exercise.
    /// 
-   ///          - `BinaryClockWiFi`: A library to handle all WiFi related functionality including NTP server
+   ///          - `BinaryClockWAN`:  A library to handle all WiFi related functionality including NTP server
    ///                               connections for time synchronization. This library connects to an open 
    ///                               local WiFi, a secure WiFi using WPS, or a secure WiFi using credentials 
    ///                               from the user and stored in the ESP32 flash memory. The library also 
    ///                               handles all NTP related functionality including time synchronization and
    ///                               daylight saving time adjustments based on user settings. 
-   ///                               The `BinaryClockWiFi` is the main class and uses the other classes for support:  
+   ///                               The `BinaryClockWAN` is the main class and uses the other classes for support:  
    ///                               The `BinaryClockWPS` class establishes a connection with an AP using WPS.   
    ///                               The `BinaryClockNTP` class handles all NTP related functionality.   
    ///                               The `BinaryClockSettings` class handles the storing and retrieving of all 
