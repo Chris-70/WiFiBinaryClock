@@ -37,7 +37,7 @@ namespace BinaryClockShield
    /// @author Chris-70 (2025/09)
    class BinaryClockWAN
       {
-   public:
+   protected:
       /// @brief Construct a `BinaryClockWAN` instance with a reference to the `IBinaryClock` 
       ///        Interface implementation (e.g `BinaryClock`).
       /// @details This constructor initializes the `BinaryClockWAN` instance with a reference
@@ -56,12 +56,19 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       virtual ~BinaryClockWAN();
 
+      // Disable copy/move to enforce singleton semantics
+      BinaryClockWAN(const BinaryClockWAN&) = delete;
+      BinaryClockWAN(BinaryClockWAN&&) = delete;
+      BinaryClockWAN& operator=(const BinaryClockWAN&) = delete;
+      BinaryClockWAN& operator=(BinaryClockWAN&&) = delete;
+
    //#################################################################################//  
    // Public METHODS                                                                  //   
    //#################################################################################//   
 
    public:
       bool Connect(APCreds& creds);
+      static BinaryClockWAN& get_Instance();
 
       /// @brief Connect to one of the local access points using the stored credentials.
       /// @details This method checks the list of local access points against the stored credentials.
@@ -89,7 +96,7 @@ namespace BinaryClockShield
       /// @param autoConnect If true, the method will attempt to connect to a known AP automatically.
       /// @return True if the connection process was initiated successfully, false otherwise.
       /// @author Chris-70 (2025/09)
-      bool Begin(bool autoConnect = true);
+      bool Begin(IBinaryClock& clock, bool autoConnect = true);
 
       /// @brief End the WiFi connection and optionally save the settings.
       /// @details This method disconnects from the current WiFi network and optionally saves the settings.
@@ -230,7 +237,7 @@ namespace BinaryClockShield
       IBinaryClock& binClock;          ///< A reference to the  `IBinaryClock` implementation instance.
       BinaryClockSettings settings;    ///< Local instance of the setting stored in NVS.
       BinaryClockNTP& ntp = BinaryClockNTP::get_Instance(); ///< NTP client instance for time synchronization.
-      BinaryClockWPS wps;              ///< WPS handler instance for WPS connections.
+      BinaryClockWPS& wps = BinaryClockWPS::get_Instance(); ///< WPS handler instance for WPS connections.
 
       APCredsPlus localCreds;          ///< The credentials of the AP for the current connection.
       IPAddress localIP;               ///< The IP address of the local device when connected to WiFi.

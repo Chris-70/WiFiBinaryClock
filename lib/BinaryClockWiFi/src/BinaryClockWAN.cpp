@@ -23,7 +23,7 @@
 
 namespace BinaryClockShield
    {
-   BinaryClockWAN::BinaryClockWAN(IBinaryClock& clock) : binClock(clock), settings(), wps(WPS_TIMEOUT_MS)
+   BinaryClockWAN::BinaryClockWAN(IBinaryClock& clock) : binClock(clock), settings()
       {
       settings.Begin();    // Read the settings from the Non-Volatile Storage.
       WiFi.mode(WIFI_STA);
@@ -53,6 +53,12 @@ namespace BinaryClockShield
          }
 
       return result;
+      }
+
+   BinaryClockWAN& BinaryClockWAN::get_Instance()
+      {
+      static BinaryClockWAN instance(*(IBinaryClock*)nullptr); // Placeholder, should be initialized properly.
+      return instance;
       }
 
    bool BinaryClockWAN::ConnectLocal()
@@ -163,8 +169,9 @@ namespace BinaryClockShield
       return networks;
       }
 
-   bool BinaryClockWAN::Begin(bool autoConnect)
+   bool BinaryClockWAN::Begin(IBinaryClock& clock, bool autoConnect)
       {
+      binClock = clock;
       bool result = !autoConnect;
       // Register the `WiFiEvent()` instance method, through a lambda, to get all events.
       eventID = WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -208,7 +215,7 @@ namespace BinaryClockShield
       return result;
       }
 
-   void BinaryClockWAN::End(bool save)
+void BinaryClockWAN::End(bool save)
       {
       ntp.UnregisterSyncCallback();
       WiFi.disconnect();

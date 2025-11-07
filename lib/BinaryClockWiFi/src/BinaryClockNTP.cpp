@@ -465,7 +465,7 @@ namespace BinaryClockShield
       Serial << "Synchronized time: " << timeStr << endl << endl;   // *** DEBUG ***
       }
 
-   uint32_t BinaryClockNTP::ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction)
+   time_t BinaryClockNTP::ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction)
       {
       if (ntpFraction >= 0x80000000U)
          {

@@ -11,27 +11,25 @@
 
 namespace BinaryClockShield
    {
-   // Static instance for callback access
-   BinaryClockWPS* BinaryClockWPS::instance = nullptr;
-
-   BinaryClockWPS::BinaryClockWPS(uint32_t timeoutMs)
-         : timeout(timeoutMs), wpsActive(false), wpsSuccess(false), wpsTimeout(false)
+   BinaryClockWPS::BinaryClockWPS()
+         : timeout(DEFAULT_WPS_TIMEOUT_MS), wpsActive(false), wpsSuccess(false), wpsTimeout(false)
       {
-      instance = this; // Set static instance for callbacks
       memset(&wpsConfig, 0, sizeof(wpsConfig));
       }
 
    BinaryClockWPS::~BinaryClockWPS()
       {
-      cancelWPS();
+      CancelWPS();
       cleanupWPS();
-      if (instance == this)
-         {
-         instance = nullptr;
-         }
       }
 
-   WPSResult BinaryClockWPS::connectWPS()
+   BinaryClockWPS& BinaryClockWPS::get_Instance()
+      {
+      static BinaryClockWPS instance;
+      return instance;
+      }
+
+   WPSResult BinaryClockWPS::ConnectWPS()
       {
       WPSResult result;
       uint32_t startTime = millis();
@@ -155,7 +153,7 @@ namespace BinaryClockShield
       return result;
       }
 
-   void BinaryClockWPS::cancelWPS()
+   void BinaryClockWPS::CancelWPS()
       {
       if (wpsActive)
          {
