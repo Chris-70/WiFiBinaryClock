@@ -58,33 +58,41 @@ namespace BinaryClockShield
    class BinaryClockWPS
       {
    public:
-      /// @brief Constructor
-      /// @param timeoutMs Timeout for WPS connection attempt in milliseconds (default: 2 minutes)
-      BinaryClockWPS(uint32_t timeoutMs = DEFAULT_WPS_TIMEOUT_MS);
-
-      /// @brief Destructor
-      virtual ~BinaryClockWPS();
+      static BinaryClockWPS& get_Instance();
 
       /// @brief Start WPS Push Button connection
       /// @details Initiates WPS push button mode. User must press the WPS button on the router
       ///          within the timeout period for connection to succeed.
       /// @return WPSResult containing success status and AP credentials
-      WPSResult connectWPS();
+      WPSResult ConnectWPS();
+      
+      /// @brief Cancel any ongoing WPS connection attempt
+      void CancelWPS();
 
       /// @brief Check if WPS connection is in progress
       /// @return True if WPS connection attempt is active
-      bool isConnecting() const { return wpsActive; }
+      bool get_IsConnecting() const { return wpsActive; }
+      
+      /// @brief Set the timeout for WPS connection.
+      /// @param timeoutMs Timeout in milliseconds.
+      void set_Timeout(uint32_t timeoutMs) { timeout = timeoutMs; }
 
       /// @brief Get the current timeout value
       /// @return Timeout in milliseconds
-      uint32_t getTimeout() const { return timeout; }
+      uint32_t get_Timeout() const { return timeout; }
 
-      /// @brief Set the timeout for WPS connection.
-      /// @param timeoutMs Timeout in milliseconds.
-      void setTimeout(uint32_t timeoutMs) { timeout = timeoutMs; }
+   protected:
+      /// @brief Constructor
+      BinaryClockWPS();
 
-      /// @brief Cancel any ongoing WPS connection attempt
-      void cancelWPS();
+      /// @brief Destructor
+      virtual ~BinaryClockWPS();
+
+      // Non-copyable / non-movable to enforce singleton semantics
+      BinaryClockWPS(const BinaryClockWPS&) = delete;
+      BinaryClockWPS& operator=(const BinaryClockWPS&) = delete;
+      BinaryClockWPS(BinaryClockWPS&&) = delete;
+      BinaryClockWPS& operator=(BinaryClockWPS&&) = delete;
 
    private:
       /// @brief Initialize WPS configuration.
@@ -100,7 +108,7 @@ namespace BinaryClockShield
 
       // Static callback functions for WPS events.
       static void wpsEventHandler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-      static BinaryClockWPS* instance; // Static instance for callback access
+      // static BinaryClockWPS* instance; // Static instance for callback access
       
       uint32_t timeout;             // WPS connection timeout in milliseconds.
       bool wpsActive;               // Flag indicating WPS is active.

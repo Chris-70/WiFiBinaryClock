@@ -66,6 +66,10 @@ void TimeAlert(const DateTime& time);
 int ScanI2C(byte* addrList, size_t listSize);
 #endif 
 
+#if WIFI
+static BinaryClockWAN& wifi = BinaryClockWAN::get_Instance();
+#endif
+
 #if (DEVELOPMENT || SERIAL_OUTPUT) && !defined(UNO_R3)
 char buffer[32] = {0};
 // const char *format12 = { "HH:mm:ss AP" }; // 12 Hour time format
@@ -162,9 +166,8 @@ __attribute__((used)) void setup()
    delay(125);
 
    #if WIFI
-   static BinaryClockWAN wifi(binClock);
-   bool wifiResult = wifi.Begin();
-   delay(125);
+   bool wifiResult = wifi.Begin(binClock, true);
+   vTaskDelay(125 / portTICK_PERIOD_MS);
 ////////////////////////////////////
 // Add WiFi event handler for reconnection
    WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {

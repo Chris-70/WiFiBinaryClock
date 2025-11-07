@@ -102,12 +102,6 @@ namespace BinaryClockShield
       // Singleton access method
       static BinaryClockNTP& get_Instance();
 
-      /// @brief Removed copy constructor for Singleton pattern
-      BinaryClockNTP(const BinaryClockNTP&) = delete;
-
-      /// @brief Removed assignment operator for Singleton pattern
-      BinaryClockNTP& operator=(const BinaryClockNTP&) = delete;
-
       /// @brief Initialize with default servers
       void Initialize(const std::vector<String>& servers = NTP_SERVER_LIST, size_t delayMS = 0U, bool block = false);
 
@@ -272,7 +266,16 @@ namespace BinaryClockShield
       BinaryClockNTP();
 
       /// @brief Protected destructor for Singleton pattern
-      ~BinaryClockNTP();
+      virtual ~BinaryClockNTP();
+
+      /// @brief Removed copy constructor for Singleton pattern
+      BinaryClockNTP(const BinaryClockNTP&) = delete;
+      /// @brief Removed move constructor for Singleton pattern
+      BinaryClockNTP(const BinaryClockNTP&&) = delete;
+      /// @brief Removed assignment operator for Singleton pattern
+      BinaryClockNTP& operator=(const BinaryClockNTP&) = delete;
+      /// @brief Removed move assignment operator for Singleton pattern
+      BinaryClockNTP& operator=(const BinaryClockNTP&&) = delete;
 
    private:
       bool initializeSNTP();
@@ -289,7 +292,7 @@ namespace BinaryClockShield
       /// @param ntpFraction NTP fractional seconds part
       /// @return Converted Unix timestamp in seconds since 1970-01-01
       /// @see ntpToUnix(fixedpoint64)
-      uint32_t ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction = 0U);
+      time_t ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction = 0U);
 
       /// @brief Convert NTP fixedpoint64 timestamp to Unix timestamp.  
       ///        NTP input values are in network byte order.
@@ -301,7 +304,7 @@ namespace BinaryClockShield
       /// @param ntpTime NTP fixedpoint64 timestamp in network byte order.
       /// @return Converted Unix timestamp in seconds since 1970-01-01
       /// @see ntpToUnix(uint32_t, uint32_t)
-      uint32_t ntpToUnix(fixedpoint64 ntpTime) { return ntpToUnix(ntohl(ntpTime.intpart32u), ntohl(ntpTime.frac32u)); }
+      time_t ntpToUnix(fixedpoint64 ntpTime) { return ntpToUnix(ntohl(ntpTime.intpart32u), ntohl(ntpTime.frac32u)); }
 
       /// @brief Swap endianness of a 32-bit unsigned integer: 
       ///        bigendian to littleendian; littleendian to bigendian
