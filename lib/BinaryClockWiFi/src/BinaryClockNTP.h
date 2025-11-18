@@ -1,7 +1,9 @@
 /// @file BinaryClockNTP.h
 /// @brief The header file for the `BinaryClockNTP` class.
 /// @details This file contains the declaration of the `BinaryClockNTP` class, which provides NTP
-///          synchronization features for the Binary Clock project.
+///          and SNTP synchronization features for the Binary Clock project.   
+///          The `BinaryClockNTP` class manages NTP server communication, time synchronization,
+///          and timezone handling.
 /// @author Chris-80 (2025/09)
 
 #pragma once
@@ -9,8 +11,9 @@
 #define __BINARYCLOCKNTPSNTP_H__
 
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.
+#include <stddef.h>                    /// Macros & defines: size_t, NULL, etc.
 #include <time.h>                      /// For time_t & struct tm types
-#include <stddef.h>                    ///
+#include <sys/time.h>                  /// For struct timeval type
 
 // STL classes required to be included:
 #include <vector>
@@ -18,13 +21,16 @@
 
 #include <WiFi.h>                      /// For WiFi connectivity class: `WiFiClass`
 #include <WiFiUdp.h>                   /// For WiFi UDP class: `WiFiUDP`
-#include <sntp.h>                      /// For ESP-IDF SNTP functions and types.
+#include <esp_sntp.h>                  /// For ESP-IDF SNTP functions and types.
 
 #include "DateTime.h"                  /// DateTime and TimeSpan classes (part of RTClibPlus library).
 
+#define SECONDS_MS                  1000UL         ///< Number of milliseconds in 1 second.
+#define MINUTES_MS                  60000UL        ///< Number of milliseconds in 1 minute.///< 
+#define HOURS_MS                    3600000UL      ///< Number of milliseconds in 1 hour.
 #define NTP_PACKET_SIZE             48             ///< NTP time stamp is in the first 48 bytes of the message
-#define DEFAULT_NTP_TIMEOUT_MS      10000          ///< Default NTP server connection timeout in ms (e.g. 10 sec).
-#define SNTP_SYNC_INTERVAL_MS       900000UL       ///< SNTP default sync interval in milliseconds (e.g. 900 sec, 15 min).
+#define DEFAULT_NTP_TIMEOUT_MS      (10 * SECONDS_MS) ///< Default NTP server connection timeout in ms (e.g. 10 sec).
+#define SNTP_SYNC_INTERVAL_MS       (3 * HOURS_MS)    ///< SNTP default sync interval in milliseconds (e.g. 900 sec, 15 min).
 #define NTP_UNIX_EPOCS_DELTA        2208988800UL   ///< Difference between NTP (1900/01/01) and Unix (1970/01/01) epochs in seconds
 
 #define NTP_SERVER_1 "time.nrc.ca"     ///< The primary NTP server
@@ -46,21 +52,19 @@
    #define DEFAULT_TIMEZONE "EST+5EDT,M3.2.0/2,M11.1.0/2"  
 #endif
 
+/// @brief Convert the result of a call to `millis()` to milliseconds.
+/// @details `millis()` returns a count of 1024 microseconds, to convert to         
+///          multiply by 1024 (i.e. left shift by 10) and divide by 1000.
+#define MILLIS_TO_MS(M)(((M) << 10) / 1000)
+
 namespace BinaryClockShield
    {
-   /// @brief Result structure for NTP synchronization using ESP SNTP
-   struct NTPResult
-      {
-      bool success = false;            ///< True if synchronization was successful
-      DateTime dateTime;               ///< The synchronized date and time
-      String serverUsed;               ///< Which server provided the time
-      int32_t offsetMs = 0;            ///< Clock offset in milliseconds
-      uint32_t roundTripMs = 0;        ///< Round trip time in milliseconds
-      uint8_t stratum = 0;             ///< Stratum of the server (simplified)
-      String errorMessage;             ///< Error description if failed
-      };
-
-   typedef struct                      ///< Fixed-point 64-bit data type (32.32)
+   /// @brief Fixed-point 64-bit data type (32.32) returned by the NTP server.
+   /// @details This structure represents a fixed-point 64-bit data type (32.32).  
+   ///          The integer part is represented by a union of signed and unsigned 32-bit integers,
+   ///          while the fractional part is represented by an unsigned 32-bit integer.   
+   ///          The value of the `frac32u` is over 2^32 (i.e. frac32u / 2^32).  
+   typedef struct
       {
       union                            ///< Integer part union signed/unsigned
          {
@@ -71,50 +75,112 @@ namespace BinaryClockShield
       } fixedpoint64;
       
    /// @brief NTP Packet structure definition, 48 bytes.
+   /// @details This structure defines the NTP packet format used for communication
+   ///          with NTP servers. It contains fields for various NTP parameters,
+   ///          including timestamps, stratum level, and precision.   
+   ///          The version number, `vn` and `mode` are set by the caller, they are
+   ///          version number is 4 and mode is 3, client mode. The remaining values
+   ///          are populated during the call sequences.
    typedef struct ntp_packet 
       {
-      union                         ///< Union of full byte and the bit parts.
+      union                            ///< Union of full byte and the bit parts.
          {
-         uint8_t li_vn_mode;        ///< Leap indicator, version number, mode
+         uint8_t li_vn_mode;           ///< Leap indicator, version number, mode
          struct
             {
-            uint8_t mode : 3;       ///< Mode            bits: 0-2
-            uint8_t vn   : 3;       ///< Version number  bits: 3-5
-            uint8_t li   : 2;       ///< Leap indicator  bits: 6-7
+            uint8_t mode : 3;          ///< Mode            bits: 0-2
+            uint8_t vn   : 3;          ///< Version number  bits: 3-5
+            uint8_t li   : 2;          ///< Leap indicator  bits: 6-7
             };
          };
-      uint8_t  stratum;             ///< Stratum level
-      uint8_t  poll;                ///< Polling interval
-      int8_t   precision;           ///< Precision of the clock
-      uint32_t rootDelay;           ///< Round trip delay
-      uint32_t rootDispersion;      ///< Max error from primary clock
-      uint32_t refId;               ///< Reference clock ID
-      fixedpoint64 refTime;         ///< Reference timestamp
-      fixedpoint64 orgTime;         ///< Originate timestamp
-      fixedpoint64 recTime;         ///< Received timestamp
-      fixedpoint64 txTime;          ///< Transmit timestamp
+      uint8_t  stratum;                ///< Stratum level
+      uint8_t  poll;                   ///< Polling interval
+      int8_t   precision;              ///< Precision of the clock
+      uint32_t rootDelay;              ///< Round trip delay
+      uint32_t rootDispersion;         ///< Max error from primary clock
+      uint32_t refId;                  ///< Reference clock ID
+      fixedpoint64 refTime;            ///< Reference timestamp
+      fixedpoint64 orgTime;            ///< Originate timestamp
+      fixedpoint64 recTime;            ///< Received timestamp
+      fixedpoint64 txTime;             ///< Transmit timestamp
       } NtpPacket;
       
-   /// @brief NTP Client class using ESP-IDF SNTP (Singleton)
+   /// @brief Result structure for NTP synchronization.
+   /// @brief This structure contains the result of an NTP synchronization attempt,
+   ///        including the NTP packet received, success status, synchronized date and time,
+   ///        the server used, and any error messages.
+   struct NTPResult
+      {
+      NtpPacket packet = { 0 };        ///< The NtpPacket from UPD call to NTP server.
+      bool success = false;            ///< True if synchronization was successful
+      DateTime dateTime;               ///< The synchronized date and time (local)
+      String serverUsed;               ///< Which server provided the time
+      String errorMessage;             ///< Error description if failed
+      };
+
+   /// @brief NTP Client class using ESP-IDF SNTP (Singleton pattern).   
+   ///        This encapsulates the SNTP functionality for regular NTP time synchronization,
+   ///        the timezone and converting UTC time from the NTP server to local time.
+   /// @details This class provides NTP client functionality using the ESP-IDF SNTP library.  
+   ///          It implements the Singleton design pattern to ensure a single instance
+   ///          of the SNTP client is used throughout the application.  
+   ///          The timezone can be set and retrieved, and time synchronization can be
+   ///          converted to the local time including daylight savings adjustment.
+   /// 
+   ///          Static methods allow syncing the internal time to s specified NTP server
+   ///          without having to setup the SNTP client instance. The timezone must be
+   ///          set first in order to convert to local time, otherwise `DateTime` is UTC.
    class BinaryClockNTP
       {
    public:
-      // Singleton access method
-      static BinaryClockNTP& get_Instance();
+      /// @brief Singleton access method for the `BinaryClockNTP` instance.
+      static BinaryClockNTP& get_Instance()
+         {
+         static BinaryClockNTP instance; // Guaranteed to be destroyed, instantiated on first use
+         return instance;
+         }
+   
+      /// @brief Begin SNTP service with optional servers, delay, and blocking mode.
+      /// @details 
+      /// @param servers List of NTP servers to use, default is the `NTP_SERVER_LIST` define.
+      /// @param delayMS Delay in milliseconds before starting SNTP service, default is 0 ms.
+      /// @param block If true, the call will block until initialization is complete, otherwise 
+      ///              initialization will be performed asynchronously.
+      void Begin(const std::vector<String>& servers = NTP_SERVER_LIST, size_t delayMS = 0U, bool block = false);
 
-      /// @brief Initialize with default servers
-      void Initialize(const std::vector<String>& servers = NTP_SERVER_LIST, size_t delayMS = 0U, bool block = false);
+      /// @brief End SNTP service
+      void End();
 
-      /// @brief Shutdown SNTP service
-      void Shutdown();
+      /// @brief Synchronize time with a NTP server.
+      /// @return `NTPResult` structure: result of the synchronization attempt
+      NTPResult SyncTime()
+         {
+         String server = (ntpServers.empty() ? NTP_SERVER_1 : ntpServers[0]);
+         return SyncTime(server);
+         }
 
-      /// @brief Synchronize time with NTP servers
-      NTPResult SyncTime();
+      /// @brief Synchronize the internal time with a specific NTP server.
+      /// @details This method synchronizes the internal time with the specified NTP server.
+      ///          The metod sends a NTP request to the server, the resulting time is
+      ///          converted to local time based on the timezone set.
+      /// @param serverName The name of the NTP server to synchronize internal time with.
+      /// @param port The port number to use for the NTP server, default is `NTP_DEFAULT_PORT`.
+      /// @return `NTPResult` structure: result of the synchronization attempt
+      static NTPResult SyncTime(const String& serverName, uint16_t port = NTP_DEFAULT_PORT);
 
-      /// @brief Synchronize time with a specific server
-      NTPResult SyncTime(const String& serverName);
-
+      /// @brief Register a callback function to be called on successful time sync.
+      /// @details This method registers a callback function that will be called
+      ///          whenever a successful time synchronization occurs.
+      /// @return True if the callback was registered successfully, false otherwise.  
+      /// @note   If a callback is currently registered, the method will fail, 
+      ///         call `UnregisterSyncCallback()` first.
+      /// @see UnregisterSyncCallback()
       bool RegisterSyncCallback(std::function<void(const DateTime&)> callback);
+
+      /// @brief Unregister the currently registered sync callback function.
+      /// @return True if the callback was unregistered successfully, 
+      ///         false if no callback was registered.
+      /// @see RegisterSyncCallback()
       bool UnregisterSyncCallback();
 
       /// @brief Check if time is synchronized (i.e. SyncStatus == "COMPLETED")
@@ -122,6 +188,27 @@ namespace BinaryClockShield
       ///          if not synchronized.
       /// @return True if time is synchronized, false otherwise.
       bool isTimeSynchronized();
+
+      /// @brief SyncStatusStr - The synchronization status enum, `sntp_sync_status_t`, as a string.
+      /// @details The synchronization status enum, sntp_sync_status_t, as a string:
+      ///          - RESET
+      ///          - COMPLETED
+      ///          - IN_PROGRESS
+      ///          - UNKNOWN
+      ///          This converts the status value to a string.
+      /// @param status The status enum value to convert.
+      /// @return Current status enum as string
+      /// @see get_SyncStatus()
+      String SyncStatusToString(sntp_sync_status_t status)
+         {
+         switch (status)
+            {
+               case SNTP_SYNC_STATUS_RESET:       return "RESET";
+               case SNTP_SYNC_STATUS_COMPLETED:   return "COMPLETED";
+               case SNTP_SYNC_STATUS_IN_PROGRESS: return "IN_PROGRESS";
+               default:                           return "UNKNOWN";
+            }
+         }
 
       /// @brief Property (RO): CurrentTime - The current local time in `DateTime` format.
       /// @details Gets the current local time in `DateTime` format from the NTP server #1.  
@@ -144,7 +231,7 @@ namespace BinaryClockShield
       /// @return Current UTC time as `DateTime` object
       /// @see get_LocalNtpTime()
       DateTime get_CurrentNtpTime();
-
+   
       /// @brief Property (RO): SyncStatus - The synchronization status enum, sntp_sync_status_t, as a string.
       /// @details The synchronization status enum, sntp_sync_status_t, as a string:
       ///          - RESET
@@ -155,7 +242,8 @@ namespace BinaryClockShield
       ///          This converts the resul from `esp_sntp_get_sync_status()` to a string.
       /// @return Current sync status enum as string
       /// @see esp_sntp_get_sync_status()
-      String get_SyncStatus();
+      sntp_sync_status_t get_SyncStatus()
+         {  return sntp_get_sync_status(); }
 
       /// @brief Property: NtpServers - A list of NTP server names strings.
       /// @details The list of NTP servers to use for syncing the time.
@@ -243,7 +331,7 @@ namespace BinaryClockShield
       ///          - `LHST-10:30LHDT-11,M10.1.0/2,M3.5.0/2` UTC==LHST-10:30; DST: +30 min, 1st Sunday in October @ 02:00 to last Sunday in March @ 02:00 (Lord Howe Standard Time with DST)
       /// @param timezone New timezone string in Proleptic Format.
       /// @see get_Timezone()
-      void set_Timezone(const char* timezone)
+      static void set_Timezone(const char* timezone)
          {
          // For null or empty strings, timezone is UTC.
          if (timezone == nullptr || strlen(timezone) == 0)
@@ -256,7 +344,7 @@ namespace BinaryClockShield
       /// @copydoc set_Timezone()
       /// @return Current timezone string in Proleptic Format.
       /// @see set_Timezone()
-      const char* get_Timezone() const
+      static const char* get_Timezone()
          { return getenv("TZ"); }
 
    protected:
@@ -278,39 +366,35 @@ namespace BinaryClockShield
       BinaryClockNTP& operator=(const BinaryClockNTP&&) = delete;
 
    private:
+      /// @brief Method to initialize the SNTP service using the configured NTP servers.
+      /// @details This method initializes the SNTP service with the list of NTP servers
+      ///          configured in the `ntpServers` member variable. It sets up the SNTP
+      ///          service interval and an internal time sync notification callback to 
+      ///          handle synchronization events.  
+      /// @remarks This method is called from the `Begin()` method.
+      /// @note    `stopSNTP()` must be called to stop the SNTP service when no longer needed.
+      /// @return True if initialization was successful, false otherwise.
+      /// @see stopSNTP()
+      /// @see Begin()
       bool initializeSNTP();
+
+      /// @brief Method to stop the SNTP service.
+      /// @details This method stops the SNTP service and cleans up any resources
+      ///          associated with it, detaching from the NTP server.
+      /// @remarks This method is called from the `End()` method.
+      /// @note    `End()` or this method must be called to detach and stop the service.
       void stopSNTP();
-      String getCurrentServer();
 
-      // Utility functions
-      /// @brief Convert NTP timestamp to Unix timestamp. NTP input are in local host order.
-      /// @details Converts NTP timestamp (seconds since 1900-01-01) to Unix timestamp
-      ///          (seconds since 1970-01-01), handling wraparound for timestamps.  
-      ///          The parameters are assumed to be in local host byte order, not network order.  
-      ///          Call `ntpToUnix(fixedpoint64)` to use network byte order input.
-      /// @param ntpSeconds NTP seconds part
-      /// @param ntpFraction NTP fractional seconds part
-      /// @return Converted Unix timestamp in seconds since 1970-01-01
-      /// @see ntpToUnix(fixedpoint64)
-      time_t ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction = 0U);
-
-      /// @brief Convert NTP fixedpoint64 timestamp to Unix timestamp.  
-      ///        NTP input values are in network byte order.
-      /// @details Converts NTP timestamp (seconds since 1900-01-01) to Unix timestamp
-      ///          (seconds since 1970-01-01), handling wraparound for timestamps.  
-      ///          The parameter is assumed to be in network byte order, so conversion to 
-      ///          local host order is done on each part before processing.  
-      ///          Call `ntpToUnix(uint32_t, uint32_t)` to bypass the conversion.
-      /// @param ntpTime NTP fixedpoint64 timestamp in network byte order.
-      /// @return Converted Unix timestamp in seconds since 1970-01-01
-      /// @see ntpToUnix(uint32_t, uint32_t)
-      time_t ntpToUnix(fixedpoint64 ntpTime) { return ntpToUnix(ntohl(ntpTime.intpart32u), ntohl(ntpTime.frac32u)); }
-
-      /// @brief Swap endianness of a 32-bit unsigned integer: 
-      ///        bigendian to littleendian; littleendian to bigendian
-      /// @param value 32-bit value to swap.
-      /// @return Swapped 32-bit value in opposite byte order.
-      uint32_t swapEndian(uint32_t value);
+      /// @brief Get the current/first NTP server being used.
+      String getCurrentServer()
+         {
+         // esp_sntp doesn't provide easy access to which server was used
+         // Return the first server as a reasonable guess
+         if (!ntpServers.empty())
+            { return ntpServers[0]; }
+   
+         return NTP_SERVER_1;
+         }
 
       /// @brief Callback for time sync notification from the NTP server.
       /// @details This is called by `timeSyncCallback` which was called by the 
@@ -335,6 +419,62 @@ namespace BinaryClockShield
          // Delegate to instance immediately
          instance.processTimeSync(tv);
          }
+      
+      // Utility functions
+      /// @brief Convert NTP timestamp to Unix timestamp. NTP input are in local host order.
+      /// @details Converts NTP timestamp (seconds since 1900-01-01) to Unix timestamp
+      ///          (seconds since 1970-01-01), handling wraparound for timestamps.  
+      ///          The parameters are assumed to be in local host byte order, not network order.  
+      ///          Call `ntpToUnix(fixedpoint64, bool)` to use network byte order input.
+      /// @param ntpSeconds NTP seconds part (host byte order)
+      /// @param ntpFraction NTP fractional seconds part (host byte order)
+      /// @param round Whether to round the result based on the fractional part.
+      /// @return Converted Unix timestamp in seconds since 1970-01-01
+      /// @see ntpToUnix(fixedpoint64, bool)
+      static time_t ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction = 0U, bool round = true);
+
+      /// @brief Convert NTP `fixedpoint64` timestamp to Unix timestamp.  
+      ///        NTP input values are in network byte order.
+      /// @details Converts NTP timestamp (seconds since 1900-01-01) to Unix timestamp
+      ///          (seconds since 1970-01-01), handling wraparound for timestamps.  
+      ///          The parameter is assumed to be in network byte order, so conversion to 
+      ///          local host order is done on each part before processing.  
+      ///          Call `ntpToUnix(uint32_t, uint32_t, bool)` to bypass the conversion.
+      /// @param ntpTime NTP fixedpoint64 timestamp in network byte order.
+      /// @return Converted Unix timestamp in seconds since 1970-01-01
+      /// @see ntpToUnix(uint32_t, uint32_t, bool)
+      static time_t ntpToUnix(fixedpoint64 ntpTime, bool round = true) 
+         { return ntpToUnix(ntohl(ntpTime.intpart32u), ntohl(ntpTime.frac32u), round); }
+
+      /// @brief Convert NTP timestamp to `timeval` structure. NTP input are in local host order.
+      /// @details Converts NTP timestamp (seconds since 1900-01-01) to timeval structure
+      ///          (seconds and microseconds since 1970-01-01), handling wraparound for timestamps.  
+      ///          The parameters are assumed to be in local host byte order, not network order.  
+      ///          Call `ntpToTimeval(fixedpoint64)` to use network byte order input.
+      /// @param ntpSeconds NTP seconds part (host byte order)
+      /// @param ntpFraction NTP fractional seconds part (host byte order)
+      /// @return Converted `timeval` structure, seconds and microseconds since 1970-01-01.
+      /// @see ntpToTimeval(fixedpoint64)
+      static timeval ntpToTimeval(uint32_t ntpSeconds, uint32_t ntpFraction);
+
+      /// @brief Convert NTP `fixedpoint64` timestamp to `timeval` structure.  
+      ///        NTP input values are in network byte order.
+      /// @details Converts NTP timestamp (seconds since 1900-01-01) to `timeval` structure 
+      ///          (seconds and microseconds since 1970-01-01), handling wraparound for timestamps.  
+      ///          The parameter is assumed to be in network byte order, so conversion to 
+      ///          local host order is done on each part before processing.  
+      ///          Call `ntpToTimeval(uint32_t, uint32_t)` to bypass the conversion.
+      /// @param ntpTime NTP fixedpoint64 timestamp in network byte order.
+      /// @return Converted `timeval` structure, seconds and microseconds since 1970-01-01.
+      /// @see ntpToTimeval(uint32_t, uint32_t)
+      static timeval ntpToTimeval(fixedpoint64 ntpTime)
+         { return ntpToTimeval(ntohl(ntpTime.intpart32u), ntohl(ntpTime.frac32u)); }
+
+      /// @brief Swap endianness of a 32-bit unsigned integer: 
+      ///        bigendian to littleendian; littleendian to bigendian
+      /// @param value 32-bit value to swap.
+      /// @return Swapped 32-bit value in opposite byte order.
+      static uint32_t swapEndian(uint32_t value);
        
    private:
       std::vector<String> ntpServers = NTP_SERVER_LIST;     ///< Default NTP servers
@@ -346,11 +486,11 @@ namespace BinaryClockShield
 
       WiFiUDP udp;                     ///< A `WiFiUDP` object for getting the time from the server.
       unsigned port = NTP_DEFAULT_PORT;   ///< The port to use for the NTP server.
-      NtpPacket ntpTime;
+      // NtpPacket ntpTime;
 
-      struct timeval lastSyncTimeval;
-      DateTime lastSyncDateTime;
-      unsigned long lastSyncMillis = 0UL;
+      struct timeval lastSyncTimeval;     ///< The `timeval` values from the last sync event.
+      DateTime lastSyncDateTime;          ///< The `DateTime` value at the last sync event.
+      unsigned long lastSyncMillis = 0UL; ///< The value of `millis()` at the last sync event.
 
       /// @brief Callback user function for SNTP time sync notifications.
       /// @details This user function is called when the SNTP service receives a time sync notification.

@@ -38,13 +38,26 @@ namespace BinaryClockShield
    /// @author Chris-70 (2025/09)
    class BinaryClockSettings
       {
-   public:
+   protected:
       BinaryClockSettings();
       virtual ~BinaryClockSettings();
+
+      // Disable copy and move to enforce singleton semantics
+      BinaryClockSettings(const BinaryClockSettings&) = delete;
+      BinaryClockSettings& operator=(const BinaryClockSettings&) = delete;
+      BinaryClockSettings(BinaryClockSettings&&) = delete;
+      BinaryClockSettings& operator=(BinaryClockSettings&&) = delete;
 
    //#################################################################################//  
    // Public METHODS                                                                  //   
    //#################################################################################//   
+   public:
+
+      static BinaryClockSettings& get_Instance()
+         {
+         static BinaryClockSettings instance;  // Guaranteed to be destroyed.
+         return instance;
+         }
 
       /// @brief Initialize the BinaryClockSettings instance and load data from NVS.
       /// @details This method opens the NVS namespace and reads the stored AP credentials into

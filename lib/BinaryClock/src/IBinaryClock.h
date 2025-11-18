@@ -151,6 +151,13 @@ namespace BinaryClockShield
       /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
       virtual const BCButton& get_S3AlarmInc() const = 0;
+
+      /// @brief Read only property pattern to get the unique identifier name of the 
+      ///        Binary Clock implementation. This is implementation defined.
+      /// @note  This shall return a valid `C` string, never a `nullptr`.
+      /// @return A pointer to a constant character string containing the unique identifier name.
+      /// @author Chris-70 (2025/10)
+      virtual const char* get_IdName() const = 0;
       /// @}
 
       /// @brief The method to read the time from the RTC (e.g. wrapper for RTC.now()). 
