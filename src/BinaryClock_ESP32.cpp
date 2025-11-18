@@ -60,15 +60,12 @@ void setup(void);
 void loop(void);
 bool checkWatchdog();
 void TimeAlert(const DateTime& time);
+// #if WIFI
 #ifdef UNO_R3
    #define ScanI2C(ARRAY, SIZE) 0
 #else
 int ScanI2C(byte* addrList, size_t listSize);
 #endif 
-
-#if WIFI
-static BinaryClockWAN& wifi = BinaryClockWAN::get_Instance();
-#endif
 
 #if (DEVELOPMENT || SERIAL_OUTPUT) && !defined(UNO_R3)
 char buffer[32] = {0};
@@ -78,8 +75,12 @@ const char *timeFormat = nullptr; // format24;
 const char *daysOfTheWeek[7] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 #endif 
 
-// Get the singleton instance of BinaryClock
-BinaryClock& binClock = BinaryClock::get_Instance();
+// // Get the singleton instance of BinaryClock
+// static BinaryClock& binClock = BinaryClock::get_Instance();
+
+// #if WIFI
+// static BinaryClockWAN& wifi = BinaryClockWAN::get_Instance();
+// #endif
 
 // Initialize the watchdog field values.
 static long watchdogTimeout = 2100; 
@@ -104,13 +105,34 @@ byte i2cList[I2C_SIZE] = { 0 };
 // std::vector<WiFiInfo> wifiApList; // Vector to hold the found WiFi access point info.
 #endif
 
+static BinaryClock& get_BinaryClock()
+   {
+   static BinaryClock& binClock = BinaryClock::get_Instance();
+   // Serial << "get_BinaryClock(): Address of binClock: " << (&binClock == nullptr? "NULL" : "Valid") << endl; // *** DEBUG ***
+   return binClock;
+   }
+
+#if WIFI
+static BinaryClockWAN& get_BinaryClockWAN()
+   {
+   static BinaryClockWAN& binClockWAN = BinaryClockWAN::get_Instance();
+   // Serial << "get_BinaryClockWAN(): Address of binClockWAN: " << (&binClockWAN == nullptr ? "NULL" : "Valid") << endl; // *** DEBUG ***
+   return binClockWAN;
+   }
+#endif
+
 __attribute__((used)) void setup()
    {
    Serial.begin(115200); // Start the serial communication at 115200 baud rate
-
+   SERIAL_PRINTLN("================================================================================")
+   SERIAL_PRINT("Starting setup(). ")
+   SERIAL_PRINTLN(__FILE__)
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
    Wire.begin();
+   
+   SERIAL_PRINTLN("In setup(): Getting the BinaryClock instance.")
+   BinaryClock& binClock = get_BinaryClock();
 
    #ifndef UNO_R3
    // Scan the I2C bus looking for the devices we use.
@@ -124,8 +146,15 @@ __attribute__((used)) void setup()
       }
    delay(500); 
 
+   #if (DEVELOPMENT || SERIAL_OUTPUT)
    timeFormat = binClock.get_TimeFormat();
    #endif
+
+   #if WIFI
+   SERIAL_PRINTLN("In setup(): Getting the BinaryClockWAN instance.")
+   BinaryClockWAN& wifi = get_BinaryClockWAN();
+   #endif // WIFI
+   #endif // !UNO_R3
 
    SERIAL_PRINTLN("")
    #if DEV_BOARD
@@ -167,6 +196,7 @@ __attribute__((used)) void setup()
 
    #if WIFI
    bool wifiResult = wifi.Begin(binClock, true);
+   SERIAL_STREAM("BinaryClockWAN::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
    vTaskDelay(125 / portTICK_PERIOD_MS);
 ////////////////////////////////////
 // Add WiFi event handler for reconnection
@@ -204,7 +234,10 @@ __attribute__((used)) void setup()
 __attribute__((used)) void loop()
    {
    static bool wdtError = false;
+   BinaryClock& binClock = get_BinaryClock();
+
    //////////////////////////////////////
+   #if WIFI
    static bool firstLoop = true;
    if (firstLoop)
       {
@@ -212,7 +245,9 @@ __attribute__((used)) void loop()
       firstLoop = false;
       }
 
-   // Serial << "[" << millis() << "] Loop start" << endl;
+   #if WIFI
+   BinaryClockWAN& wifi = get_BinaryClockWAN();
+   #endif
 
    static uint32_t wifiCheckTime = 0;
    static bool wasConnected = true;
@@ -229,6 +264,7 @@ __attribute__((used)) void loop()
       wasConnected = isConnected;
       wifiCheckTime = millis();
       }
+   #endif
    //////////////////////////////////////
 
    binClock.loop();
@@ -321,7 +357,8 @@ void TimeOLED(const DateTime &time)
    {
    if (!oledValid) { return; } // If OLED display is not valid, do not proceed.
 
-   timeFormat = binClock.get_TimeFormat();
+   // timeFormat = binClock.get_TimeFormat();
+   timeFormat = get_BinaryClock().get_TimeFormat();
    if (timeFormat == nullptr)
       { timeFormat = "HH:mm:ss AP"; }
 

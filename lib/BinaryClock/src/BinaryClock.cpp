@@ -885,7 +885,9 @@ namespace BinaryClockShield
 
    void BinaryClock::set_Time(DateTime value)
       {
+      #if DEV_CODE
       DateTime::timestampOpt timestampFormat = (get_Is12HourFormat()? DateTime::TIMESTAMP_DATETIME12 : DateTime::TIMESTAMP_DATETIME);
+      #endif
       // Check if the RTC is valid and the new time is valid, we don't care about the date.
       // Once we have a valid DateTime object, adjust the time on the RTC in the current mode.
       // We read the current time on the RTC and set the local `time` to the value  the
@@ -895,7 +897,7 @@ namespace BinaryClockShield
          SERIAL_STREAM(">>> Set time to: " << value.timestamp(timestampFormat) << "; from: " << time.timestamp(timestampFormat) << endl)   // *** DEBUG ***
 
          // If the year is 2000, set it to 2001 so that the DayOfWeek() calculation works correctly
-         // This would indicate that only the time was set
+         // This would indicate that only the time was being set.
          if (value.year() == 2000) 
             { value = DateTime(2001, value.month(), value.day(), value.hour(), value.minute(), value.second()); }
 
@@ -906,14 +908,15 @@ namespace BinaryClockShield
             time = ReadTime();
             SERIAL_STREAM(">>> RTC time adjusted to: " << time.timestamp() << endl)   // *** DEBUG ***
             }
-
+         else
+            { SERIAL_STREAM("     RTC has the same time: " << time.timestamp(timestampFormat) << ". Nothing to do." << endl) }  // *** DEBUG ***
          }
       else
          { SERIAL_STREAM("*** Invalid RTC / time. RTC Valid? " << (rtcValid ? "True, " : "False, ") << value.timestamp(timestampFormat) << endl) } // *** DEBUG ***
       }
 
-   DateTime BinaryClock::get_Time() const
-      {  return time; }
+   // DateTime BinaryClock::get_Time() const
+   //    {  return time; }
 
    void BinaryClock::set_Alarm(AlarmTime value)
       {
@@ -1507,7 +1510,7 @@ namespace BinaryClockShield
          }
       
       FastLED.show();
-   }
+      }
 
    //################################################################################//
    // MELODY ALARM

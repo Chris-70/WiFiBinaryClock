@@ -18,6 +18,7 @@
 #include "BinaryClockSettings.h"    /// Binary Clock Settings class: handles all settings kept on NVS.
 #include "BinaryClockNTP.h"         /// Binary Clock NTP class: handles all NTP related functionality.
 #include "BinaryClockWPS.h"         /// Binary Clock WPS class: handles WPS connection functionality.
+#include "DummyBinaryClock.h"       // *** DEBUG ***
 
 #include <WiFi.h>                   /// For WiFi connectivity class: `WiFiClass`
 #include <esp_wifi_types.h>         /// For `wifi_auth_mode_t` enum and related types.
@@ -45,11 +46,10 @@ namespace BinaryClockShield
       ///          instance to manage access point credentials. The constructor scans for all
       ///          available WiFi networks and saves this list.   
       /// @remarks The `Begin()` method must be called before any other methods to attempt a connection.
-      /// @param clock A reference to an IBinaryClock instance to update the time.
       /// @see Begin()
       /// @see GetAvailableNetworks()
       /// @author Chris-70 (2025/09)
-      BinaryClockWAN(IBinaryClock& clock);
+      BinaryClockWAN();
 
       /// @brief Destructor for the BinaryClockWAN class.
       /// @details The destructor ensures that the WiFi connection is properly closed and resources are released.
@@ -77,7 +77,8 @@ namespace BinaryClockShield
       ///          synchronizes the time with an NTP server and updates the `IBinaryClock` instance.
       /// @return True if the connection was successful, false otherwise.
       /// @author Chris-70 (2025/09)
-      bool ConnectLocal();
+      bool ConnectLocal()  
+         { return connectLocalWiFi(); }
 
       /// @brief Create a list of all available APs in the area and their characteristics.
       /// @details This method scans for all available WiFi networks and returns a vector of 
@@ -93,7 +94,8 @@ namespace BinaryClockShield
       /// @brief Begin the WiFi connection process, prepare the enviroment and optionally connect.
       /// @details This method initiates the WiFi connection process. If `autoConnect` is true,
       ///          it will attempt to connect to a known access point automatically.
-      /// @param autoConnect If true, the method will attempt to connect to a known AP automatically.
+      /// @param autoConnect Flag [optional] - the method will attempt to connect to a known AP automatically.  
+      ///                    The default is `true` if not specified.
       /// @return True if the connection process was initiated successfully, false otherwise.
       /// @author Chris-70 (2025/09)
       bool Begin(IBinaryClock& clock, bool autoConnect = true);
@@ -119,6 +121,7 @@ namespace BinaryClockShield
       /// @return True if the time was updated successfully, false otherwise.
       /// @author Chris-70 (2025/09)
       bool UpdateTime();
+      bool UpdateTime(DateTime& time);
 
       /// @brief Synchronize the time with the NTP server.
       /// @details This method contacts the configured NTP server and retrieves the current time.
@@ -137,6 +140,17 @@ namespace BinaryClockShield
       void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
 
       void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info);
+
+   //#################################################################################//  
+   // Private METHODS                                                                 //   
+   //#################################################################################//   
+
+   private:
+      /// @copydoc ConnectLocal()
+      /// @param bypassCheck If true, bypass the check for `initialized` flag is set.
+      /// @remarks The bypass flag is used so that this method can be called from
+      ///          within the `Begin()` method without checking the `initialized` flag.
+      bool connectLocalWiFi(bool bypassCheck = false);
 
    //#################################################################################//  
    // Public PROPERTIES                                                               //   
@@ -234,10 +248,13 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    private:
-      IBinaryClock& binClock;          ///< A reference to the  `IBinaryClock` implementation instance.
-      BinaryClockSettings settings;    ///< Local instance of the setting stored in NVS.
-      BinaryClockNTP& ntp = BinaryClockNTP::get_Instance(); ///< NTP client instance for time synchronization.
-      BinaryClockWPS& wps = BinaryClockWPS::get_Instance(); ///< WPS handler instance for WPS connections.
+      DummyBinaryClock dummyClock = DummyBinaryClock();
+      /// @brief A pointer to the  `IBinaryClock` implementation instance.  
+      ///        The initial value is a placeholder until `Begin()` is called.
+      IBinaryClock* clockPtr = &dummyClock;
+      BinaryClockSettings& settings = BinaryClockSettings::get_Instance();    ///< Local reference to the setting stored in NVS.
+      BinaryClockNTP& ntp = BinaryClockNTP::get_Instance(); ///< NTP client reference to the time synchronization.
+      BinaryClockWPS& wps = BinaryClockWPS::get_Instance(); ///< WPS handler reference to the WPS connections.
 
       APCredsPlus localCreds;          ///< The credentials of the AP for the current connection.
       IPAddress localIP;               ///< The IP address of the local device when connected to WiFi.
@@ -246,6 +263,8 @@ namespace BinaryClockShield
 
       DateTime lastSync;               ///< The time of the last sync with the NTP server.
       TimeSpan zuluOffset;             ///< Current time offset to UTC/Zulu time.
+      bool initialized = false;        ///< Flag: True if the `Begin()` method has been called.
+      bool ntpSynced = false;          ///< Flag: True if the time has been synchronized with NTP.
 
       std::vector<WiFiInfo> localAPs;  ///< List of local WiFi access points.
       }; // class BinaryClockWAN

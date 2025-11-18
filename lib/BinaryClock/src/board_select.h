@@ -47,13 +47,6 @@
    #define S2                A1   ///< A1: S2 button: Select & Confirm/Save button  
    #define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
 
-   #define ESP32_INPUT_PULLDOWN  INPUT   ///< Define for INPUT without an internal pull-down resistor or INPUT_PULLDOWN
-
-   #define ESP32_WIFI      true   ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
-   #define WIFIS3          false  ///< Assume no WIFIS3 Arduino capability. If using UNO R4 WiFi, set to true.
-   #define FREE_RTOS       true   ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
-   #define STL_USED        true   ///< Set to true if the board uses the C++ STL library.
-
    /// This determines if the menu and/or time are also displayed on the serial monitor.
    /// - If SERIAL_SETUP_CODE is defined, code to display the serial menu is included in the project.
    /// - If SERIAL_TIME_CODE  is defined, code to display the serial time, every second, is included in the project.
@@ -94,6 +87,6 @@
 ///     board which is input only. 
 ///     
 ///     See the README.md file for a detailed description of the change.  
-///     (https://github.com/Chris-70/WiFiBinaryClock), section: "Hardware modifications"   
 ///     (https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications)
+///     (https://github.com/Chris-70/WiFiBinaryClock), section: "Hardware modifications"   
 /// @}

@@ -26,7 +26,7 @@
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 namespace BinaryClockShield
    {
-   BinaryClockSettings::BinaryClockSettings()
+   BinaryClockSettings::BinaryClockSettings() 
       { }
 
    BinaryClockSettings::~BinaryClockSettings()

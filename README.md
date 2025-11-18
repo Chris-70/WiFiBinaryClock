@@ -243,7 +243,7 @@ A fork of the `RTCLib`, `RTCLibPlus`, is available ([https://github.com/Chris-70
 
 ### License
 
-This WiFiBinaryClock software, Copyright (c) 2025 Chris-70 and Chris-80, is licensed under the GNU General Public License v3.0 (GPL-v3.0). You may obtain a copy of the License at: https://www.gnu.org/licenses/gpl-3.0.en.html (see [**LICENSE**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/LICENSE) file). Parts of the `BCSettings` class are also Copyright (c) 2018 Marcin Saj and released under a GPL-v3.0 license.
+This WiFiBinaryClock software, Copyright (c) 2025 Chris-70 and Chris-80, is licensed under the GNU General Public License v3.0 (GPL-v3.0). You may obtain a copy of the License at: https://www.gnu.org/licenses/gpl-3.0.en.html (see [**LICENSE**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/LICENSE) file). Parts of the `BCSettings` class are also Copyright (c) 2018 Marcin Saj and released under the GPL-v3.0 license.
 
 ## **Acknowledgements:**
 *   Marcin Saj, the original creator of the [Binary Clock Shield for Arduino](https://nixietester.com/product/binary-clock-shield-for-arduino/) and the author of the [Binary-Clock-Shield-for-Arduino GitHub repository](https://github.com/nixietester/Binary-Clock-Shield-for-Arduino).

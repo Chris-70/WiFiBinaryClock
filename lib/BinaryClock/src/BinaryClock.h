@@ -231,22 +231,22 @@ namespace BinaryClockShield
       /// @{
       /// @brief The property methods called to set/get the current 'Time' property.
       /// @param value The DateTime object containing the current time to set.
-      /// @return A DateTime object containing the current time.
       /// @note The DateTime class is defiend in the RTCLib.h header file.
       /// @see get_Time()
       /// @see ReadTime()
       /// @author Chris-80 (2025/07)
       void set_Time(DateTime value) override;
       /// @copydoc set_Time()
+      /// @return A DateTime object containing the current time.
       /// @see set_Time()
-      DateTime get_Time() const override;
+      DateTime get_Time() const override
+         { return time; }
       /// @}
 
       /// @ingroup properties
       /// @{
       /// @brief The property method called to set/get the current 'Alarm' property.
       /// @param value The AlarmTime structure containing the alarm time and status.
-      /// @return An AlarmTime structure containing the alarm time and status.
       /// @note The AlarmTime structure contains the hour, minute, and status of the alarm
       ///       The status is 0 for inactive, 1 for active.
       ///       Hours are 0 to 23.
@@ -255,6 +255,7 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       virtual void set_Alarm(AlarmTime value) override;
       /// @copydoc set_Alarm()
+      /// @return An AlarmTime structure containing the alarm time and status.
       /// @see set_Alarm()
       virtual AlarmTime get_Alarm() const override 
          { return Alarm2; }
@@ -290,19 +291,21 @@ namespace BinaryClockShield
       ///        This property controls whether the time is displayed in 
       ///        12-hour or 24-hour format.
       /// @param value The flag to set (true for 12-hour format, false for 24-hour format).
-      /// @return The current flag value (true for 12-hour format, false for 24-hour format).
       /// @see get_Is12HourFormat()
       /// @author Chris-70 (2025-07)
       virtual void set_Is12HourFormat(bool value) override;
       /// @copydoc set_Is12HourFormat()
+      /// @return The current flag value (true for 12-hour format, false for 24-hour format).
       /// @see set_Is12HourFormat()
       virtual bool get_Is12HourFormat() const override;
 
       /// @copydoc set_IsSerialTime()
+      /// @return The current flag value (true to display the serial setup menu, false to disable it).
       /// @see set_IsSerialTime()
       virtual bool get_IsSerialTime() const override;
 
       /// @copydoc set_IsSerialSetup()
+      /// @return The current flag value (true to display the serial setup menu, false to disable it).
       /// @see set_IsSerialSetup()
       virtual bool get_IsSerialSetup() const override;
 
@@ -329,6 +332,11 @@ namespace BinaryClockShield
       /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
       virtual const BCButton& get_S3AlarmInc() const override { return buttonS3; }
+
+      /// @brief Read only property pattern to get the unique Id Name of this Binary Clock instance.
+      /// @return A pointer to a constant character string containing the unique identifier name.
+      /// @author Chris-70 (2025/10)
+      virtual const char* get_IdName() const override { return IBinaryClock_IdName; }
       /// @}
 
       /// @brief Methods to register/unregister a callback function at every second.
@@ -793,12 +801,12 @@ namespace BinaryClockShield
       /// @brief Property pattern for the LED 'Brightness' property.
       ///        This property controls the brightness of the LEDs, 0-255, 20-30 is normal
       /// @param value The brightness level to set (0-255).
-      /// @return The current brightness level (0-255).
       /// @see get_Brightness()
       /// @author Chris-80 (2025/07)
       void set_Brightness(byte value);
       //  ingroup properties
       /// @copydoc set_Brightness()
+      /// @return The current brightness level (0-255).
       /// @see set_Brightness()
       byte get_Brightness();
 
@@ -806,7 +814,6 @@ namespace BinaryClockShield
       /// @brief Property pattern for the 'IsSerialSetup' flag property. 
       ///        This property controls whether the serial setup menu is displayed or not.
       /// @param value The flag to set (true to display the serial setup menu, false to disable it).
-      /// @return The current flag value (true to display the serial setup menu, false to disable it).
       /// @see get_IsSerialSetup()
       /// @author Chris-80 (2025/07)
       void set_IsSerialSetup(bool value);
@@ -1200,6 +1207,8 @@ namespace BinaryClockShield
    
       static const Note AlarmNotes[] PROGMEM;     ///< The default alarm melody, an array of `Notes`
       static const size_t AlarmNotesSize;         ///< Size of the AlarmNotes array
+
+      const char* IBinaryClock_IdName = "BinaryClock_v0.8";
       }; // END Class BinaryClock
    }  // END namespace BinaryClockShield
 
