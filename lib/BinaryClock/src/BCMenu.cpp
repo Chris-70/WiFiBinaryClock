@@ -1,19 +1,19 @@
-/// @file BCSettings.cpp
-/// @brief This file contains the implementation of the `BCSettings` class
+/// @file BCMenu.cpp
+/// @brief This file contains the implementation of the `BCMenu` class
 ///        which manages the settings menu for the Binary Clock Shield.
 /// @author Chris-70 (2025/09)
 
 #include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
-#include "BinaryClock.Defines.h" //// BinaryClock project-wide definitions and MACROs.
-#include "BCSettings.h"          /// Binary Clock Settings class: handles all settings and serial output.
+#include "BinaryClock.Defines.h" /// BinaryClock project-wide definitions and MACROs.
+#include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
 
 #include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
 #include <assert.h>              /// Catch code logic errors during development.
 
 namespace BinaryClockShield
    {
-   BCSettings::BCSettings(IBinaryClock& clockInterface)
+   BCMenu::BCMenu(IBinaryClock& clockInterface)
          : clock(clockInterface)
          , buttonS1(clock.get_S1TimeDec())
          , buttonS2(clock.get_S2SaveStop())
@@ -23,13 +23,13 @@ namespace BinaryClockShield
       {
       }
 
-   BCSettings::~BCSettings()
+   BCMenu::~BCMenu()
       {
       // Ensure clean state when object is destroyed
       resetSettingsState();
       }      
 
-   void BCSettings::Begin()
+   void BCMenu::Begin()
       { 
       resetSettingsState();
          
@@ -179,7 +179,7 @@ namespace BinaryClockShield
       handle displaying the correct screens for the specified time.
       */
 
-   SettingsState BCSettings::ProcessMenu()
+   SettingsState BCMenu::ProcessMenu()
       {
       // Main menu handling
       if ((settingsOption == 0) && (settingsLevel == 0))
@@ -209,11 +209,11 @@ namespace BinaryClockShield
 
    #if SERIAL_SETUP_CODE
       // Define the strings that are used multiple times throughout the serial setup code. 
-      const String BCSettings::STR_SEPARATOR = BCSettings::fillStr('-', 44); // "--------------------------------------------";
-      const String BCSettings::STR_BARRIER   = BCSettings::fillStr('#', 44); // "############################################";
-      const char PROGMEM BCSettings::STR_TIME_SETTINGS[] = "-------------- Time Settings ---------------";
-      const char PROGMEM BCSettings::STR_ALARM_SETTINGS[]= "-------------- Alarm Settings --------------";
-      const char PROGMEM BCSettings::STR_CURRENT_TIME[]  = "-------- Current Time: ";
+      const String BCMenu::STR_SEPARATOR = BCMenu::fillStr('-', 44); // "--------------------------------------------";
+      const String BCMenu::STR_BARRIER   = BCMenu::fillStr('#', 44); // "############################################";
+      const char PROGMEM BCMenu::STR_TIME_SETTINGS[] = "-------------- Time Settings ---------------";
+      const char PROGMEM BCMenu::STR_ALARM_SETTINGS[]= "-------------- Alarm Settings --------------";
+      const char PROGMEM BCMenu::STR_CURRENT_TIME[]  = "-------- Current Time: ";
    #else
       // When SERIAL_SETUP_CODE is false, code is removed. Redefine the method calls to be whitespace only.
       // This allows the code to compile without the serial setup code, but still allows the methods 
@@ -230,7 +230,7 @@ namespace BinaryClockShield
    #endif
 
 
-   void BCSettings::handleMainMenu()
+   void BCMenu::handleMainMenu()
       {
       // Time settings - S1 button
       if (const_cast<BCButton&>(buttonS1).IsPressedNew())
@@ -265,7 +265,7 @@ namespace BinaryClockShield
          }
       }
 
-   void BCSettings::handleSettingsLevel()
+   void BCMenu::handleSettingsLevel()
       {
       unsigned long curMillis = millis();
 
@@ -371,7 +371,7 @@ namespace BinaryClockShield
          }
       }
 
-   void BCSettings::handleExitProcess()
+   void BCMenu::handleExitProcess()
       {
       unsigned long curTimer = millis();
 
@@ -410,7 +410,7 @@ namespace BinaryClockShield
    // Depending on the options and settings level, assign to the 
    // countButtonPressed variable to be able modify the value
 
-   void BCSettings::setCurrentModifiedValue()
+   void BCMenu::setCurrentModifiedValue()
       {
       // Assign current time value stored in the 'tempTime' variable for modification by the user.
       if (settingsOption == 1)
@@ -433,7 +433,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Check current modified value format of the countButtonPressed variable
 
-   BCSettings::SettingsType BCSettings::GetSettingsType(int options, int level) const
+   BCMenu::SettingsType BCMenu::GetSettingsType(int options, int level) const
       {
       SettingsType type = SettingsType::Undefined;
 
@@ -454,7 +454,7 @@ namespace BinaryClockShield
       return type;
       }
 
-   void BCSettings::checkCurrentModifiedValueFormat()
+   void BCMenu::checkCurrentModifiedValueFormat()
       {
       SettingsType type = GetSettingsType(settingsOption, settingsLevel);
 
@@ -499,7 +499,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Depending on the options and settings level, save the current modified value
 
-   void BCSettings::saveCurrentModifiedValue()
+   void BCMenu::saveCurrentModifiedValue()
       {
       // Save current value in the DateTime structure
       if (settingsOption == 1)
@@ -546,7 +546,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Display on LEDs only currently modified value
 
-   void BCSettings::displayCurrentModifiedValue()
+   void BCMenu::displayCurrentModifiedValue()
       {
       SettingsType type = GetSettingsType(settingsOption, settingsLevel);
       switch (type)
@@ -597,7 +597,7 @@ namespace BinaryClockShield
       }
 
    
-   SettingsState BCSettings::determineCurrentState() const
+   SettingsState BCMenu::determineCurrentState() const
       {
       if (exit)
          {
@@ -621,7 +621,7 @@ namespace BinaryClockShield
       return SettingsState::Processing;
       }
 
-   void BCSettings::resetSettingsState()
+   void BCMenu::resetSettingsState()
       {
       currentState = SettingsState::Inactive;
       settingsLevel = 0;
@@ -633,7 +633,7 @@ namespace BinaryClockShield
       countButtonPressed = 0;
       }
 
-   void BCSettings::ExitSettingsMode()
+   void BCMenu::ExitSettingsMode()
       {
       resetSettingsState();
       }
@@ -642,7 +642,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Show the Shield settings menu and alarm status
 
-   void BCSettings::serialStartInfo()
+   void BCMenu::serialStartInfo()
       {
       Serial << STR_SEPARATOR << endl;
       Serial << fillStr('-', 11) << F(" BINARY CLOCK SHIELD ") << fillStr('-', 12) << endl;
@@ -665,7 +665,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Show the set alarm time and current alarm status
 
-   void BCSettings::serialAlarmInfo()
+   void BCMenu::serialAlarmInfo()
       {
       Serial << STR_SEPARATOR << endl;
       Serial << F("------ Alarm Time: ");
@@ -679,7 +679,7 @@ namespace BinaryClockShield
       ////////////////////////////////////////////////////////////////////////////////////
    // Show alarm/time settings
 
-   void BCSettings::serialSettings()
+   void BCMenu::serialSettings()
       {
       if (settingsOption == 1)
          {
@@ -710,7 +710,7 @@ namespace BinaryClockShield
          };
 
       char hourStr[6] = { 0 };
-      BCSettings::SettingsType type = GetSettingsType(settingsOption, settingsLevel);
+      BCMenu::SettingsType type = GetSettingsType(settingsOption, settingsLevel);
       switch (type)
          {
             case SettingsType::Hours:
@@ -748,7 +748,7 @@ namespace BinaryClockShield
             case SettingsType::Undefined:
             default:
                // This is a Software error. Alert the developer (Debug mode only)
-               // assert(false && "BCSettings::displayCurrentModifiedValue() - Undefined settings type "  && type);
+               // assert(false && "BCMenu::displayCurrentModifiedValue() - Undefined settings type "  && type);
                break;
          }
       }
@@ -756,7 +756,7 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Show current alarm status during settings
 
-   void BCSettings::serialCurrentModifiedValue()
+   void BCMenu::serialCurrentModifiedValue()
       {
       if ((settingsLevel == 1) & (settingsOption == 3))
          {
@@ -783,7 +783,7 @@ namespace BinaryClockShield
       Serial << (" ");
       }
 
-   char* BCSettings::FormatHour(int hour24, bool is12HourFormat, char* buffer, size_t size)
+   char* BCMenu::FormatHour(int hour24, bool is12HourFormat, char* buffer, size_t size)
       {
       if ((buffer == nullptr) || (size < 6)) { return nullptr; }
 
@@ -820,7 +820,7 @@ namespace BinaryClockShield
    #endif // SERIAL_SETUP_CODE
   
    #if SERIAL_OUTPUT
-   String BCSettings::fillStr(char ch, byte repeat)
+   String BCMenu::fillStr(char ch, byte repeat)
       {
       char buffer[MAX_BUFFER_SIZE] = { 0 };
       byte len = (repeat < sizeof(buffer) - 1) ? repeat : sizeof(buffer) - 1;
