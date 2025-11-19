@@ -1371,13 +1371,16 @@ namespace BinaryClockShield
       //
       // I got schooled by SAR, and now so have you.
       // So we can use a 100 year old alternative: 
-      // CQD (-.-. --.- -..) it expands to: Come Quick Distress
+      // CQD (-.-. --.- -..) it expands to: Come Quick Distress(*)
       // CQD was used before SOS and is a good alternative for us.
       // So, flash the message: 
       //       CQD NO RTC  -  Come Quick Distress NO Real Time Clock.
       //       -.-. --.- -..  -. ---   .-. - -.-.
       // We can't get out of purgatory without a Real Time Clock
-      //
+      // ---
+      // (*) Its actual meaning is: "General Call To Any Station - Distress"
+      //     CQ is shorthand for: General Call To Any Station. 
+      //     D  is shorthand for: Distress in this context.
       MorseCodeLED morseCode(HeartbeatLED);
       morseCode.Begin();
 

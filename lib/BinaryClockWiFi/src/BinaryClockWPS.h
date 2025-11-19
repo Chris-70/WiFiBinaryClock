@@ -8,14 +8,7 @@
 #ifndef __BINARYCLOCKWPS_H__
 #define __BINARYCLOCKWPS_H__
 
-// If DEV_CODE is defined and true, include the `BinaryClock.Defines.h` file for SERIAL_STREAM macro.
-// This allows for serial streaming output during development and debugging and removes the
-// dependence on `BinaryClock.Defines.h` when not in development mode.
-#if DEV_CODE
-   #include "BinaryClock.Defines.h"    /// BinaryClock project-wide definitions and MACROs.
-#else
-   #define SERIAL_STREAM(STRING)       // Define as empty to remove the code if DEV_CODE is not true.
-#endif
+#define ESP32_WIFI      true     ///< For now, only ESP32 WiFi is supported.
 
 #ifndef WIFI
    #define WIFI (ESP32_WIFI || WIFIS3)

@@ -369,8 +369,8 @@ namespace BinaryClockShield
       uint8_t exitStage = 0U;        ///< Stage of exit process
       unsigned long delayTimer = 0UL; ///< Delay timer instead of using delay()
       bool continueS2 = false;       ///< Flag to resume 'buttonS2' processing after delay
-      bool isSerialTime = DEFAULT_SERIAL_TIME;
-      bool isSerialSetup = DEFAULT_SERIAL_SETUP;
+      bool isSerialTime;   ///< Flag to indicate if serial time output is enabled, default value to be set in constructor.
+      bool isSerialSetup;  ///< Flag to indicate if serial setup is enabled, default value to be set in constructor.
 
       char buffer[64] = { 0 };       ///< Buffer for the DateTime string conversions
 

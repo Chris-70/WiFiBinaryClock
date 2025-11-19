@@ -19,11 +19,13 @@
 
 #include <stdint.h>                 /// Integer types: size_t; uint8_t; uint16_t; etc.
 
-#include "DateTime.h"               /// For the `DateTime` and `TimeSpan` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
-
-#include "BinaryClock.Defines.h"    /// BinaryClock project-wide definitions and MACROs.
 #include "BinaryClock.Structs.h"    /// Global structures and enums used by the Binary Clock project.
 #include "BCButton.h"               /// Binary Clock Button class: handles all button related functionality.
+#include "DateTime.h"               /// For the `DateTime` and `TimeSpan` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
+
+#ifndef STL_USED
+   #define STL_USED    true    ///< If true, STL classes are used (e.g. String, vector, etc.); if false, they are not used.
+#endif
 
 #if STL_USED
    // STL classes required to be included (when using the STL):

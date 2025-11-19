@@ -18,7 +18,6 @@
 #include "BinaryClockSettings.h"    /// Binary Clock Settings class: handles all settings kept on NVS.
 #include "BinaryClockNTP.h"         /// Binary Clock NTP class: handles all NTP related functionality.
 #include "BinaryClockWPS.h"         /// Binary Clock WPS class: handles WPS connection functionality.
-#include "DummyBinaryClock.h"       // *** DEBUG ***
 
 #include <WiFi.h>                   /// For WiFi connectivity class: `WiFiClass`
 #include <esp_wifi_types.h>         /// For `wifi_auth_mode_t` enum and related types.
@@ -248,10 +247,9 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    private:
-      DummyBinaryClock dummyClock = DummyBinaryClock();
       /// @brief A pointer to the  `IBinaryClock` implementation instance.  
       ///        The initial value is a placeholder until `Begin()` is called.
-      IBinaryClock* clockPtr = &dummyClock;
+      IBinaryClock* clockPtr = nullptr; 
       BinaryClockSettings& settings = BinaryClockSettings::get_Instance();    ///< Local reference to the setting stored in NVS.
       BinaryClockNTP& ntp = BinaryClockNTP::get_Instance(); ///< NTP client reference to the time synchronization.
       BinaryClockWPS& wps = BinaryClockWPS::get_Instance(); ///< WPS handler reference to the WPS connections.

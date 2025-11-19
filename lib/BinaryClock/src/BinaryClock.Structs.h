@@ -13,9 +13,6 @@
 
 #if ESP32_WIFI // == true
    #include <WiFi.h>                   /// For WiFi connectivity class: `WiFiClass`
-   #include <esp_wifi.h>               /// For WiFi functions: `esp_wifi_*()`
-   #include <esp_err.h>                /// For ESP error codes: `esp_err_t`
-   #include <esp_wifi_types.h>         /// For WiFi types: 'wifi_mode_t'; `wifi_auth_mode_t`; etc.
 #elif WIFIS3 // == true
    #include <WiFiS3.h>                 /// For WiFi connectivity class: `WiFiS3Class`
 #endif
@@ -26,9 +23,9 @@ namespace BinaryClockShield
    /// @details This structure contains all the information related to a specific alarm, including
    ///          the alarm number, time, melody, status, and whether it has fired or not.   
    ///          While repeating the alarm based the date or day of the week instead of just daily is
-   ///          supported by the DS3231 RTC, ... @todo finish.
+   ///          supported by the DS3231 RTC.
    /// @note  The 'melody' selection has been implemented for most boards that support STL.    
-   ///        The UNO_R3 will use the internal melody or one other user supplied melody.
+   ///        The UNO_R3 will use the internal melody or one user supplied melody.
    /// @author Chris-80 (2025/07)
    typedef struct alarmTime
       {
@@ -92,7 +89,6 @@ namespace BinaryClockShield
          };
    
    #if WIFI    // == true
-
    #define MAX_ID_SIZE  (UINT8_MAX - 1)   ///< Maximum value for an ID, 1-255 (0 is 'Not Set' or 'Error').
 
    /// @brief The structure to hold the SSID (Name) and BSSID (MAC address) of an Access Point.

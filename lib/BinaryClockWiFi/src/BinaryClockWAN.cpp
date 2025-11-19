@@ -19,14 +19,31 @@
 #include "esp_wifi.h"
 #include "esp_log.h"
 
+//################################################################################//
+#ifndef SERIAL_OUTPUT
+   #define SERIAL_OUTPUT   true  // true to enable; false to disable
+#endif
+#ifndef DEV_CODE
+   #define DEV_CODE        true  // true to enable; false to disable
+#endif
+#ifndef DEBUG_OUTPUT
+   #define DEBUG_OUTPUT    true  // true to enable; false to disable
+#endif
+#ifndef PRINTF_OK
+   #define PRINTF_OK       true  // true to enable; false to disable
+#endif
+
+#include "SerialOutput.Defines.h"      // For all the serial output macros.
+//################################################################################//
+
 #define WPS_TIMEOUT_MS         150000  ///< The default timeout for a WPS connection (e.g. 2 min or 2:30, etc.).
 
 namespace BinaryClockShield
    {
    BinaryClockWAN::BinaryClockWAN()
       {
-      Serial.print("BinaryClockWAN() constructor with IBinaryClock*: ");
-      Serial.println(clockPtr->get_IdName());
+      SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClock*: ")
+      SERIAL_PRINTLN(clockPtr->get_IdName())
       WiFi.mode(WIFI_STA);
       zuluOffset = TimeSpan(0, -5, 0, 0); // Default to EST (UTC-5) // *** DEBUG ***
       }
@@ -43,10 +60,10 @@ namespace BinaryClockShield
       bool result = false;
       // Connect to the specified WiFi network using the provided credentials.
       auto status = WiFi.begin(creds.ssid.c_str(), creds.pw.c_str());
-      Serial << "BinaryClockWAN() connecting to " << creds.ssid << ", result: " << WiFiStatusString(status) << endl;
+      SERIAL_STREAM("BinaryClockWAN() connecting to " << creds.ssid << ", result: " << WiFiStatusString(status) << endl)
       if (status == WL_CONNECTED)
          {
-         Serial << "Connected to " << creds.ssid << " with IP address " << WiFi.localIP() << endl;
+         SERIAL_STREAM("Connected to " << creds.ssid << " with IP address " << WiFi.localIP() << endl)
          settings.AddWiFiCreds(creds);
          localIP = WiFi.localIP();
          localCreds = creds;
@@ -68,14 +85,14 @@ namespace BinaryClockShield
 
       bool result = false;
       bool sta = WiFi.mode(WIFI_STA);
-      Serial << "WiFi Station Mode: " << (sta ? "YES" : "NO") << endl;  // *** DEBUG ***
+      SERIAL_STREAM("WiFi Station Mode: " << (sta ? "YES" : "NO") << endl)  // *** DEBUG ***
 
       std::vector<std::pair<APCredsPlus, WiFiInfo>> apCredList = settings.GetWiFiAPs(localAPs);
 
       for (const auto& [cred, info] : apCredList)
          {
-         Serial << "  SSID: " << cred.ssid << ", BSSID: [" << cred.bssid << "], P/W: " << cred.pw 
-                << ", RSSI: " << info.rssi << ", AuthMode: " << AuthModeString(info.authMode) << endl; // *** DEBUG ***
+         SERIAL_STREAM("  SSID: " << cred.ssid << ", BSSID: [" << cred.bssid << "], P/W: " << cred.pw 
+                << ", RSSI: " << info.rssi << ", AuthMode: " << AuthModeString(info.authMode) << endl) // *** DEBUG ***
 
          // Ensure clean state before connection attempt
          WiFi.disconnect(true);
@@ -88,13 +105,13 @@ namespace BinaryClockShield
             {
             // Single WiFi.begin() call with BSSID
             status = WiFi.begin(cred.ssid.c_str(), cred.pw.c_str(), info.channel, bssidArray, true);
-            Serial << "BinaryClockWAN() connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl;   // *** DEBUG ***
+            SERIAL_STREAM("BinaryClockWAN() connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl)   // *** DEBUG ***
             }
          else
             {
-            Serial << "    Missing/Invalid BSSID format in credentials: [" << cred.bssid << "]" << endl; // *** DEBUG ***
+            SERIAL_STREAM("    Missing/Invalid BSSID format in credentials: [" << cred.bssid << "]" << endl) // *** DEBUG ***
             status = WiFi.begin(cred.ssid.c_str(), cred.pw.c_str());
-            Serial << "BinaryClockWAN() connecting to " << cred.ssid << " without BSSID" << endl; // *** DEBUG ***
+            SERIAL_STREAM("BinaryClockWAN() connecting to " << cred.ssid << " without BSSID" << endl) // *** DEBUG ***
             }
 
          // Wait for connection with proper timeout
@@ -111,24 +128,24 @@ namespace BinaryClockShield
                 currentStatus == WL_NO_SSID_AVAIL ||
                 currentStatus == WL_CONNECTION_LOST)
                {
-               Serial << "Connection failed with status: " << WiFiStatusString(currentStatus) << endl;   // *** DEBUG ***
+               SERIAL_STREAM("Connection failed with status: " << WiFiStatusString(currentStatus) << endl)   // *** DEBUG ***
                break;
                }
 
             vTaskDelay(500 / portTICK_PERIOD_MS);
-            Serial.print(".");   // *** DEBUG ***
+            SERIAL_PRINT(".")   // *** DEBUG ***
             count++;
             }
-         Serial.println();
+         SERIAL_PRINTLN()
 
          // Check final status
          wl_status_t finalStatus = WiFi.status();
-         Serial << "BinaryClockWAN() final result: " << WiFiStatusString(finalStatus) << endl; // *** DEBUG ***
+         SERIAL_STREAM("BinaryClockWAN() final result: " << WiFiStatusString(finalStatus) << endl) // *** DEBUG ***
 
          if (finalStatus == WL_CONNECTED)
             {
-            Serial.println("  >> Connected! <<");  // *** DEBUG ***
-            Serial << "Connected to " << cred.ssid << " with IP address " << WiFi.localIP() << endl;  // *** DEBUG ***
+            SERIAL_PRINTLN("  >> Connected! <<")  // *** DEBUG ***
+            SERIAL_STREAM("Connected to " << cred.ssid << " with IP address " << WiFi.localIP() << endl)  // *** DEBUG ***
 
             localIP = WiFi.localIP();
             localCreds = cred;
@@ -140,7 +157,7 @@ namespace BinaryClockShield
             }
          else
             {
-            Serial << "Failed to connect to " << cred.ssid << ", final status: " << WiFiStatusString(finalStatus) << endl; // *** DEBUG ***
+            SERIAL_STREAM("Failed to connect to " << cred.ssid << ", final status: " << WiFiStatusString(finalStatus) << endl) // *** DEBUG ***
             }
          }
 
@@ -150,7 +167,7 @@ namespace BinaryClockShield
    std::vector<WiFiInfo> BinaryClockWAN::GetAvailableNetworks()
       {
       size_t n = WiFi.scanNetworks(false, true);
-      Serial << "GetAvailableNetworks() - scan done, found " << n << " networks" << endl; // *** DEBUG ***
+      SERIAL_STREAM("GetAvailableNetworks() - scan done, found " << n << " networks" << endl) // *** DEBUG ***
       std::vector<WiFiInfo> networks(n);
       for (size_t i = 0; i < n; ++i)
          {
@@ -163,8 +180,8 @@ namespace BinaryClockShield
          
          // networks.push_back(info);
          networks[i] = info;
-         Serial << i + 1 << ": " << info.ssid << ", BSSID: [" << info.bssid << "] (" << info.rssi << "dBm) " 
-                << AuthModeString(info.authMode) << endl; // << WiFi.persistent(true) << WiFi.isProvEnabled() << endl;  // *** DEBUG ***
+         SERIAL_STREAM(i + 1 << ": " << info.ssid << ", BSSID: [" << info.bssid << "] (" << info.rssi << "dBm) " 
+                    << AuthModeString(info.authMode) << endl) // << WiFi.persistent(true) << WiFi.isProvEnabled() << endl)  // *** DEBUG ***
          }
 
       WiFi.scanDelete();
@@ -179,10 +196,11 @@ namespace BinaryClockShield
 
       try
          {
-         Serial << "BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect) called with: " << binClock.get_IdName() << " Saved as: " << clockPtr->get_IdName() << endl;   // *** DEBUG ***
+         SERIAL_STREAM("BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect) called with: " << binClock.get_IdName() 
+                    << " Saved as: " << clockPtr->get_IdName() << endl)   // *** DEBUG ***
          if (clockPtr == nullptr || clockPtr != &binClock)  // Safety check
             {
-            Serial.println("ERROR: Invalid IBinaryClock reference!");
+            SERIAL_PRINTLN("ERROR: Invalid IBinaryClock reference!")
             return false;
             }
          
@@ -193,7 +211,7 @@ namespace BinaryClockShield
 
          settings.Begin();    // Read the settings from the Non-Volatile Storage.
          localAPs = GetAvailableNetworks();  // Find all the APs in the area.
-         Serial << "BinaryClockWAN::Begin() - found " << localAPs.size() << " networks" << endl;
+         SERIAL_STREAM("BinaryClockWAN::Begin() - found " << localAPs.size() << " networks" << endl)
          
          // Register `SyncAlert()` to get called when SNTP syncs the time.
          bool regResult = ntp.RegisterSyncCallback([this](const DateTime& time) {
@@ -202,7 +220,7 @@ namespace BinaryClockShield
 
          if (autoConnect && connectLocalWiFi(true))
             {
-            Serial << "Begin(): Connected to local AP: " << WiFi.SSID() << endl; // *** DEBUG ***
+            SERIAL_STREAM("Begin(): Connected to local AP: " << WiFi.SSID() << endl) // *** DEBUG ***
 
             // Wait for connection to stabilize BEFORE initializing SNTP
             vTaskDelay(2000 / portTICK_PERIOD_MS);  // Give WiFi time to stabilize
@@ -210,35 +228,35 @@ namespace BinaryClockShield
             // Check connection is still active
             if (WiFi.isConnected())
                {
-               Serial << "    Connected to WiFi. ";
+               SERIAL_STREAM("    Connected to WiFi. ")
                WiFi.setAutoReconnect(true);
 
                // Disable WiFi power saving
                WiFi.setSleep(false);
                esp_wifi_set_ps(WIFI_PS_NONE);
 
-               Serial << "BinaryClockWAN::Begin() - Connection is stable, now initializing NTP..." << endl; // *** DEBUG ***
+               SERIAL_STREAM("BinaryClockWAN::Begin() - Connection is stable, now initializing NTP..." << endl) // *** DEBUG ***
                ntp.Begin(NTP_SERVER_LIST, 10000);
-               Serial << "    initialized NTP; Updating time..." << endl; // *** DEBUG ***
+               SERIAL_STREAM("    initialized NTP; Updating time..." << endl) // *** DEBUG ***
                // initialized = true; // Temporarily set to true to allow UpdateTime() to proceed
                // result = UpdateTime();
-               // Serial << "    Updated time; Result: " << (result ? "Success" : "Failure") << endl; // *** DEBUG ***
+               // SERIAL_STREAM("    Updated time; Result: " << (result ? "Success" : "Failure") << endl) // *** DEBUG ***
                }
             else
                {
-               Serial << "    Connection lost during stabilization" << endl;   // *** DEBUG ***
+               SERIAL_STREAM("    Connection lost during stabilization" << endl)   // *** DEBUG ***
                result = false;
                }
             }
          }  // try
       catch (const std::exception& e)
          {
-         Serial << "    Exception occurred in BinaryClockWAN::Begin(): " << e.what() << endl;
+         SERIAL_STREAM("    Exception occurred in BinaryClockWAN::Begin(): " << e.what() << endl)
          result = initialized = false;
          }
 
       initialized = result;   // Sync the flag with the final result.
-      Serial << "    BinaryClockWAN::Begin() Result: " << (result ? "Success" : "Failure") << endl; // *** DEBUG ***
+      SERIAL_STREAM("    BinaryClockWAN::Begin() Result: " << (result ? "Success" : "Failure") << endl) // *** DEBUG ***
       binClock.DisplayLedPattern((result ? LedPattern::okText : LedPattern::xAbort));
       vTaskDelay(1250 / portTICK_PERIOD_MS);
       return result;
@@ -268,10 +286,11 @@ void BinaryClockWAN::End(bool save)
       bool result = false;
       if (time > DateTime::DateTimeEpoch)
          {
-         Serial << "Setting time on binClock: " << clockPtr->get_IdName() << "; " << (clockPtr == nullptr? "NULL" : "Valid") << endl; // *** DEBUG ***
+         SERIAL_STREAM("Setting time on binClock: " << clockPtr->get_IdName() << "; " << (clockPtr == nullptr? "NULL" : "Valid") << endl) // *** DEBUG ***
          clockPtr->set_Time(time);
          DateTime validateTime = clockPtr->get_Time();
-         Serial << "UpdateTime(): Time synchronized: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << " Result time: " << validateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl; // *** DEBUG ***
+         SERIAL_STREAM("UpdateTime(): Time synchronized: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << " Result time: " 
+                     << validateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
          result = (time == validateTime); // Success IFF the time was set correctly.
          }
       
@@ -285,7 +304,8 @@ void BinaryClockWAN::End(bool save)
       NTPResult syncResult = ntp.SyncTime();
       if (syncResult.success)
          {
-         Serial << "SyncTimeNTP(): Success; Time (internal) synchronized: " << syncResult.dateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << "; Calling UpdateTime()" << endl; // *** DEBUG ***
+         SERIAL_STREAM("SyncTimeNTP(): Success; Time (internal) synchronized: " << syncResult.dateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) 
+                    << "; Calling UpdateTime()" << endl) // *** DEBUG ***
          bool updateRes = UpdateTime(syncResult.dateTime);
          }
 
@@ -297,8 +317,8 @@ void BinaryClockWAN::End(bool save)
       if (!initialized) { return; } // Ensure Begin() was called
 
       clockPtr->set_Time(dateTime);
-      Serial << "SyncAlert(): Time synchronized: " << dateTime.timestamp(clockPtr->get_Is12HourFormat()
-            ? DateTime::TIMESTAMP_DATETIME12 : DateTime::TIMESTAMP_DATETIME) << endl;  // *** DEBUG ***
+      SERIAL_STREAM("SyncAlert(): Time synchronized: " << dateTime.timestamp(clockPtr->get_Is12HourFormat()
+            ? DateTime::TIMESTAMP_DATETIME12 : DateTime::TIMESTAMP_DATETIME) << endl)  // *** DEBUG ***
       }
 
    void BinaryClockWAN::set_Timezone(String value)
@@ -307,12 +327,12 @@ void BinaryClockWAN::End(bool save)
 
       String curZone = settings.get_Timezone();
       ntp.set_Timezone(value.c_str());
-      Serial << "set_Timezone(): Changing timezone from [" << curZone << "] to [" << value << "]" << endl; // *** DEBUG ***
+      SERIAL_STREAM("set_Timezone(): Changing timezone from [" << curZone << "] to [" << value << "]" << endl) // *** DEBUG ***
       if (curZone != value)
          {
          settings.set_Timezone(value);
          bool saveRes = settings.Save();
-         Serial << "    Saved new timezone [" << value << "] to settings " << (saveRes ? "successfully." : "with errors.") << endl; // *** DEBUG ***
+         SERIAL_STREAM("    Saved new timezone [" << value << "] to settings " << (saveRes ? "successfully." : "with errors.") << endl) // *** DEBUG ***
          }
       }
 
@@ -326,52 +346,52 @@ void BinaryClockWAN::End(bool save)
    // WARNING: This function is called from a separate FreeRTOS task (thread)!
    void BinaryClockWAN::WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info)
       {
-      Serial.printf("[%lu] {WiFi-event} event %2d: ", millis(), event); // *** DEBUG ***
-      // Serial.printf("[WiFi-event] event %2d \"%s\" - ", event, WiFiEventToString(event));
+      SERIAL_PRINTF("[%lu] {WiFi-event} event %2d: ", millis(), event) // *** DEBUG ***
+      // SERIAL_PRINTF("[WiFi-event] event %2d \"%s\" - ", event, WiFiEventToString(event))
 
       switch (event)
          {
-         case ARDUINO_EVENT_WIFI_READY:               Serial.println("WiFi interface ready"); break;
-         case ARDUINO_EVENT_WIFI_SCAN_DONE:           Serial.println("Completed scan for access points"); break;
-         case ARDUINO_EVENT_WIFI_STA_START:           Serial.println("WiFi client started"); break;
-         case ARDUINO_EVENT_WIFI_STA_STOP:            Serial.println("WiFi clients stopped"); break;
-         case ARDUINO_EVENT_WIFI_STA_CONNECTED:       Serial.println("Connected to access point"); break;
-         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:    Serial.println("Disconnected from WiFi access point"); break;
-         case ARDUINO_EVENT_WIFI_STA_AUTHMODE_CHANGE: Serial.println("Authentication mode of access point has changed"); break;
+         case ARDUINO_EVENT_WIFI_READY:               SERIAL_PRINTLN("WiFi interface ready") break;
+         case ARDUINO_EVENT_WIFI_SCAN_DONE:           SERIAL_PRINTLN("Completed scan for access points") break;
+         case ARDUINO_EVENT_WIFI_STA_START:           SERIAL_PRINTLN("WiFi client started") break;
+         case ARDUINO_EVENT_WIFI_STA_STOP:            SERIAL_PRINTLN("WiFi clients stopped") break;
+         case ARDUINO_EVENT_WIFI_STA_CONNECTED:       SERIAL_PRINTLN("Connected to access point") break;
+         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:    SERIAL_PRINTLN("Disconnected from WiFi access point") break;
+         case ARDUINO_EVENT_WIFI_STA_AUTHMODE_CHANGE: SERIAL_PRINTLN("Authentication mode of access point has changed") break;
          case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-            Serial.print("Obtained IP address: ");
-            Serial.println(WiFi.localIP());
+            SERIAL_PRINT("Obtained IP address: ")
+            SERIAL_PRINTLN(WiFi.localIP())
             break;
-         case ARDUINO_EVENT_WIFI_STA_LOST_IP:        Serial.println("Lost IP address and IP address is reset to 0"); break;
-         case ARDUINO_EVENT_WPS_ER_SUCCESS:          Serial.println("WiFi Protected Setup (WPS): succeeded in enrollee mode"); break;
-         case ARDUINO_EVENT_WPS_ER_FAILED:           Serial.println("WiFi Protected Setup (WPS): failed in enrollee mode"); break;
-         case ARDUINO_EVENT_WPS_ER_TIMEOUT:          Serial.println("WiFi Protected Setup (WPS): timeout in enrollee mode"); break;
-         case ARDUINO_EVENT_WPS_ER_PIN:              Serial.println("WiFi Protected Setup (WPS): pin code in enrollee mode"); break;
-         case ARDUINO_EVENT_WIFI_AP_START:           Serial.println("WiFi access point started"); break;
-         case ARDUINO_EVENT_WIFI_AP_STOP:            Serial.println("WiFi access point  stopped"); break;
-         case ARDUINO_EVENT_WIFI_AP_STACONNECTED:    Serial.println("Client connected"); break;
-         case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED: Serial.println("Client disconnected"); break;
-         case ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED:   Serial.println("Assigned IP address to client"); break;
-         case ARDUINO_EVENT_WIFI_AP_PROBEREQRECVED:  Serial.println("Received probe request"); break;
-         case ARDUINO_EVENT_WIFI_AP_GOT_IP6:         Serial.println("AP IPv6 is preferred"); break;
-         case ARDUINO_EVENT_WIFI_STA_GOT_IP6:        Serial.println("STA IPv6 is preferred"); break;
-         case ARDUINO_EVENT_ETH_GOT_IP6:             Serial.println("Ethernet IPv6 is preferred"); break;
-         case ARDUINO_EVENT_ETH_START:               Serial.println("Ethernet started"); break;
-         case ARDUINO_EVENT_ETH_STOP:                Serial.println("Ethernet stopped"); break;
-         case ARDUINO_EVENT_ETH_CONNECTED:           Serial.println("Ethernet connected"); break;
-         case ARDUINO_EVENT_ETH_DISCONNECTED:        Serial.println("Ethernet disconnected"); break;
-         case ARDUINO_EVENT_ETH_GOT_IP:              Serial.println("Ethernet obtained IP address"); break;
-         default:                                    Serial.println("default case"); break;
+         case ARDUINO_EVENT_WIFI_STA_LOST_IP:        SERIAL_PRINTLN("Lost IP address and IP address is reset to 0") break;
+         case ARDUINO_EVENT_WPS_ER_SUCCESS:          SERIAL_PRINTLN("WiFi Protected Setup (WPS): succeeded in enrollee mode") break;
+         case ARDUINO_EVENT_WPS_ER_FAILED:           SERIAL_PRINTLN("WiFi Protected Setup (WPS): failed in enrollee mode") break;
+         case ARDUINO_EVENT_WPS_ER_TIMEOUT:          SERIAL_PRINTLN("WiFi Protected Setup (WPS): timeout in enrollee mode") break;
+         case ARDUINO_EVENT_WPS_ER_PIN:              SERIAL_PRINTLN("WiFi Protected Setup (WPS): pin code in enrollee mode") break;
+         case ARDUINO_EVENT_WIFI_AP_START:           SERIAL_PRINTLN("WiFi access point started") break;
+         case ARDUINO_EVENT_WIFI_AP_STOP:            SERIAL_PRINTLN("WiFi access point  stopped") break;
+         case ARDUINO_EVENT_WIFI_AP_STACONNECTED:    SERIAL_PRINTLN("Client connected") break;
+         case ARDUINO_EVENT_WIFI_AP_STADISCONNECTED: SERIAL_PRINTLN("Client disconnected") break;
+         case ARDUINO_EVENT_WIFI_AP_STAIPASSIGNED:   SERIAL_PRINTLN("Assigned IP address to client") break;
+         case ARDUINO_EVENT_WIFI_AP_PROBEREQRECVED:  SERIAL_PRINTLN("Received probe request") break;
+         case ARDUINO_EVENT_WIFI_AP_GOT_IP6:         SERIAL_PRINTLN("AP IPv6 is preferred") break;
+         case ARDUINO_EVENT_WIFI_STA_GOT_IP6:        SERIAL_PRINTLN("STA IPv6 is preferred") break;
+         case ARDUINO_EVENT_ETH_GOT_IP6:             SERIAL_PRINTLN("Ethernet IPv6 is preferred") break;
+         case ARDUINO_EVENT_ETH_START:               SERIAL_PRINTLN("Ethernet started") break;
+         case ARDUINO_EVENT_ETH_STOP:                SERIAL_PRINTLN("Ethernet stopped") break;
+         case ARDUINO_EVENT_ETH_CONNECTED:           SERIAL_PRINTLN("Ethernet connected") break;
+         case ARDUINO_EVENT_ETH_DISCONNECTED:        SERIAL_PRINTLN("Ethernet disconnected") break;
+         case ARDUINO_EVENT_ETH_GOT_IP:              SERIAL_PRINTLN("Ethernet obtained IP address") break;
+         default:                                    SERIAL_PRINTLN("default case") break;
          }
       }
 
    // WARNING: This function is called from a separate FreeRTOS task (thread)!
    void BinaryClockWAN::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
       {
-      Serial.printf("[%7lu] {WiFiGotIp} event %2d: ", millis(), event); // *** DEBUG ***
-      Serial.println("        WiFi connected");
-      Serial.print("        IP address: ");
-      Serial.println(IPAddress(info.got_ip.ip_info.ip.addr));           // *** DEBUG ***
+      SERIAL_PRINTF("[%7lu] {WiFiGotIp} event %2d: ", millis(), event) // *** DEBUG ***
+      SERIAL_PRINTLN("        WiFi connected")
+      SERIAL_PRINT("        IP address: ")
+      SERIAL_PRINTLN(IPAddress(info.got_ip.ip_info.ip.addr))           // *** DEBUG ***
       }
 
    } // namespace BinaryClockShield

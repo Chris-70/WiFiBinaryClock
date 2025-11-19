@@ -9,6 +9,23 @@
    #include "BinaryClockWPS.h"            /// Header for BinaryClockWPS class.
 #endif // INLINE_HEADER
 
+//################################################################################//
+#ifndef SERIAL_OUTPUT
+   #define SERIAL_OUTPUT   true  // true to enable; false to disable
+#endif
+#ifndef DEV_CODE
+   #define DEV_CODE        true  // true to enable; false to disable
+#endif
+#ifndef DEBUG_OUTPUT
+   #define DEBUG_OUTPUT    true  // true to enable; false to disable
+#endif
+#ifndef PRINTF_OK
+   #define PRINTF_OK       true  // true to enable; false to disable
+#endif
+
+#include "SerialOutput.Defines.h"      // For all the serial output macros.
+//################################################################################//
+
 namespace BinaryClockShield
    {
    BinaryClockWPS::BinaryClockWPS()

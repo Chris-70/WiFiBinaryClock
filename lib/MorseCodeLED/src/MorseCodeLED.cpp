@@ -96,6 +96,7 @@ namespace BinaryClockShield
          #pragma GCC diagnostic push
          // Keeping the switch compact for UNO_R3 where this is used.
          // The while()... statement handles the MC::EndMarker
+         // Disable the warning about not handling all enum values.
          #pragma GCC diagnostic ignored "-Wswitch"
       #endif
 
