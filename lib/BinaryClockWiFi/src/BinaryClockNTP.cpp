@@ -9,10 +9,27 @@
    #include "BinaryClockNTP.h"
 #endif // INLINE_HEADER
 
-#include "Streaming.h"                 /// For Serial << streaming syntax (https://github.com/janelia-arduino/Streaming)
+#include <Streaming.h>                 /// For Serial << streaming syntax (https://github.com/janelia-arduino/Streaming)
 
 // STL classes required to be included:
 #include <tuple>
+
+//################################################################################//
+#ifndef SERIAL_OUTPUT
+   #define SERIAL_OUTPUT   true  // true to enable; false to disable
+#endif
+#ifndef DEV_CODE
+   #define DEV_CODE        true  // true to enable; false to disable
+#endif
+#ifndef DEBUG_OUTPUT
+   #define DEBUG_OUTPUT    true  // true to enable; false to disable
+#endif
+#ifndef PRINTF_OK
+   #define PRINTF_OK       true  // true to enable; false to disable
+#endif
+
+#include "SerialOutput.Defines.h"      // For all the serial output macros.
+//################################################################################//
 
 namespace BinaryClockShield
    {
@@ -34,7 +51,7 @@ namespace BinaryClockShield
       {
       if (initialized)
          {
-         Serial << "BinaryClockNTP::Initialize() - already initialized; Call End() then reinitialize." << endl;
+         SERIAL_STREAM("BinaryClockNTP::Initialize() - already initialized; Call End() then reinitialize." << endl)
          return;
          }
 
@@ -59,7 +76,7 @@ namespace BinaryClockShield
 
             if (param->delayMS > 0U)
                {
-               Serial << "BinaryClockNTP::initNTP() - delaying initialization for " << param->delayMS << " ms" << endl;
+               SERIAL_STREAM("BinaryClockNTP::initNTP() - delaying initialization for " << param->delayMS << " ms" << endl)
                vTaskDelay(param->delayMS / portTICK_PERIOD_MS);
                }
 
@@ -68,10 +85,10 @@ namespace BinaryClockShield
                instance->ntpServers = param->servers;
                }
 
-            Serial << "    Initializing SNTP..." << endl;
+            SERIAL_STREAM("    Initializing SNTP..." << endl)
             instance->initialized = instance->initializeSNTP();
 
-            Serial << "[" << millis() << "] BinaryClockNTP singleton " << (instance->initialized ? "initialized" : "failed to initialize") << endl;
+            SERIAL_STREAM("[" << millis() << "] BinaryClockNTP singleton " << (instance->initialized ? "initialized" : "failed to initialize") << endl)
             };
 
          // Non-capturing wrapper so it can be passed as a FreeRTOS task function pointer
@@ -88,20 +105,20 @@ namespace BinaryClockShield
                      param->work(param);
                      }
 
-                  Serial.println("    deleting param in taskWrapper().");
+                  SERIAL_PRINTLN("    deleting param in taskWrapper().")
                   delete param;
                   }
 
-               Serial.println("    taskWrapper() done, deleting task.");
+               SERIAL_PRINTLN("    taskWrapper() done, deleting task.")
                // Destroy this task, we are done.
                vTaskDelete(nullptr);
                }
             catch (const std::exception& e)
                {
-               Serial << "    Exception occurred in BinaryClockNTP::Initialize.taskWrapper(): " << e.what() << endl;
+               SERIAL_OUT_STREAM("    Exception occurred in BinaryClockNTP::Initialize.taskWrapper(): " << e.what() << endl)
                }
             catch (...)
-               { Serial << "    Unknown exception occurred in BinaryClockNTP::Initialize.taskWrapper() " << __LINE__ << endl; }
+               { SERIAL_OUT_STREAM("    Unknown exception occurred in BinaryClockNTP::Initialize.taskWrapper() " << __LINE__ << endl) }
             };
 
          // Set timezone to the default value.
@@ -113,13 +130,13 @@ namespace BinaryClockShield
 
          if (block)
             {
-            Serial << "    Blocking call to initNTP()..." << endl;
+            SERIAL_STREAM("    Blocking call to initNTP()..." << endl)
             initNTP(taskParam);
             delete taskParam;
             }
          else
             {
-            Serial << "    New task for non-blocking call to initNTP()..." << endl;
+            SERIAL_STREAM("    New task for non-blocking call to initNTP()..." << endl)
             // Create the task to run initialization asynchronously
             xTaskCreate(
                taskWrapper,
@@ -133,10 +150,10 @@ namespace BinaryClockShield
          } // try
       catch (const std::exception& e)
          {
-         Serial << "    Exception occurred in BinaryClockNTP::Initialize(): " << e.what() << endl;
+         SERIAL_OUT_STREAM("    Exception occurred in BinaryClockNTP::Initialize(): " << e.what() << endl)
          }
       catch (...)
-         { Serial << "    Unknown exception occurred in BinaryClockNTP::Initialize() " << __LINE__ << endl; }
+         { SERIAL_OUT_STREAM("    Unknown exception occurred in BinaryClockNTP::Initialize() " << __LINE__ << endl) }
       } // Initialize
 
    void BinaryClockNTP::End()
@@ -146,7 +163,7 @@ namespace BinaryClockShield
          stopSNTP();
          ntpServers.clear();
          initialized = false;
-         Serial << "[" << millis() << "] BinaryClockNTP singleton End" << endl;
+         SERIAL_STREAM("[" << millis() << "] BinaryClockNTP singleton End" << endl)
          }
       }
 
@@ -164,13 +181,13 @@ namespace BinaryClockShield
       // Set time sync notification callback
       sntp_set_time_sync_notification_cb(timeSyncCallback);
 
-      Serial << "[" << millis() << "] SNTP initialized with " << min((int)ntpServers.size(), SNTP_MAX_SERVERS) << " servers" << endl;
+      SERIAL_STREAM("[" << millis() << "] SNTP initialized with " << min((int)ntpServers.size(), SNTP_MAX_SERVERS) << " servers" << endl)
 
       // Set NTP servers
       for (size_t i = 0; i < ntpServers.size() && i < SNTP_MAX_SERVERS; i++)
          {
          sntp_setservername(i, (char*)ntpServers[i].c_str());
-         Serial << "      - SNTP server " << i << " set to: " << ntpServers[i] << endl;
+         SERIAL_STREAM("      - SNTP server " << i << " set to: " << ntpServers[i] << endl)
          }
 
       sntp_init();
@@ -212,7 +229,7 @@ namespace BinaryClockShield
          count++;
          }
 
-      Serial.printf("SyncTime(): UDP beginPacket=%d, write=%d, endPacket=%d, waitCount=%d\n", resBegin, resWrite, resEnd, count);  // *** DEBUG ***
+      SERIAL_PRINTF("SyncTime(): UDP beginPacket=%d, write=%d, endPacket=%d, waitCount=%d\n", resBegin, resWrite, resEnd, count)  // *** DEBUG ***
       if (udp.parsePacket() >= sizeof(packet))
          {
          udp.read((uint8_t*)&packet, sizeof(packet));
@@ -222,7 +239,7 @@ namespace BinaryClockShield
          // Convert to DateTime
          utcTime = DateTime(unixTime);
          result.success = true;
-         Serial.println("get_CurrentNtpTime(): NTP time = " + utcTime.timestamp(DateTime::TIMESTAMP_DATETIME12)); // *** DEBUG ***
+         SERIAL_PRINTLN("get_CurrentNtpTime(): NTP time = " + utcTime.timestamp(DateTime::TIMESTAMP_DATETIME12)) // *** DEBUG ***
          }
 
       udp.stop();
@@ -243,15 +260,15 @@ namespace BinaryClockShield
          result.dateTime = local;
          result.serverUsed = serverName;
 
-         Serial << "[" << millis() << "] NTP sync successful!" << endl;
-         Serial << " Time: " << result.dateTime.timestamp(DateTime::TIMESTAMP_DATETIME) << endl;
-         Serial << " Server: " << result.serverUsed << endl;
-         Serial << " Round trip: " << MILLIS_TO_MS(endTime - startTime) << "ms" << endl;
+         SERIAL_STREAM("[" << millis() << "] NTP sync successful!" << endl)
+         SERIAL_STREAM(" Time: " << result.dateTime.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
+         SERIAL_STREAM(" Server: " << result.serverUsed << endl)
+         SERIAL_STREAM(" Round trip: " << MILLIS_TO_MS(endTime - startTime) << "ms" << endl)
          struct timeval tv = ntpToTimeval(packet.txTime);
          int setRes = settimeofday(&tv, NULL);
          result.success = (setRes == 0);
          DateTime internal(time(&now));
-         Serial << "Internal: " << internal.timestamp(DateTime::TIMESTAMP_DATETIME) << endl;
+         SERIAL_STREAM("Internal: " << internal.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
          }
       else
          {
@@ -299,7 +316,7 @@ namespace BinaryClockShield
          count++;
          }
 
-      Serial.printf("get_CurrentNtpTime(): UDP beginPacket=%d, write=%d, endPacket=%d, waitCount=%d\n", resBegin, resWrite, resEnd, count);  // *** DEBUG ***
+      SERIAL_PRINTF("get_CurrentNtpTime(): UDP beginPacket=%d, write=%d, endPacket=%d, waitCount=%d\n", resBegin, resWrite, resEnd, count)  // *** DEBUG ***
       if (udp.parsePacket() >= sizeof(packet))
          {
          udp.read((uint8_t*)&packet, sizeof(packet));
@@ -311,7 +328,7 @@ namespace BinaryClockShield
          }
 
       udp.stop();
-      Serial.println("get_CurrentNtpTime(): NTP time = " + result.timestamp(DateTime::TIMESTAMP_DATETIME12)); // *** DEBUG ***
+      SERIAL_PRINTLN("get_CurrentNtpTime(): NTP time = " + result.timestamp(DateTime::TIMESTAMP_DATETIME12)) // *** DEBUG ***
 
       return result;
       }
@@ -329,7 +346,7 @@ namespace BinaryClockShield
       if (!result.isValid())
          { result = utcTime; }
 
-      Serial.println("get_LocalNtpTime(): Local time = " + result.timestamp(DateTime::TIMESTAMP_DATETIME12)); // *** DEBUG ***
+      SERIAL_PRINTLN("get_LocalNtpTime(): Local time = " + result.timestamp(DateTime::TIMESTAMP_DATETIME12)) // *** DEBUG ***
 
       return result;
       }
@@ -350,7 +367,7 @@ namespace BinaryClockShield
       {
       if (!initialized)
          {
-         Serial << "Warning: BinaryClockNTP not initialized - call initialize() first" << endl;
+         SERIAL_STREAM("Warning: BinaryClockNTP not initialized - call initialize() first" << endl)
          return;
          }
 
@@ -363,8 +380,8 @@ namespace BinaryClockShield
       if (esp_sntp_enabled())
          {
          esp_sntp_stop();
-         Serial << "[" << millis() << "] ";  // *** DEBUG ***
-         Serial << "SNTP stopped" << endl;   // *** DEBUG ***
+         SERIAL_STREAM("[" << millis() << "] ")  // *** DEBUG ***
+         SERIAL_STREAM("SNTP stopped" << endl)   // *** DEBUG ***
          }
       }
 
@@ -374,11 +391,11 @@ namespace BinaryClockShield
       lastSyncStatus = true;
       unsigned long curMillis = millis();
       
-      Serial << "[" << curMillis << "] ";  // *** DEBUG ***
-      Serial << "NTP time sync notification received. Delta: " << (curMillis - lastSyncMillis) << " ms" << endl; // *** DEBUG ***
+      SERIAL_STREAM("[" << curMillis << "] ")  // *** DEBUG ***
+      SERIAL_STREAM("NTP time sync notification received. Delta: " << (curMillis - lastSyncMillis) << " ms" << endl) // *** DEBUG ***
       DateTime utcTime(tv->tv_sec); // *** DEBUG ***
-      Serial << "[" << curMillis << "] ";  // *** DEBUG ***
-      Serial << "Current time from NTP: " << utcTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl; // *** DEBUG ***
+      SERIAL_STREAM("[" << curMillis << "] ")  // *** DEBUG ***
+      SERIAL_STREAM("Current time from NTP: " << utcTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
 
       // Convert utc timeval to `DateTime` in local timezone.
       time_t now = tv->tv_sec;
@@ -388,36 +405,36 @@ namespace BinaryClockShield
       lastSyncMillis = millis();
       lastSyncTimeval = *tv;
       lastSyncDateTime = DateTime(timeinfo);
-      Serial << "[" << millis() << "] ";  // *** DEBUG ***
-      Serial << "Local time from NTP: " << lastSyncDateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl; // *** DEBUG ***
+      SERIAL_STREAM("[" << millis() << "] ")  // *** DEBUG ***
+      SERIAL_STREAM("Local time from NTP: " << lastSyncDateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
 
       if (syncCallback)
          {
-         Serial << "[" << millis() << "] Invoking sync callback..." << endl;  // *** DEBUG ***
+         SERIAL_STREAM("[" << millis() << "] Invoking sync callback..." << endl)  // *** DEBUG ***
 
          try
             {
             syncCallback(lastSyncDateTime);
-            Serial << "[" << millis() << "] Sync callback completed successfully." << endl;  // *** DEBUG ***
+            SERIAL_STREAM("[" << millis() << "] Sync callback completed successfully." << endl)  // *** DEBUG ***
             }
          catch (const std::exception& e)
             {
-            Serial << "[" << millis() << "] ERROR: Sync callback threw exception: " << e.what() << endl; // *** DEBUG ***
+            SERIAL_OUT_STREAM("[" << millis() << "] ERROR: Sync callback threw exception: " << e.what() << endl) // *** DEBUG ***
             }
          catch (...)
             {
-            Serial << "[" << millis() << "] ERROR: Sync callback threw an exception!" << endl;  // *** DEBUG ***
+            SERIAL_OUT_STREAM("[" << millis() << "] ERROR: Sync callback threw an exception!" << endl)  // *** DEBUG ***
             }
          }
       else
          {
-         Serial << "[" << millis() << "] No sync callback registered, nothing to call." << endl;   // *** DEBUG ***
+         SERIAL_STREAM("[" << millis() << "] No sync callback registered, nothing to call." << endl)   // *** DEBUG ***
          }
      
       char timeStr[64];
       strftime(timeStr, sizeof(timeStr), "%Y-%m-%d %H:%M:%S", &timeinfo);
-      Serial << "[" << millis() << "] ";  // *** DEBUG ***
-      Serial << "Synchronized time: " << timeStr << endl << endl;   // *** DEBUG ***
+      SERIAL_STREAM("[" << millis() << "] ")  // *** DEBUG ***
+      SERIAL_STREAM("Synchronized time: " << timeStr << endl << endl)   // *** DEBUG ***
       }
 
    time_t BinaryClockNTP::ntpToUnix(uint32_t ntpSeconds, uint32_t ntpFraction, bool round)

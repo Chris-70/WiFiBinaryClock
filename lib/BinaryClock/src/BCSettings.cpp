@@ -5,6 +5,7 @@
 
 #include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
+#include "BinaryClock.Defines.h" //// BinaryClock project-wide definitions and MACROs.
 #include "BCSettings.h"          /// Binary Clock Settings class: handles all settings and serial output.
 
 #include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
@@ -17,6 +18,8 @@ namespace BinaryClockShield
          , buttonS1(clock.get_S1TimeDec())
          , buttonS2(clock.get_S2SaveStop())
          , buttonS3(clock.get_S3AlarmInc())
+         , isSerialTime(clock.get_IsSerialTime())
+         , isSerialSetup(clock.get_IsSerialSetup())
       {
       }
 
@@ -816,6 +819,7 @@ namespace BinaryClockShield
       }
    #endif // SERIAL_SETUP_CODE
   
+   #if SERIAL_OUTPUT
    String BCSettings::fillStr(char ch, byte repeat)
       {
       char buffer[MAX_BUFFER_SIZE] = { 0 };
@@ -825,6 +829,7 @@ namespace BinaryClockShield
       buffer[len] = '\0';
       return String(buffer);
       }
+   #endif
 
    } // END namespace BinaryClockShield
 

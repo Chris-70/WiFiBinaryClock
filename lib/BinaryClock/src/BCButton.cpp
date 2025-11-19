@@ -3,6 +3,7 @@
 /// @author Chris-70 (2025/09)
 #include <Arduino.h>
 
+#include "BinaryClock.Defines.h"       /// BinaryClock project-wide definitions and MACROs.
 #include "BCButton.h"
 
 namespace BinaryClockShield

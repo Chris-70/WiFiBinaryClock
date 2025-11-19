@@ -13,7 +13,10 @@
 
 #include <Arduino.h>
 
-#include "BinaryClock.Defines.h"
+#define CA_ON                    LOW   ///< The value when ON  for CA connections
+#define CC_ON                   HIGH   ///< The value when ON  for CC connections
+#define CA_OFF                  HIGH   ///< The value when OFF for CA connections
+#define CC_OFF                   LOW   ///< The value when OFF for CC connections
 
 namespace BinaryClockShield
    {

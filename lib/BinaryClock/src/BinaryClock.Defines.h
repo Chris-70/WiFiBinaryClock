@@ -291,7 +291,7 @@
       #define ESP32_WIFI false   /// Assume no WiFi capability if not defined.
    #endif
    #ifndef WIFIS3
-      #define WIFIS3 false       /// Assume no WIFIS3 capability if not defined.
+      #define WIFIS3     false   /// Assume no WIFIS3 capability if not defined.
    #endif
    #ifndef FREE_RTOS
       #define FREE_RTOS  false   /// Assume no FreeRTOS support if not defined.
@@ -337,10 +337,6 @@
    #define STL_USED         true    ///< Use the STL library if not using the UNO R3 board.
 #endif
 
-#ifndef PRINTF_OK
-   #define PRINTF_OK       true     ///< If PRINTF_OK hasn't been defined, assume printf is available.
-#endif
-
 //################################################################################//  
 /// Defines to control the inclusion/removal of development board code.
 #ifndef DEV_BOARD
@@ -371,12 +367,14 @@
 ///                 enable/disable the serial output at runtime. H/W buttons, if defined, 
 ///                 can also be used to enable/disable the serial output at runtime.
 #ifndef SERIAL_SETUP_CODE
-#define SERIAL_SETUP_CODE       true   ///< If (true) - serial setup code included, (false) - code removed
+   #define SERIAL_SETUP_CODE    true   ///< If (true) - serial setup code included, (false) - code removed
 #endif
 #ifndef SERIAL_TIME_CODE
-#define SERIAL_TIME_CODE        true   ///< If (true) - serial time  code included, (false) - code removed
+   #define SERIAL_TIME_CODE     true   ///< If (true) - serial time  code included, (false) - code removed
 #endif
-#define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) ///< If (true) - Allow serial output messages.
+#ifndef SERIAL_OUTPUT
+   #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) ///< If (true) - Allow serial output messages.
+#endif
 #define DEFAULT_SERIAL_SETUP    true   ///< Initial serial setup display value (e.g. allow the serial setup to be displayed).
 #define DEFAULT_SERIAL_TIME    false   ///< Initial serial time display value  (e.g. no continious serial time display at startup).
 
@@ -390,86 +388,10 @@
 #define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
 #define DEVELOPMENT    (DEV_BOARD || DEV_CODE) 
-//################################################################################//
-
-#define FOREVER while(true)            ///< Infinite loop, e.g. used in task methods.
 
 //#####################################################################################//  
-/// These output statements are defined as MACROs to simplify the code.
-/// This avoids surrounding the code with #if `__defined__` directives. An additional
-/// advantage is that the code is not compiled at all if `__defined__` is false or undefined.  
-/// This code contains output statements that are used for different development and debugging
-/// purposes. The output statements can be enabled/disabled by defining the appropriate
-/// macros.
-/// Note: These MACROs include the ';' semicolon ';' so it isn't included in the code.
-///       This is required to avoid empty statements (i.e. ';') when the code is removed.
-///       It is also an indicator/reminder to the developer that this code might be removed.
-/// 
-/// The base macros are defined first, then the higher level macros are defined that
-/// use the base macros. This allows for more flexibility in controlling the output.
-/// The output commands can be changed here if needed, e.g. to change from Serial to another output method.
-#if DEV_CODE || SERIAL_OUTPUT
-   #define SERIAL_PRINT_MACRO(STRING) Serial.print(STRING);
-   #define SERIAL_PRINTLN_MACRO(STRING) Serial.println(STRING);
-   #define SERIAL_STREAM_MACRO(CMD_STRING) Serial << CMD_STRING;
-   #if PRINTF_OK
-      #define SERIAL_PRINTF_MACRO(FORMAT, ...) Serial.printf(FORMAT, __VA_ARGS__);
-   #else
-      #define SERIAL_PRINTF_MACRO(FORMAT, ...)
-   #endif
-#else
-   // Removes the code from compilation, replaced with whitespace.
-   #define SERIAL_PRINT_MACRO(STRING)
-   #define SERIAL_PRINTLN_MACRO(STRING)
-   #define SERIAL_STREAM_MACRO(CMD_STRING)
-   #define SERIAL_PRINTF_MACRO(FORMAT, ...)
-#endif
 
-/// These output MACROs are available for all general serial output.
-/// SERIAL_OUTPUT is defined true if either SERIAL_SETUP_CODE or SERIAL_TIME_CODE is true.
-#if SERIAL_OUTPUT
-   #define SERIAL_OUT_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
-   #define SERIAL_OUT_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
-   #define SERIAL_OUT_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
-   #define SERIAL_OUT_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
-#else
-   #define SERIAL_OUT_PRINT(STRING)
-   #define SERIAL_OUT_PRINTLN(STRING)
-   #define SERIAL_OUT_STREAM(CMD_STRING)
-   #define SERIAL_OUT_PRINTF(FORMAT, ...)
-#endif
-
-/// Debugging and development only output statements.
-/// These output MACROs are only defined if DEV_CODE is true.
-/// This allows for debugging output to be included in the code
-/// only during development, but removed from the final code. 
-#if DEV_CODE
-   #define SERIAL_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
-   #define SERIAL_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
-   #define SERIAL_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
-   #define SERIAL_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
-#else
-   #define SERIAL_PRINT(STRING)
-   #define SERIAL_PRINTLN(STRING)
-   #define SERIAL_STREAM(CMD_STRING)
-   #define SERIAL_PRINTF(FORMAT, ...)
-#endif
-
-/// Temporary debug output statements controlled by the DEBUG_OUTPUT define.
-/// These are defined for temporary debug statements that are never
-/// included in code that is released. The `DEBUG_...` statements should
-/// be removed from the code BEFORE committing to the repo.
-#if DEBUG_OUTPUT
-   #define DEBUG_PRINT(STRING) SERIAL_PRINT_MACRO(STRING)
-   #define DEBUG_PRINTLN(STRING) SERIAL_PRINTLN_MACRO(STRING)
-   #define DEBUG_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
-   #define DEBUG_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
-#else
-   #define DEBUG_PRINT(STRING)
-   #define DEBUG_PRINTLN(STRING)
-   #define DEBUG_STREAM(CMD_STRING)
-   #define DEBUG_PRINTF(FORMAT, ...)
-#endif
+#include "SerialOutput.Defines.h"      // For all the serial output macros.
 
 //#####################################################################################//  
 /// Wrapper macro for single serial print statements to check the
@@ -522,11 +444,6 @@
 #define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
 #define ALARM_1                    1   ///< Alarm 1. available on the RTC DS3231, adds seconds.
 #define ALARM_2                    2   ///< Alarm 2, the default alarm used by the shield.
-
-#define CA_ON                    LOW   ///< The value when ON  for CA connections
-#define CC_ON                   HIGH   ///< The value when ON  for CC connections
-#define CA_OFF                  HIGH   ///< The value when OFF for CA connections
-#define CC_OFF                   LOW   ///< The value when OFF for CC connections
 
 #define MAX_BUFFER_SIZE           64   ///< Maximum size of temporary buffers.
 #define DEFAULT_TIME_FORMAT   "HH:mm:ss AP"  ///< Default time  format when not defined.

@@ -11,15 +11,6 @@
 
 #include <Arduino.h>
 
-// This is used by the WiFiBinaryClock project to include the board definitions.
-// It is used to exclude most code if the target is an Arduino UNO R3.
-// i.e.     #define UNO_R3
-// The UNO R3 has very limited RAM and ROM, so the Morse code functionality
-// is greatly reduced to fit in the project. Default is to include everything.
-#if __has_include("BinaryClock.Defines.h")
-   #include "BinaryClock.Defines.h"    // Needed just for the current board definitions.
-#endif
-
 namespace BinaryClockShield
    {
    /// @brief Class to flash an LED in Morse Code. Primary, and original, use is to flash 
@@ -231,7 +222,7 @@ namespace BinaryClockShield
       int ledPin; ///< The pin number where the LED is connected.
       // static const MCode PROGMEM mcode_CQD_NO_RTC;
 
-      #ifndef UNO_R3
+      #if !defined(UNO_R3) || !UNO_R3
    public:
       /// @brief Method to flash a single character in Morse code. Characters A-Z, 0-9, many punctuation symbols.
       /// @details This method flashes the LED according to the Morse code pattern for the given character.

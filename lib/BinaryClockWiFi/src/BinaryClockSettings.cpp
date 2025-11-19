@@ -9,17 +9,31 @@
 // just copy-paste the contents of the header file here and change the define.
 #else
    #include "BinaryClockSettings.h"
-#endif   // INLINE_HEADER
+#endif   // INLINE_HEADER...ELSE
    
 #include <String>
 #include <vector>
 #include <map>
 
 #include <Streaming.h>    /// Streaming serial output with `operator<<` (https://github.com/espressif/arduino-esp32/blob/master/libraries/Streaming/)
-#include <Preferences.h>  /// ESP32 NVS storage
-#include "nvs_flash.h"
-#include "nvs.h"
-#include "nvs_handle.hpp"
+#include <Preferences.h>  /// ESP32 NVS storage preferences functions.
+
+//################################################################################//
+#ifndef SERIAL_OUTPUT
+   #define SERIAL_OUTPUT   true  // true to enable; false to disable
+#endif
+#ifndef DEV_CODE
+   #define DEV_CODE        true  // true to enable; false to disable
+#endif
+#ifndef DEBUG_OUTPUT
+   #define DEBUG_OUTPUT    true  // true to enable; false to disable
+#endif
+#ifndef PRINTF_OK
+   #define PRINTF_OK       true  // true to enable; false to disable
+#endif
+
+#include "SerialOutput.Defines.h"      // For all the serial output macros.
+//################################################################################//
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 //                Implementation of BinaryClockSettings class                                    //
@@ -37,14 +51,14 @@ namespace BinaryClockShield
 
    void BinaryClockSettings::Begin()
       {
-      Serial.println("Begin(): Initializing BinaryClockSettings...");   // *** DEBUG ***
+      SERIAL_PRINTLN("Begin(): Initializing BinaryClockSettings...")   // *** DEBUG ***
       // Open NVS namespace
       if (!nvs.begin(nvsNamespace, true))
          {
-         Serial.println("Begin(): Failed to open NVS namespace in RO mode."); // *** DEBUG ***
+         SERIAL_PRINTLN("Begin(): Failed to open NVS namespace in RO mode.") // *** DEBUG ***
          if (!nvs.begin(nvsNamespace, false))
             {
-            Serial.println("Begin(): Failed to open NVS namespace in RW mode."); // *** DEBUG ***
+            SERIAL_PRINTLN("Begin(): Failed to open NVS namespace in RW mode.") // *** DEBUG ***
             return;
             }
          }
@@ -103,7 +117,7 @@ namespace BinaryClockShield
                }
             else
                {
-               Serial.println("Begin(): Failed to read AP credentials blob from NVS.");   // *** DEBUG ***
+               SERIAL_PRINTLN("Begin(): Failed to read AP credentials blob from NVS.")   // *** DEBUG ***
                }
                
             delete[] buffer;
@@ -115,9 +129,9 @@ namespace BinaryClockShield
       modified = false;
       nvs.end();
 
-      Serial.print("Loaded ");                        // *** DEBUG ***
-      Serial.print(apCreds.size());
-      Serial.println(" WiFi credentials from NVS");   // *** DEBUG ***
+      SERIAL_PRINT("Loaded ")                        // *** DEBUG ***
+      SERIAL_PRINT(apCreds.size())
+      SERIAL_PRINTLN(" WiFi credentials from NVS")   // *** DEBUG ***
       }
 
    void BinaryClockSettings::Clear()
@@ -128,20 +142,20 @@ namespace BinaryClockShield
       
    bool BinaryClockSettings::Save()
       {
-      Serial << "Save(): Saving " << numAPs << " WiFi credentials to NVS..." << endl;  // *** DEBUG ***
+      SERIAL_STREAM("Save(): Saving " << numAPs << " WiFi credentials to NVS..." << endl)  // *** DEBUG ***
       bool result = false;
       if (!initialized || !modified) { return !modified; } // Nothing to save
 
       // Open NVS namespace in RW mode
       if (!nvs.begin(nvsNamespace, false))
          {
-         Serial.println("Save(): Failed to open NVS namespace in RW mode");   // *** DEBUG ***
+         SERIAL_PRINTLN("Save(): Failed to open NVS namespace in RW mode")   // *** DEBUG ***
          return result;
          }
 
       if (numAPs > 0)
          {
-         Serial << "Save(): Saving " << numAPs << " AP credentials to NVS..." << endl; // *** DEBUG ***
+         SERIAL_STREAM("Save(): Saving " << numAPs << " AP credentials to NVS..." << endl) // *** DEBUG ***
          // Calculate total size needed for serialization
          size_t totalSize = calculateTotalSize();
          
@@ -169,14 +183,14 @@ namespace BinaryClockShield
          
          if (written != offset)
             {
-            Serial.println("Save(): Failed to save AP credentials blob to NVS"); // *** DEBUG ***
+            SERIAL_PRINTLN("Save(): Failed to save AP credentials blob to NVS") // *** DEBUG ***
             result = false;
             }
          else
             {
-            Serial.print("Saved ");                      // *** DEBUG ***
-            Serial.print(numAPs);
-            Serial.println(" WiFi credentials to NVS");  // *** DEBUG ***
+            SERIAL_PRINT("Saved ")                      // *** DEBUG ***
+            SERIAL_PRINT(numAPs)
+            SERIAL_PRINTLN(" WiFi credentials to NVS")  // *** DEBUG ***
             for (auto& creds : apCreds)
                { creds.modifiedAP = false; } // Clear modified flag after successful save
 
@@ -192,7 +206,7 @@ namespace BinaryClockShield
          nvs.remove(nvsKeyAPCreds);
          modified = false;
          // TODO: Is this result a success or failure? Success for now.
-         Serial.println("Save(): No AP credentials to save, removed blob from NVS.");  // *** DEBUG ***
+         SERIAL_PRINTLN("Save(): No AP credentials to save, removed blob from NVS.")  // *** DEBUG ***
          result = true;
          }
 
@@ -294,7 +308,7 @@ namespace BinaryClockShield
 
    uint8_t BinaryClockSettings::GetID(const APNames& names) const
       {
-      Serial << "GetID(): Looking for SSID: " << names.ssid << " BSSID: " << names.bssid << " Initialized? " << (initialized ? "Yes" : "No") << endl; // *** DEBUG ***
+      SERIAL_STREAM("GetID(): Looking for SSID: " << names.ssid << " BSSID: " << names.bssid << " Initialized? " << (initialized ? "Yes" : "No") << endl) // *** DEBUG ***
       uint8_t result = 0;
       if (!initialized || names.ssid.isEmpty()) { return result; } // Error
 
@@ -312,7 +326,7 @@ namespace BinaryClockShield
 
 std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
       {
-      Serial << "GetIDs(): Looking for SSID: " << ssid << " Initialized? " << (initialized ? "Yes" : "No") << endl;  // *** DEBUG ***
+      SERIAL_STREAM("GetIDs(): Looking for SSID: " << ssid << " Initialized? " << (initialized ? "Yes" : "No") << endl)  // *** DEBUG ***
       std::vector<uint8_t> result;
       if (!initialized || ssid.isEmpty()) { return result; } // Error
 
@@ -363,8 +377,8 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
 
    uint8_t BinaryClockSettings::GetNewID()
       {
-      Serial << "GetNewID(): Generating new ID... Last ID: " << static_cast<int>(lastID) << ". idList size: " << idList.size() 
-             << " Initialized? " << (initialized ? "Yes" : "No") << endl;  // *** DEBUG ***
+      SERIAL_STREAM("GetNewID(): Generating new ID... Last ID: " << static_cast<int>(lastID) << ". idList size: " << idList.size() 
+             << " Initialized? " << (initialized ? "Yes" : "No") << endl)  // *** DEBUG ***
       uint8_t result = 0; // 0 == error
       if (!initialized || idList.size() >= MAX_ID_SIZE) { return result; } // Error
 
@@ -400,18 +414,18 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
       uint8_t id = 0;
       if (!initialized) { return id; } // Error
 
-      Serial.print(creds.ssid);
+      SERIAL_PRINT(creds.ssid)
       // First check if the entry exists in our list (i.e. same ssid && same bssid)
       for(auto& existingCreds : apCreds)
          {
          if (existingCreds == creds)
             {
-            // Serial.print(creds.ssid);
+            // SERIAL_PRINT(creds.ssid)
             id = existingCreds.id;
             // Do we update the PW?
             if (existingCreds.pw != creds.pw)
                {
-               Serial.println(" - WiFi SSID and BSSID already exist with different password. Updating password.");   // *** DEBUG ***
+               SERIAL_PRINTLN(" - WiFi SSID and BSSID already exist with different password. Updating password.")   // *** DEBUG ***
                // Update password
                existingCreds.pw = creds.pw;
                existingCreds.modifiedAP = true;
@@ -421,7 +435,7 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
             else
                {
                existingCreds.toBeDeleted = false; // In case it was marked for deletion
-               Serial.println(" - WiFi credentials already exist. Not adding duplicate.");   // *** DEBUG ***
+               SERIAL_PRINTLN(" - WiFi credentials already exist. Not adding duplicate.")   // *** DEBUG ***
                }
 
             return id; // Return existing ID
@@ -439,12 +453,12 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
          numAPs = apCreds.size();
          idList[id] = apCreds.size() - 1; // Map new ID to vector index
          modified = true; // Mark NVS as modified
-         Serial << "Added new WiFi credentials, SSID: " << creds.ssid << " with ID " << static_cast<int>(id) 
-                << ". Total APs: " << static_cast<int>(numAPs) << endl; // *** DEBUG ***
+         SERIAL_STREAM("Added new WiFi credentials, SSID: " << creds.ssid << " with ID " << static_cast<int>(id) 
+                << ". Total APs: " << static_cast<int>(numAPs) << endl) // *** DEBUG ***
          }
       else
          {
-         Serial.println("Error: Unable to generate new ID for WiFi credentials.");  // *** DEBUG ***
+         SERIAL_PRINTLN("Error: Unable to generate new ID for WiFi credentials.")  // *** DEBUG ***
          }
 
       return id;
