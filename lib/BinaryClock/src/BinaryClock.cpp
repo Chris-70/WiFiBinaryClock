@@ -45,7 +45,7 @@
   - Helper classes:
     - [**BCButton**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/BCButton.h):
                         Class to encapsulate the buttons for debounce, state and wiring (CC vs CA).
-    - [**BCSettings**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCSettings.h):
+    - [**BCMenu**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.h):
                         Class to encapsulate the settings for the Binary Clock, including time format and alarm settings.
   - Custom library dependencies:
     - [**RTClibPlus**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/RTClibPlus) A modified fork of

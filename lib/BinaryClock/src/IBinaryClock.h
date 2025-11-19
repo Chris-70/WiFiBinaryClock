@@ -3,7 +3,7 @@
 /// @details This interface class provides the basic methods that must be implemented by any class
 ///          that implements the Binary Clock functionality. This is used to decouple the implementation
 ///          class (e.g. BinaryClock) from any support classes that may need to interface with it
-///          (e.g. BCSettings).
+///          (e.g. BCMenu).
 /// 
 ///          This file also contains structures and enumerations used by the Binary Clock.
 ///        - The AlarmTime structure is used to hold all the information related to a specific alarm,
@@ -38,7 +38,7 @@ namespace BinaryClockShield
    ///        and make testing easier. This follows the Interface pattern.
    /// @details We are using the Interface pattern to decouple the implementation class
    ///          (e.g. BinaryClock) from any support classes that may need to interface with it 
-   ///          (e.g. BCSettings).   
+   ///          (e.g. BCMenu).   
    ///          The pattern we're using is similar to the early C# Interface in that all
    ///          methods and properties are public and pure abstract. No fields are defined
    ///          and all inheritance are limited to other interface classes.   

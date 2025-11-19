@@ -1,6 +1,6 @@
-/// @file BCSettings.h
-/// @brief This file contains the declaration of the `BCSettings` class for the menu.
-/// @details The `BCSettings` class manages the settings menu for the Binary Clock Shield.
+/// @file BCMenu.h
+/// @brief This file contains the declaration of the `BCMenu` class for the menu.
+/// @details The `BCMenu` class manages the settings menu for the Binary Clock Shield.
 ///          It allows the user to set the time and alarm using the shield buttons.   
 ///          The `IBinaryClock` interface is used to interact with the clock hardware.  
 ///          The settings menu is a state machine that processes button presses.  
@@ -8,8 +8,8 @@
 /// @author Chris-70 (2025/09)
 
 #pragma once
-#ifndef __BCSETTINGS_H__
-#define __BCSETTINGS_H__
+#ifndef __BC_MENU_H__
+#define __BC_MENU_H__
 
 #include "IBinaryClock.h"
 
@@ -64,19 +64,19 @@ namespace BinaryClockShield
    ///          The 24 hour mode is displayed as `24` (LED[15]+LED[16]).  
    ///          A green **✓** [✅] is displayed after mode selection before setting the time.
    /// @author Chris-70 (2025/09)
-   class BCSettings
+   class BCMenu
       {
    public:
       /// @brief Constructor that takes a reference to the `IBinaryClock` interface
-      /// @details This constructor initializes the `BCSettings` class with a reference
+      /// @details This constructor initializes the `BCMenu` class with a reference
       ///          to an `IBinaryClock` implementation. This allows the settings class to
       ///          interact with the clock hardware.
       /// @param clockInterface Reference to the `IBinaryClock` implementation
       /// @author Chris-70 (2025/09)
-      explicit BCSettings(IBinaryClock& clockInterface);
+      explicit BCMenu(IBinaryClock& clockInterface);
 
       /// @brief Destructor - Exit with a clean state.
-      virtual ~BCSettings();
+      virtual ~BCMenu();
 
       /// @brief Initialize the settings class
       /// @details This is called first before using any other methods.
@@ -386,4 +386,4 @@ namespace BinaryClockShield
       };
    }
 
-#endif
+#endif // __BC_MENU_H__

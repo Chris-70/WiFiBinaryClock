@@ -78,7 +78,7 @@
 /// This project has been inspired from the original Example; "11-BinaryClock-24H-RTCInterruptAlarmButtons.ino" file as published
 /// on the Binary Clock Shield for Arduino GitHub repository: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 /// The original file was fully refactored to be encapsulated in a group of classes: IBinaryClock - The interface class;
-/// BinaryClock - The implementation and main class; BCButton - Class to manage the buttons; BCSettings - Class to manage the
+/// BinaryClock - The implementation and main class; BCButton - Class to manage the buttons; BCMenu - Class to manage the
 /// alarm and time settings, this class retains much of the original code. These classes encapsulate all the functionality
 /// available on "Binary Clock Shield for Arduino UNO" designed and built by Marcin Saj." Modifications were made to support
 /// multiple UNO boards including ESP32 based UNO platforms that would allow for new functionality, such as WiFi time.
@@ -104,15 +104,15 @@
 #include "BinaryClock.Structs.h" /// Global structures and enums used by the Binary Clock project.
 
 #include "IBinaryClock.h"        /// The pure interface class that defines the minimum supported features.
-#include "BCSettings.h"          /// Binary Clock Settings class: handles all settings and serial output.
+#include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
 #include "BCButton.h"            /// Binary Clock Button class: handles all button related functionality.
 
-#include <FastLED.h>             /// https://github.com/FastLED/FastLED
+#include <FastLED.h>             /// For control of the WS2812B LEDs. (https://github.com/FastLED/FastLED)
 #include <fl/array.h>            /// For fl::array used for the LEDS.
 #include "fl/namespace.h"        /// For fl:: namespace used in the FastLED library.
 
 #include <RTClib.h>              /// For the `RTC_DS3231` & `DateTime` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
-#include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
+#include <Streaming.h>           /// Streaming serial output with `operator<<` (https://github.com/janelia-arduino/Streaming)
 
 #include "pitches.h"             /// Needed to create the pitches. Library: https://arduino.cc/en/Tutorial/ToneMelody
 
@@ -184,7 +184,7 @@ namespace BinaryClockShield
    ///          the base functionality of displaying the time in Binary format on the shield. The class 
    ///          follows the `Singleton Pattern` to ensure that only one instance of the class exists.   
    ///          The class implements the `IBinaryClock` interface to ensure that all required methods are provided.  
-   ///          The `BCSettings` class handles all the settings and serial output functionality.  
+   ///          The `BCMenu` class handles all the settings and serial output functionality.  
    ///          The `BCButton` class handles all button related functionality.  
    ///          The `BinaryClock.Defines.h` file contains all the project-wide definitions and MACROs required 
    ///          to support multiple different UNO board types including a user defined `CUSTOM_UNO` board.   
@@ -1097,7 +1097,7 @@ namespace BinaryClockShield
       BCButton buttonDebugTime;  ///< Debug time button
       #endif
 
-      BCSettings settings;       ///< Settings handler instance
+      BCMenu settings;       ///< Settings handler instance
 
       DateTime time;                         ///< Current time from the RTC, updated every second.
       bool amPmMode = false;                 ///< Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
