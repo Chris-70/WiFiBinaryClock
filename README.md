@@ -4,10 +4,10 @@
 
 [Binary Clock Shield for Arduino][shield] is a great product that uses a colour [WS2812B NeoPixel LED][neopixel] matrix to display the time in binary format. The shield also includes a [DS3231 RTC][rtc] chip for accurate timekeeping, a [KLJ-1230 Piezo][piezo] buzzer for alarm melodies, and three buttons for setting the time and alarms. The shield is designed to be used with an Arduino UNO R3 board, but it can be used with other boards that have the same pinout headers as the UNO.  
 
-[![Binary Clock Shield](./assets/BinaryClockShield.jpg)][shield]   
-
-[![Binary Clock Shield](./assets/Binary-Clock-Shield-for-Arduino-UNO.jpg)][shield]   
-
+[![Binary Clock Shield](./assets/BinaryClockShield.jpg)][shield]
+___
+[![Binary Clock Shield UNO](assets/Binary-Clock-Shield-For-Arduino-UNO.jpg)][shield]
+___
 [The Binary Clock Shield for Arduino][shield_github] is the best little LED Binary Clock I know of [^1].   
 
 [^1]: The ultimate binary clock in uniqueness has to be a Nixie Tube Binary Clock  
@@ -53,11 +53,11 @@ ___
 
 ___
 *   [The Arduino UNO R4 Minima is supported][r4_minima]  This is a good board and a big improvement over the UNO R3. It doesn't have WiFi so you will need to set the time and alarms using the buttons on the shield. It does have a faster processor, more memory but at this price I'd prefer the [Adafruit Metro ESP32-S3][metro] board as it has WiFi and so much more including a battery charging circuit.   
-   [![The Arduino UNO R4 Minima](./assets/Arduino_UNO_R4_Minima.webp)][r4_minima]  
+   [![The Arduino UNO R4 Minima](./assets/Arduino_Uno_R4_Minima.webp)][r4_minima]  
 
 ___
 *   [The Arduino UNO R4 WiFi is supported][r4_wifi]  A great board and a vast improvement over the UNO R3. The addition of an ESP32-S3 module makes this a very capable board with lots of memory and two processors. The LED matrix is a great addition however, it seems like a waste to cover it up with the Binary Clock Shield. The WiFi is similar to the ESP32 WiFi except it uses `WiFiS3.h` instead and doesn't support WPS.  
-   [![The Arduino UNO R4 WiFi](./assets/Arduino_UNO_R4_Wifi.webp)][r4_wifi]   
+   [![The Arduino UNO R4 WiFi](https://github.com/Chris-70/WiFiBinaryClock/blob/main/assets/Arduino_UNO_R4_WiFi.webp)][r4_wifi]   
 
 ___
 *   [The Adafruit Metro ESP32-S3 is supported][metro].  This is a great board that has so many capabilities over every other choice. The JTAG port is good for development, the micro SD Card reader is a great addition and QT I2C connector on the side means it can be used with the shield in place. This opens up many additional capabilities that can be added, such as sensors for light and human presence. The greatest feature I like for the Binary Clock Shield is the builtin battery charger circuit. The shield will keep displaying the time while you move it around or when the power goes out. **This is the board I recommend** if you want to get the most out of the Binary Clock Shield especially if you create a case for it and have it work on battery.  
@@ -69,7 +69,7 @@ ___
 
 ___
 *   The Wemos D1 R32 ESP32 UNO. This is the board that got me started on this project. On face value it has a lot of features compared to the Arduino UNO R3, more memory and WiFi. There are key differences that make it suitable only for those who are willing to make a minor hardware modification and already have this board.  
-   ![The Wemos D1 R32 ESP32 UNO](./assets/Wemos_D1_R32_UNO.jpg)  
+   ![The Wemos D1 R32 ESP32 UNO](assets/Wemos_D1_R32_UNO.jpg)  
    While the board is supported, it does require a minor [Hardware Modification](#hardware-modifications) to work with the shield. See the details below.
 
 ___
