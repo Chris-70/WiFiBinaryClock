@@ -43,7 +43,7 @@ namespace BinaryClockShield
    BinaryClockWAN::BinaryClockWAN()
       {
       SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClock*: ")
-      SERIAL_PRINTLN(clockPtr->get_IdName())
+         SERIAL_PRINTLN(clockPtr? clockPtr->get_IdName() : "NULL")
       WiFi.mode(WIFI_STA);
       zuluOffset = TimeSpan(0, -5, 0, 0); // Default to EST (UTC-5) // *** DEBUG ***
       }
