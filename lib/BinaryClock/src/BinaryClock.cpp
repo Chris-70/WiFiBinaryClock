@@ -26,7 +26,7 @@
    The goal of using an ESP32 based UNO board was to allow the RTC to be connected to a NTP server over WiFi.
    The original modifications to the `Example-11` file was to use a generic `Wemos-D1-R32 UNO, ESP32` board
    instead of the UNO R3. This was a challange due to some hardware limitations, see the
-   [README.md](https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications-for-the-wemos-d1-r32-uno) file.
+   [README.md](https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md#hardware-modifications) file.
    The code for the WiFi connection is encapsulated in its own class, `BinaryClockWAN`, which is not included in this file.
    It uses WPS to connect to a WiFi network and stores the credentials in the ESP32's flash memory.
 
@@ -47,14 +47,16 @@
                         Class to encapsulate the buttons for debounce, state and wiring (CC vs CA).
     - [**BCMenu**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.h):
                         Class to encapsulate the settings for the Binary Clock, including time format and alarm settings.
-  - Custom library dependencies:
+
+   Custom library dependencies:
     - [**RTClibPlus**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/RTClibPlus) A modified fork of
                       [Adafruit's RTClib](https://github.com/adafruit/RTClib) to expand the functionality and support 12 hour mode.
-    - [**BinaryClockWAN**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN)
-                           WiFi connection and syncing with an NTP server.
+    - [**BinaryClockWiFi**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWiFi)
+                           WiFi connections, WPS, credentials with settings storage, and time syncing with an NTP server.
     - [**MorseCodeLED**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED):
                         Display error messages over the _LED_BUILTIN_. A fun communication alternative when there is no screen.
-  - External library dependencies:
+                        
+  External library dependencies:
     - [**FastLED**](https://github.com/FastLED/FastLED):                - The FastLED library for color LED animation on Arduino.
     - [**Streaming**](https://github.com/jcw/streaming):                - The Streaming library for Arduino.
     - [**Adafruit BusIO**](https://github.com/adafruit/Adafruit_BusIO): - The Adafruit BusIO library for I2C/SPI communication.

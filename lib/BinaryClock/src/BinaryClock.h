@@ -3,10 +3,10 @@
 /// UNO, designed and maufactured by Marcin Saj https://nixietester.com  available at:
 /// https://nixietester.com/product/binary-clock-shield-for-arduino/
 /// @details
-/// This software was losely based on Example 11 from:  
+/// This software is a complete rewrite and expansion of Example 11 from:  
 /// https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino  
-/// The original file comments are reproduced here.
-/// --------  
+/// The original file comments are reproduced below for reference (with some updates).
+/// ----------------------------------------------------------------------------------------------------   
 /// Binary Clock RTC 24H with Interrupt, Alarm and Buttons Example
 /// This example demonstrates complete Binary Clock with Time and Alarm settings
 ///   
@@ -27,10 +27,11 @@
 /// the 'A2F' bit does not initiate an interrupt signal. By turning off the interrupts from the alarms, 
 /// we can use the interrupt flag 'A2IE' as an info flag whether the alarm has been activated or not. 
 /// Check RTC datasheet page 11-13 http://bit.ly/DS3231-RTC  
-///   
+/// ----------------------------------------------------------------------------------------------------   
+/// @par Hardware Required:   
 /// @verbatim 
 /// Hardware:
-/// 1) Arduino Uno style board. e.g. 
+/// 1) Arduino Uno style board. e.g.       (New: boards supported in addition to the UNO R3. Chris-80)
 ///    - Arduino UNO R3                    (https://store.arduino.cc/products/arduino-uno-rev3)
 ///    - Arduino UNO R4 Minima             (https://store.arduino.cc/products/uno-r4-minima)
 ///    - Arduino UNO R4 WiFi               (https://store.arduino.cc/products/uno-r4-wifi)
