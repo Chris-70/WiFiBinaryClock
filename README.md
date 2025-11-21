@@ -4,17 +4,17 @@
 
 [Binary Clock Shield for Arduino][shield] is a great product that uses a colour [WS2812B NeoPixel LED][neopixel] matrix to display the time in binary format. The shield also includes a [DS3231 RTC][rtc] chip for accurate timekeeping, a [KLJ-1230 Piezo][piezo] buzzer for alarm melodies, and three buttons for setting the time and alarms. The shield is designed to be used with an Arduino UNO R3 board, but it can be used with other boards that have the same pinout headers as the UNO.  
 
-[![Binary Clock Shield](assets/BinaryClockShield.jpg)][shield]
+[![*Binary Clock Shield image*](assets/BinaryClockShield.jpg)][shield]
 ___
-[![Binary Clock Shield UNO](assets/Binary-Clock-Shield-For-Arduino-UNO.jpg)][shield]
+[![*Binary Clock Shield drawing*](assets/Binary-Clock-Shield-For-Arduino-UNO.jpg)][shield]
 ___
 [The Binary Clock Shield for Arduino][shield_github] is the best LED Binary Clock I know of [^1].   
 The __"Nixie Tube Binary Clock"__ is the most unique and both are from the same person, Marcin Saj (https://nixietester.com).
 
-[![Nixie Tube Binary Clock](assets/Binary-Nixie-Clock.jpg)][NixieTube],  
+[![*Nixie Tube Binary Clock image*](assets/Binary-Nixie-Clock.jpg)][NixieTube],  
 
-[^1]: The ultimate binary clock in uniqueness has to be a Nixie Tube Binary Clock  
-      [![Nixie Tube Binary Clock](assets/Binary-Nixie-Clock.jpg)][NixieTube],  
+[^1]: The ultimate binary clock in uniqueness has to be a [Nixie Tube Binary Clock][NixieTube]  
+      [![*Nixie Tube Binary Clock image*](assets/Binary-Nixie-Clock.jpg)][NixieTube],  
       but that is a different project altogether that uses very old technology that predates LEDs. It's large, very power hungry, that you build yourself. You'll need to source the IN-2 Nixie Tubes yourself, buy the nixie tube power supply, build the driver circuits and PCBs. That being said, the [Binary Clock Shield for Arduino][shield] is much more pratical and portable if connected to something like an [Adafruit Metro ESP32-S3][metro] board which has a battery connection and charging circuit.
 ___  
 This project was created to unlock the full potential of this great little Binary Clock. Being an Arduino Shield means that we can substitute the UNO R3 for something much more powerful. Initially I wanted to get my Wemos D1 R32 ESP32 UNO board to work with this shield [^2], then it could connect to any NTP server over WiFi and keep the time synced whenever we switch to/from daylight savings time. In addition we could change the colors of the LEDs and upload new alarm melodies, etc. and do it from a phone or computer. The result of this project is the [`WiFiBinaryClock`][WiFiBinaryClock] library which supports the following boards:
@@ -52,26 +52,25 @@ The following is a list of the boards that are directly supported by this code:
 
 ___
 *   [The Arduino UNO R3 is supported][uno_r3]  This is the original board that the Binary Clock Shield was designed for. It works well with the shield but it doesn't have WiFi so you will need to set the time and alarms using the buttons on the shield. The limited amount of memory and lack of WiFi makes this a less than ideal choice for this project.   
-   [![The Arduino UNO R3](assets/Arduino_UNO_R3.webp)][uno_r3]  
+   [![*The Arduino UNO R3 image*](assets/Arduino_UNO_R3.webp)][uno_r3]  
 
 ___
 *   [The Arduino UNO R4 Minima is supported][r4_minima]  This is a good board and a big improvement over the UNO R3. It doesn't have WiFi so you will need to set the time and alarms using the buttons on the shield. It does have a faster processor, more memory but at this price I'd prefer the [Adafruit Metro ESP32-S3][metro] board as it has WiFi and so much more including a battery charging circuit.   
-   [![The Arduino UNO R4 Minima](assets/Arduino_Uno_R4_Minima.webp)][r4_minima]  
-
+   [![*The Arduino UNO R4 Minima image*](assets/Arduino_Uno_R4_Minima.webp)][r4_minima]  
 ___
 *   [The Arduino UNO R4 WiFi is supported][r4_wifi]  A great board and a vast improvement over the UNO R3. The addition of an ESP32-S3 module makes this a very capable board with lots of memory and two processors. The LED matrix is a great addition however, it seems like a waste to cover it up with the Binary Clock Shield. The WiFi is similar to the ESP32 WiFi except it uses `WiFiS3.h` instead and doesn't support WPS. As of the end of 2025, the **BinaryClockWiFi** library doesn't work on this board due to the differences in the WiFi libraries. This has the effect of making this board equivalent to the R4 Minima.   
-   [![The Arduino UNO R4 WiFi](assets/Arduino_UNO_R4_WiFi.webp)][r4_wifi]   
+   [![*The Arduino UNO R4 WiFi image*](assets/Arduino_UNO_R4_WiFi.webp)][r4_wifi]   
 
 ___
 *   [The Adafruit Metro ESP32-S3 is supported][metro].  This is a great board that has so many capabilities over every other choice. The JTAG port is good for development, the micro SD Card reader is a great addition and QT I2C connector on the side means it can be used with the shield in place. This opens up many additional capabilities that can be added, such as sensors for light and human presence. The greatest feature I like for the Binary Clock Shield is the builtin battery charger circuit. The shield will keep displaying the time while you move it around or when the power goes out. **This is the board I recommend** if you want to get the most out of the Binary Clock Shield especially if you create a case for it and have it work on battery.  
-   [![The Adafruit Metro ESP32-S3](assets/Adafruit_Metro_ESP32-S3.jpg)][metro]  
+   [![*The Adafruit Metro ESP32-S3 image*](assets/Adafruit_Metro_ESP32-S3.jpg)][metro]  
 ___
 *   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout, these work well with the Binary Clock Shield. They are available from your favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins. If I had created a case for the Binary Clock Shield and wanted to sell a fully functional Binary Clock powered from a USB or A/C adapter, this is the board I would use. For a version with a battery, I'd stick with the [Adafruit Metro ESP32-S3][metro].  
-   ![ESP32-S3 UNO](./assets/ESP32-S3_UNO_Board.jpg)
+   ![*ESP32-S3 UNO image*](./assets/ESP32-S3_UNO_Board.jpg)
 
 ___
 *   The Wemos D1 R32 ESP32 UNO. This is the board that got me started on this project. On face value it has a lot of features compared to the Arduino UNO R3, more memory and WiFi. There are key differences that make it suitable only for those who are willing to make a minor hardware modification and already have this board.  
-   ![The Wemos D1 R32 ESP32 UNO](assets/Wemos_D1_R32_UNO.jpg)  
+   ![*The Wemos D1 R32 ESP32 UNO image*](assets/Wemos_D1_R32_UNO.jpg)  
    While the board is supported, it does require a minor [Hardware Modification](#hardware-modifications) to work with the shield. See the details below.
 
 ___
@@ -82,17 +81,17 @@ The **Binary Clock Shield for Arduino** was designed to work with the Arduino UN
 
 In order to get this _Wemos D1 R32_ board to work with the shield, the pin corresponding to `A3` on the shield needs to be connected to an output capable pin such as `GPIO 15`. To do this you need to physically remove the `A3/GPIO34` socket from the ESP32 UNO board (cut the plastic and desolder the pin) then connect the corresponding shield pin to `GPIO 15`. If you wand a simpler fix, you could cut the plastic spacer on the shield corresponding to the `A3` pin and bend it in, then connect that bent pin to `GPIO 15`.
 
-![Wemos D1 R32 ESP32 UNO](assets/Pinout_Wemos_D1_R32.jpg)
+![*Wemos D1 R32 ESP32 UNO image*](assets/Pinout_Wemos_D1_R32.jpg)
 
 The alternative is to get an Arduino UNO Development Shield and modify the development shield by bending the `A3` pin and use a Dupont connector between the bent `A3` pin and `GPIO 15` to use this output capable GPIO pin. This is the easiest but it does add some height, ~12mm or ½ inch, to the assembly.
 
-![UNO Development Shield](assets/Modified_UNO_Shield.jpg)
+![*UNO Development Shield image*](assets/Modified_UNO_Shield.jpg)
 The advantages of a development Shield are that you can add additional components, for example, you could add a LDR circuit to monitor and adjust the brightness based on ambient light and or a potentiometer to adjust the brightness.
 
 ___
 ## **The Software:**
 
-![ESP32 Binary Clock](assets/BinaryClock_ESP32.jpg)  
+![*ESP32 Binary Clock image*](assets/BinaryClock_ESP32.jpg)  
 
 ### New Features:
 
