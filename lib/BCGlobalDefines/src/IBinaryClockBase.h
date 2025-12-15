@@ -1,30 +1,44 @@
-/// @file IBinaryClock.h
+/// @file IBinaryClockBase.h
 /// @brief The pure interface class that defines the minimum supported features of the Binary Clock.
 /// @details This interface class provides the basic methods that must be implemented by any class
 ///          that implements the Binary Clock functionality. This is used to decouple the implementation
 ///          class (e.g. BinaryClock) from any support classes that may need to interface with it
 ///          (e.g. BCMenu).
-/// 
-///          This file also contains structures and enumerations used by the Binary Clock.
-///        - The AlarmTime structure is used to hold all the information related to a specific alarm,
-///          including the alarm number, time, melody, status, and whether it has fired or not.     
-///        - The Note structure is used to define a musical note with a frequency and duration.
-///        - The LedPattern enumeration is used to define the different LED patterns supported by 
-///          the Binary Clock. 
+///          
+///          This interface class includes a reference to the `IBCButtonBase`  interface class to 
+///          fully decouple this interface from any specific button implementation (e.g.` BCButton`).
+///          This is required to allow classes outside any implementation to use the interface without
+///          needing to include a specific button implementation and create additional dependencies.
+/// @remarks We are using the Interface pattern to decouple the implementation class
+///          (e.g. BinaryClock) from any support classes that may need to interface with it 
+///          (e.g. BCMenu).   
+///          The pattern we're using is similar to the early C# Interface in that all
+///          methods and properties are public and pure abstract. No fields are defined
+///          and all inheritance are limited to other interface classes.   
+///          Interface classes all begin with a capital 'I' followed by the proper class 
+///          name, also beginning with a capital letter [A-Z].
+/// @code{.cpp} Examples:
+///          class ISomething         // Interface class for "Something"
+///          class IImplementSometing // Interface class for "ImplementSomething"
+///          
+///          class ImplementSomething  // NOT an interface, just a class.
+///          class IMplementSomething  // Interface class for "MplementSomething"
+/// @endcode
+///          
 /// @author Chris-70 (2025/09)
 
 #pragma once
-#ifndef __IBINARYCLOCK_H__
-#define __IBINARYCLOCK_H__
+#ifndef __IBINARYCLOCKBASE_H__
+#define __IBINARYCLOCKBASE_H__
 
-#include <stdint.h>                 /// Integer types: size_t; uint8_t; uint16_t; etc.
+#include <stdint.h>                    /// Integer types: size_t; uint8_t; uint16_t; etc.
 
-#include "BinaryClock.Structs.h"    /// Global structures and enums used by the Binary Clock project.
-#include "BCButton.h"               /// Binary Clock Button class: handles all button related functionality.
-#include "DateTime.h"               /// For the `DateTime` and `TimeSpan` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
+#include <BinaryClock.Structs.h>       /// Global structures and enums used by the Binary Clock project.
+#include <IBCButtonBase.h>             /// Binary Clock Button Interface class: defines all core button related functionality.
+#include <DateTime.h>                  /// For the `DateTime` and `TimeSpan` classes (https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus)
 
 #ifndef STL_USED
-   #define STL_USED    true    ///< If true, STL classes are used (e.g. String, vector, etc.); if false, they are not used.
+   #define STL_USED    true            ///< If true, STL classes are used (e.g. String, vector, etc.); if false, they are not used.
 #endif
 
 #if STL_USED
@@ -36,27 +50,22 @@ namespace BinaryClockShield
    {
    /// @brief Pure abstract interface for BinaryClock functionality to reduce dependancies
    ///        and make testing easier. This follows the Interface pattern.
-   /// @details We are using the Interface pattern to decouple the implementation class
-   ///          (e.g. BinaryClock) from any support classes that may need to interface with it 
-   ///          (e.g. BCMenu).   
-   ///          The pattern we're using is similar to the early C# Interface in that all
-   ///          methods and properties are public and pure abstract. No fields are defined
-   ///          and all inheritance are limited to other interface classes.   
-   ///          Interface classes all begin with a capital 'I' followed by the proper class 
-   ///          name, also beginning with a capital letter [A-Z].
-   /// @code{.cpp} Examples:
-   ///          class ISomething         // Interface class for "Something"
-   ///          class IImplementSometing // Interface class for "ImplementSomething"
+   /// @details Several classes, such as: `BCMenu`; and `BinaryClockWAN`; require the functionality 
+   ///          provided through this interface in order to operate correctly. By using this interface,
+   ///          these classes are decoupled from the actual implementation class (e.g. `BinaryClock`),
+   ///          allowing an implementation instance to be passed to the classes without creating a
+   ///          dependecy. 
    ///          
-   ///          class ImplementSomething  // NOT an interface, just a class.
-   ///          class IMplementSomething  // Interface class for "MplementSomething"
-   /// @endcode
+   ///          The basic functionality of the shield is encapsulated in this interface for the other 
+   ///          classes to use such as setting the time from the SNTP service or from the user menu.
+   ///          The properties and methods in this interface are used in other classes or are likely
+   ///          to be useful in other classes.
    /// @author Chris-70 (2025/09)
-   class IBinaryClock
+   class IBinaryClockBase
       {
    public:
       /// @brief Required virtual destructor for proper memory management and release.
-      virtual ~IBinaryClock() = default;
+      virtual ~IBinaryClockBase() = default;
 
       /// @ingroup properties
       /// @{
@@ -136,7 +145,7 @@ namespace BinaryClockShield
       /// @see get_S2SaveStop()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S1TimeDec() const = 0;
+      virtual const IBCButtonBase& get_S1TimeDec() const = 0;
 
       /// @brief Read only property pattern to get a const reference to the `S2`
       ///        `BCButton` object used for saving a selection or stopping an alarm.
@@ -144,7 +153,7 @@ namespace BinaryClockShield
       /// @see get_S1TimeDec()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S2SaveStop() const = 0;
+      virtual const IBCButtonBase& get_S2SaveStop() const = 0;
 
       /// @brief Read only property pattern to get a const reference to the `S3`
       ///        `BCButton` object used for setting alarm and incrementing a value.
@@ -152,7 +161,7 @@ namespace BinaryClockShield
       /// @see get_S1TimeDec()
       /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S3AlarmInc() const = 0;
+      virtual const IBCButtonBase& get_S3AlarmInc() const = 0;
 
       /// @brief Read only property pattern to get the unique identifier name of the 
       ///        Binary Clock implementation. This is implementation defined.
@@ -250,7 +259,7 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       virtual const std::vector<Note>& GetMelodyById(size_t id) const = 0;
       #endif
-      };
-   }
+      }; // class IBinaryClockBase
+   }  // namespace BinaryClockShield
 
-#endif
+#endif // __IBINARYCLOCKBASE_H__

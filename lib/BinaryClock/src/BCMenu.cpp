@@ -5,7 +5,7 @@
 
 #include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
-#include "BinaryClock.Defines.h" /// BinaryClock project-wide definitions and MACROs.
+#include <BinaryClock.Defines.h> /// BinaryClock project-wide definitions and MACROs.
 #include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
 
 #include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
@@ -13,7 +13,7 @@
 
 namespace BinaryClockShield
    {
-   BCMenu::BCMenu(IBinaryClock& clockInterface)
+   BCMenu::BCMenu(IBinaryClockBase& clockInterface)
          : clock(clockInterface)
          , buttonS1(clock.get_S1TimeDec())
          , buttonS2(clock.get_S2SaveStop())
@@ -233,7 +233,7 @@ namespace BinaryClockShield
    void BCMenu::handleMainMenu()
       {
       // Time settings - S1 button
-      if (const_cast<BCButton&>(buttonS1).IsPressedNew())
+      if (const_cast<IBCButtonBase&>(buttonS1).IsPressedNew())
          {
          tempTime = clock.get_Time();
          settingsOption = 1;
@@ -249,7 +249,7 @@ namespace BinaryClockShield
          }
 
       // Alarm settings - S3 button
-      if (const_cast<BCButton&>(buttonS3).IsPressedNew())
+      if (const_cast<IBCButtonBase&>(buttonS3).IsPressedNew())
          {
          tempAlarm = clock.get_Alarm();
          settingsOption = 3;
@@ -270,7 +270,7 @@ namespace BinaryClockShield
       unsigned long curMillis = millis();
 
       // Decrement - S1 button
-      if (const_cast<BCButton&>(buttonS1).IsPressedNew() && (curMillis > delayTimer))
+      if (const_cast<IBCButtonBase&>(buttonS1).IsPressedNew() && (curMillis > delayTimer))
          {
          countButtonPressed--;
          checkCurrentModifiedValueFormat();
@@ -282,7 +282,7 @@ namespace BinaryClockShield
          }
 
       // Increment - S3 button
-      if (const_cast<BCButton&>(buttonS3).IsPressedNew() && (curMillis > delayTimer))
+      if (const_cast<IBCButtonBase&>(buttonS3).IsPressedNew() && (curMillis > delayTimer))
          {
          countButtonPressed++;
          checkCurrentModifiedValueFormat();
@@ -294,7 +294,7 @@ namespace BinaryClockShield
          }
 
       // Save - S2 button
-      if ((curMillis > delayTimer) && (continueS2 || const_cast<BCButton&>(buttonS2).IsPressedNew()))
+      if ((curMillis > delayTimer) && (continueS2 || const_cast<IBCButtonBase&>(buttonS2).IsPressedNew()))
          {
          if (!continueS2)
             {

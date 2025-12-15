@@ -1,0 +1,27 @@
+{
+  "name": "BCGlobalDefines",
+  "version": "0.8.0",
+  "description": "Shared interfaces, structures and definitions for the WiFi Binary Clock project",
+  "keywords": [ "interface", "binary clock", "shared" ],
+  "authors": [
+    {
+      "name": "Chris-70",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/BinaryClock_ESP32.git"
+  },
+  "frameworks": "arduino",
+  "platforms": "*",
+  "build": {
+    "includeDir": "src",
+    "srcDir": "src"
+  },
+  "export": {
+    "include": [
+      "src/*"
+    ]
+  }
+}

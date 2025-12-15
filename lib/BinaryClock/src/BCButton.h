@@ -11,16 +11,14 @@
 #ifndef __BCBUTTON_H__
 #define __BCBUTTON_H__
 
-#include <Arduino.h>
+#include <stdint.h>                    /// Integer types: size_t; uint8_t; uint16_t; etc.
 
-#define CA_ON                    LOW   ///< The value when ON  for CA connections
-#define CC_ON                   HIGH   ///< The value when ON  for CC connections
-#define CA_OFF                  HIGH   ///< The value when OFF for CA connections
-#define CC_OFF                   LOW   ///< The value when OFF for CC connections
+#include <IBCButtonBase.h>             /// Binary Clock Button Interface class: defines all core button related functionality.
 
 namespace BinaryClockShield
    {
-   /// @brief Button class to encapsulate button state, debouncing, and hardware interface
+   /// @brief Button class to encapsulate button state, debouncing, and hardware interface.
+   ///          This class implements the `IBCButtonBase` interface.
    /// @details Handles button reading, debouncing, and state management for buttons.  
    ///          The methods `IsPressed()`, `IsPressedRaw()`, and `IsPressedNew()` return the
    ///          current state of the button (pressed or not pressed), some have debouncing.
@@ -32,8 +30,9 @@ namespace BinaryClockShield
    ///          pull-down resistor if the board supports it (e.g. pinMode(pin, INPUT_PULLDOWN)).  
    /// @note The three buttons, S1, S2, and S3 on the Binary Clock Shield, are wired CC.  
    ///          On the development board, for example, the serial time button is wired CA.
+   /// @see IBCButtonBase
    /// @author Chris-70 (2025/09)
-   class BCButton
+   class BCButton : public IBCButtonBase
       {
    public:
       /// @brief Constructor for button with pin and connection type (i.e. CC or CA).
@@ -48,7 +47,7 @@ namespace BinaryClockShield
       ///          `INPUT` instead. 
       /// @param pin GPIO pin number for the button
       /// @param onValue Value when button is pressed (i.e. ON). Use the `CC_ON` or `CA_ON` 
-      ///          constants defined in `BinaryClock.Defines.h` for the value based on the wiring
+      ///          constants defined in `IBCButtonBase.h` for the value based on the wiring
       ///          (i.e. HIGH for pull-down (CC), LOW for pull-up (CA)).
       /// @see Initialize()
       /// @author Chris-70 (2025/09)
@@ -58,9 +57,9 @@ namespace BinaryClockShield
       virtual ~BCButton() = default;
   
 
-      /// @brief Initialize the button pin with appropriate pull-up/pull-down settings
+      /// @brief Initialize the button pin with appropriate pull-up/pull-down settings.
       /// @author Chris-70 (2025/09)
-      void Initialize();
+      virtual void Initialize();
 
       /// @brief Check if button is currently pressed (held down) after debounce.
       /// @details This method debounces the button and returns true if it is currently pressed.
@@ -77,7 +76,7 @@ namespace BinaryClockShield
       /// @see IsPressedRaw()
       /// @see IsPressedNew()
       /// @author Chris-70 (2025/09)
-      bool IsPressed();
+      virtual bool IsPressed();
 
       /// @brief Check if the button is pressed(i.e. ON) without any debounce.
       /// @details This method reads the raw pin value and returns true if it is currently pressed.
@@ -88,7 +87,7 @@ namespace BinaryClockShield
       /// @see IsPressed()
       /// @see IsPressedNew()
       /// @author Chris-70 (2025/09)
-      bool IsPressedRaw() const;
+      virtual bool IsPressedRaw() const;
 
       /// @brief Method to check if the button was pressed ON from OFF since the last call.
       /// @details This method was designed to be called frequently (every few milliseconds)
@@ -103,46 +102,46 @@ namespace BinaryClockShield
       /// @see IsPressed()
       /// @see ClearPressedNew()
       /// @author Chris-70 (2025/09)
-      bool IsPressedNew();
+      virtual bool IsPressedNew() override;
 
       /// @brief Method to clear the pressed state so that the next call to `IsPressedNew()`
       ///        will return true if the button is currently pressed (ON).
       /// @author Chris-70 (2025/09)
-      void ClearPressedNew();
+      virtual void ClearPressedNew() override;
       
       /// @brief Reset button state, clears all values. Useful for initialization.
       /// @author Chris-70 (2025/09)
-      void Reset();
+      virtual void Reset() override;
 
       /// @ingroup properties
       /// @{
       /// @brief Read only property pattern for `Pin` the GPIO pin number.
       /// @return GPIO pin number for this object.
       /// @author Chris-70 (2025/09)
-      uint8_t get_Pin() const { return pin; }
+      virtual uint8_t get_Pin() const override { return pin; }
 
       /// @brief Read only property pattern for `Value` the current digital 
       ///        value of the button pin.
       /// @return Current pin value (HIGH or LOW).
       /// @author Chris-70 (2025/09)
-      uint8_t get_Value() const;
+      virtual uint8_t get_Value() const override;
 
       /// @brief Read only property pattern for `OnValue` the value when button is pressed.
       /// @return Value when button is pressed (HIGH for CC or LOW for CA wired buttons).
       /// @author Chris-70 (2025/09)
-      uint8_t get_OnValue() const { return onValue; }
+      virtual uint8_t get_OnValue() const override { return onValue; }
 
       /// @brief Read only property pattern for `IsFirstRead` flag.
       /// @details This flag is true if the button has never been read before.
       /// @author Chris-70 (2025/09)
-      bool get_IsFirstRead() { return lastReadTime == 0; }
+      virtual bool get_IsFirstRead() override { return lastReadTime == 0; }
 
       /// @brief Read only property pattern for `LastReadTime` the time (ms) of the last read.
       /// @remarks The time is in milliseconds as returned by `millis()`. This is a 32 bit 
       ///          value that rolls over every ~49 days. This is just a comparitor value.
       /// @return Time (ms) of the last read, 0 if never read.
       /// @author Chris-70 (2025/09)
-      unsigned long get_LastReadTime() const { return lastReadTime; }
+      virtual unsigned long get_LastReadTime() const override { return lastReadTime; }
 
       /// @brief Property pattern for `BounceDelay` the current debounce delay in milliseconds.
       /// @param delay Debounce delay in milliseconds

@@ -1,7 +1,7 @@
 /// @file DummyBinaryClock.h
-/// @brief A dummy implementation of IBinaryClock for testing and development purposes.
-/// @details This class provides a no-op implementation of all IBinaryClock methods,
-///          useful for testing code that depends on IBinaryClock without needing
+/// @brief A dummy implementation of IBinaryClockBase for testing and development purposes.
+/// @details This class provides a no-op implementation of all IBinaryClockBase methods,
+///          useful for testing code that depends on IBinaryClockBase without needing
 ///          actual hardware or full implementation.
 /// @author Chris-70 (2025/11)
 
@@ -10,15 +10,15 @@
 #define __DUMMYBINARYCLOCK_H__
 
 
-#include "IBinaryClock.h"
+#include <IBinaryClockBase.h>
 
 namespace BinaryClockShield
 {
-   /// @brief Dummy implementation of IBinaryClock that does nothing
+   /// @brief Dummy implementation of IBinaryClockBase that does nothing
    /// @details All methods are implemented but perform no actual operations.
    ///          This is useful for testing and development when you need a valid
-   ///          IBinaryClock object but don't need actual functionality.
-   class DummyBinaryClock : public IBinaryClock
+   ///          IBinaryClockBase object but don't need actual functionality.
+   class DummyBinaryClock : public IBinaryClockBase
    {
    private:
       DateTime currentTime;
@@ -26,7 +26,7 @@ namespace BinaryClockShield
       bool is12HourFormat;
       char timeFormat[32];
       char alarmFormat[32];
-      BCButton dummyButton;
+      IBCButtonBase& dummyButton;
 
    public:
       DummyBinaryClock();
@@ -53,9 +53,9 @@ namespace BinaryClockShield
       virtual bool get_IsSerialTime() const override;
 
       // Button properties
-      virtual const BCButton& get_S1TimeDec() const override;
-      virtual const BCButton& get_S2SaveStop() const override;
-      virtual const BCButton& get_S3AlarmInc() const override;
+      virtual const IBCButtonBase& get_S1TimeDec() const override;
+      virtual const IBCButtonBase& get_S2SaveStop() const override;
+      virtual const IBCButtonBase& get_S3AlarmInc() const override;
 
       virtual const char* get_IdName() const override { return IBinaryClock_IdName; }
 

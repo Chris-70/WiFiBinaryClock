@@ -1,0 +1,27 @@
+{
+  "name": "BinaryClockWiFi",
+  "version": "0.8.0",
+  "description": "WiFi, WPS, SNTP and settings for the WiFi Binary Clock project",
+  "keywords": ["wifi", "binary clock", "network", "settings"],
+  "authors": [
+    {
+      "name": "Chris-70",
+      "maintainer": true
+    }
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Chris-70/BinaryClock_ESP32.git"
+  },
+  "frameworks": "arduino",
+  "platforms": "*",
+  "build": {
+    "includeDir": "src",
+    "srcDir": "src"
+  },
+  "export": {
+    "include": [
+      "src/*"
+    ]
+  }
+}

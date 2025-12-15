@@ -52,12 +52,12 @@ class TimeSpan;
 #define DAY_1_IS_TUESDAY   2  ///< The first day of the week (1) is Tuesday   in February  2000
 // Offset (order) in the names array to each day of the week name.
 #define DOW_MONDAY         0  ///< Day of the week name offset value for Monday
-#define DOW_SUNDAY         6  ///< Day of the week name offset value for Sunday
-#define DOW_SATURDAY       5  ///< Day of the week name offset value for Saturday
-#define DOW_FRIDAY         4  ///< Day of the week name offset value for Friday
-#define DOW_THURSDAY       3  ///< Day of the week name offset value for Thursday
-#define DOW_WEDNESDAY      2  ///< Day of the week name offset value for Wednesday
 #define DOW_TUESDAY        1  ///< Day of the week name offset value for Tuesday
+#define DOW_WEDNESDAY      2  ///< Day of the week name offset value for Wednesday
+#define DOW_THURSDAY       3  ///< Day of the week name offset value for Thursday
+#define DOW_FRIDAY         4  ///< Day of the week name offset value for Friday
+#define DOW_SATURDAY       5  ///< Day of the week name offset value for Saturday
+#define DOW_SUNDAY         6  ///< Day of the week name offset value for Sunday
 // ----------------------------------------------------------------------------
 /// @brief MACRO to set the first day of the week for calculations.
 /// @details The first day of the week is used in calculations for the DateTime::dayOfTheWeek()

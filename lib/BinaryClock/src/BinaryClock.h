@@ -78,13 +78,13 @@
 ///     
 /// This project has been inspired from the original Example; "11-BinaryClock-24H-RTCInterruptAlarmButtons.ino" file as published
 /// on the Binary Clock Shield for Arduino GitHub repository: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
-/// The original file was fully refactored to be encapsulated in a group of classes: IBinaryClock - The interface class;
-/// BinaryClock - The implementation and main class; BCButton - Class to manage the buttons; BCMenu - Class to manage the
+/// The original file was fully refactored to be encapsulated in a group of classes: `IBinaryClockBase` - The interface class;
+/// `BinaryClock` - The implementation and main class; `BCButton` - Class to manage the buttons; `BCMenu` - Class to manage the
 /// alarm and time settings, this class retains much of the original code. These classes encapsulate all the functionality
 /// available on "Binary Clock Shield for Arduino UNO" designed and built by Marcin Saj." Modifications were made to support
 /// multiple UNO boards including ESP32 based UNO platforms that would allow for new functionality, such as WiFi time.
-/// For all boards, there is greater flexibility by the user at runtime for color selection and melodies used by the alarm as well as
-///  an improved user experience when setting the alarm and time including support for 12 hour mode.
+/// For all boards, there is greater flexibility by the user at runtime for color selection and melodies used by the alarm as well 
+/// as an improved user experience when setting the alarm and time including support for 12 hour mode.
 ///       
 /// The original goal of using an ESP32 based UNO board was to allow the RTC to be connected to a NTP server over WiFi. The code
 /// for the WiFi connection is encapsulated in its own class, 'BinaryClock_NTP', and requires a board with an ESP32 WiFi chip.
@@ -97,14 +97,18 @@
 #ifndef __BINARYCLOCK_H__
 #define __BINARYCLOCK_H__
 
-#define DEBUG_OUTPUT true
+#ifdef PIO_UNIT_TESTING          /// Check for the `PlatformIO` unit testing environment.
+   #define TESTING true          /// Enable the `TESTING` code.
+#endif
+
+#define DEBUG_OUTPUT true        /// Enable/disable debug output to Serial console. Usually false.
 
 #include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
-#include "BinaryClock.Defines.h" /// BinaryClock project-wide definitions and MACROs.
-#include "BinaryClock.Structs.h" /// Global structures and enums used by the Binary Clock project.
+#include <BinaryClock.Defines.h> /// BinaryClock project-wide definitions and MACROs.
+#include <BinaryClock.Structs.h> /// Global structures and enums used by the Binary Clock project.
+#include <IBinaryClockBase.h>    /// The pure interface class that defines the minimum supported features.
 
-#include "IBinaryClock.h"        /// The pure interface class that defines the minimum supported features.
 #include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
 #include "BCButton.h"            /// Binary Clock Button class: handles all button related functionality.
 
@@ -127,8 +131,18 @@
    #define TEST_VIRTUAL virtual        ///< Virtul methods for unit testing ony.
    #define TEST_PROTECTED protected:   ///< Access specifier for unit testing ony.
 #else
-   #define TEST_VIRTUAL                ///< Virtual methods for unit testing, removed otherwise.
-   #define TEST_PROTECTED              ///< Access specifier for unit testing, removed otherwise.
+   #define TEST_VIRTUAL                ///< Virtual methods  only for unit testing, removed otherwise.
+   #define TEST_PROTECTED              ///< Access specifier only for unit testing, removed otherwise.
+#endif
+
+#if FREE_RTOS
+   #define CB_MAX_WAIT_MS              1050 
+   #define TIME_TRIGGER                0x0001
+   #define ALARM1_TRIGGER              0x0002
+   #define ALARM2_TRIGGER              0x0004
+   #define ALARMS_TRIGGER  (ALARM1_TRIGGER | ALARM2_TRIGGER)
+   #define EXIT_TRIGGER                0x8000   
+   #define ALL_TRIGGERS                0xFFFF
 #endif
 
 /// @namespace BinaryClockShield
@@ -184,7 +198,7 @@ namespace BinaryClockShield
    /// @design  This class was designed to be used with multiple Arduino UNO style boards and to encapsulate
    ///          the base functionality of displaying the time in Binary format on the shield. The class 
    ///          follows the `Singleton Pattern` to ensure that only one instance of the class exists.   
-   ///          The class implements the `IBinaryClock` interface to ensure that all required methods are provided.  
+   ///          The class implements the `IBinaryClockBase` interface to ensure that all required methods are provided.  
    ///          The `BCMenu` class handles all the settings and serial output functionality.  
    ///          The `BCButton` class handles all button related functionality.  
    ///          The `BinaryClock.Defines.h` file contains all the project-wide definitions and MACROs required 
@@ -221,10 +235,10 @@ namespace BinaryClockShield
    ///                               The `BinaryClockSettings` class handles the storing and retrieving of all 
    ///                               settings in NVS.  
    /// @author  Chris-80 (2025/07)
-   class BinaryClock : public IBinaryClock
+   class BinaryClock : public IBinaryClockBase
       {
    //#################################################################################//  
-   //                            IBinaryClock INTERFACE                               //
+   //                            IBinaryClockBase INTERFACE                               //
    //#################################################################################//   
    public:
 
@@ -311,28 +325,28 @@ namespace BinaryClockShield
       virtual bool get_IsSerialSetup() const override;
 
       /// @brief Read only property pattern to get a const reference to the `S1`
-      ///        `BCButton` object used for setting time and decrementing a value.
-      /// @return A const reference to the `BCButton` for S1 on the shield.
+      ///        `IBCButtonBase` object used for setting time and decrementing a value.
+      /// @return A const reference to the `IBCButtonBase` for S1 on the shield.
       /// @see get_S2SaveStop()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S1TimeDec() const override { return buttonS1; }
+      virtual const IBCButtonBase& get_S1TimeDec() const override { return buttonS1; }
 
       /// @brief Read only property pattern to get a const reference to the `S2`
-      ///        `BCButton` object used for saving a selection or stopping an alarm.
-      /// @return A const reference to the `BCButton` for S2 on the shield.
+      ///        `IBCButtonBase` object used for saving a selection or stopping an alarm.
+      /// @return A const reference to the `IBCButtonBase` for S2 on the shield.
       /// @see get_S1TimeDec()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S2SaveStop() const override { return buttonS2; }
+      virtual const IBCButtonBase& get_S2SaveStop() const override { return buttonS2; }
 
       /// @brief Read only property pattern to get a const reference to the `S3`
-      ///        `BCButton` object used for setting alarm and incrementing a value.
-      /// @return A const reference to the `BCButton` for S3 on the shield.
+      ///        `IBCButtonBase` object used for setting alarm and incrementing a value.
+      /// @return A const reference to the `IBCButtonBase` for S3 on the shield.
       /// @see get_S1TimeDec()
       /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
-      virtual const BCButton& get_S3AlarmInc() const override { return buttonS3; }
+      virtual const IBCButtonBase& get_S3AlarmInc() const override { return buttonS3; }
 
       /// @brief Read only property pattern to get the unique Id Name of this Binary Clock instance.
       /// @return A pointer to a constant character string containing the unique identifier name.
@@ -588,28 +602,47 @@ namespace BinaryClockShield
       /// @brief This method runs the task to handle the RTC time and alarm. It waits for the 
       ///        1 Hz RTC Interrupt, calls the 'TimeDispatch()' method to read the RTC time and
       ///        check if the alarm has fired. 
+      /// @param void* - Unused parameter required by `CreateInstanceTask()` signature.
       /// @note  This method isn't used on boards that don't run FreeRTOS, they just call the
       ///        'TimeDispatch()' method from within the 'loop()' method.
-      void TimeTask();
+      /// @author Chris-70 (2025/09)
+      void TimeTask(void*);
       #endif
       
       /// @brief This method handles the reading of the time from the RTC and checks if the 
       ///        alarm has been triggered (when set). 
+      /// @details This method is called either from the FreeRTOS 'TimeTask()' method or
+      ///          from the 'loop()' method on boards that don't run FreeRTOS.  
+      ///          When called from the `TimeTask()` the `notificationFlags` are passed to
+      ///          this method and the alarm states are added if they fired. The `CallbackTask`
+      ///          is notified with all the flags.
+      /// @param notificationFlags The notification flags from FreeRTOS TimeTask() notification.
       /// @returns bool - Flag indicating the interrupt had fired and time was read from the RTC.
       /// @design  This method exists to be called by boards that don't have FreeRTOS.
       ///          Instead of executing the code in 'TimeTask()' the code is encompassed in 
-      ///          this method so that it can be called from within the 'loop()' method.
-      bool TimeDispatch();
+      ///          this method so that it can be called from within the 'loop()' method.  
+      ///          The `CallbackTask()` is notified of the alarm/time triggers using the
+      ///          modified `notificationFlags` parameter.  
+      ///          The reason that the callback functions are executed from another task is to 
+      ///          isolate the main functionality from an errant or time consuming user
+      ///          callback function. This ensures that the main timekeeping and LED display
+      ///          functionality is not blocked or delayed by user code.
+      /// @see TimeTask()
+      /// @author Chris-70 (2025/10)
+      bool TimeDispatch(uint32_t notificationFlags = 0U);
 
-      /// @brief This helper method is called to service the user callback function with the associated time.
-      /// @details This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
-      /// @param triggerFlag The flag that indicates if the callback was fired.
+      /// @brief This helper method is called to service the user callback function with the associated time.  
+      ///        This method is called when the RTC 1 Hz signal is triggered (time) or the alarm has triggered.
+      /// @details This method does try to protect itself by calling the user function inside a `try...catch`
+      ///          block. If the user function throws an exception, it is caught and an error message is printed
+      ///          to the serial console. The method then continues to process any other callbacks. This method
+      ///          handles both time and alarm callback functions.
       /// @param time The associated DateTime object to pass to the callback function (e.g. alarm time / current time).
       /// @param callback The user callback function to call with the associated DateTime.
       /// @author Chris-70 (2025/07)
-      void CallbackFtn(volatile bool& triggerFlag, const DateTime& time, void (*callback)(const DateTime&));
+      void CallbackFtn(DateTime time, void (*callback)(const DateTime&));
 
-      /// @brief This method is called to dispatch the callback functions for the alarm and time.
+      /// @brief This method is called to dispatch the callback functions for the alarm and/or time.
       /// @details This method calls the 'CallbackFtn()' when the associated trigger is set and
       ///          the user has registered a callback function for the trigger.
       /// @author Chris-70 (2025/07)
@@ -618,9 +651,23 @@ namespace BinaryClockShield
       #if FREE_RTOS
       /// @brief This method is called to run the callback task in a separate thread.
       /// @details This method is called in a separate thread on UNO boards that run FreeRTOS.
-      ///          This task just calls 'CallbackDispatch()' and briefly pauses execution in a loop.
+      ///          This task just calls 'CallbackDispatch()' to process the callback for the events.  
+      ///          This task just sets the conditions for the `CallbackDispatch()` method to
+      ///          execute correctly. Calling `CallbackDispatch()` from a task ensures that the
+      ///          user callback function doesn't impact the main code should it be long or faulty. 
+      /// @param void* - Unused parameter required by `CreateInstanceTask()` signature.
+      /// @note  This method isn't used on boards that don't run FreeRTOS, they just call the
+      ///        'CallbackDispatch()' method directly from within the 'TimeDispatch()' method.
+      /// @design  This method exists to isolate the user callback functions from the main code.  
+      ///          This task is notified by the `TimeDispatch()` method when either the time and/or
+      ///          alarm triggers occur.   
+      ///          FreeRTOS allows the time processing to run in one task while the user callback
+      ///          functions run in their own task. This ensures that the main timekeeping and LED 
+      ///          display functionality is not blocked or delayed by user code.  
+      ///          The tasks also eleminate some of the the busy waiting that exists in the code for the
+      ///          user callback functions and other components on boards without FreeRTOS, such as the UNO R3.
       /// @author Chris-70 (2025/07)
-      void CallbackTask();
+      void CallbackTask(void*);
       #endif
 
       /// @brief The method called to display the given LED buffer on the shield.
@@ -652,6 +699,7 @@ namespace BinaryClockShield
       #if DEV_CODE
       /// @brief This method is called to display all the registers of the RTC chip.
       ///        The DS3231 registers 0x00 through 0x13 are dumped in: Hex; Binary; and Decimal.
+      /// @author Chris-80 (2025/08)
       void DisplayAllRegisters();
       #endif
 
@@ -668,6 +716,7 @@ namespace BinaryClockShield
    TEST_PROTECTED
       /// @brief The method called when the RTC generates an interrupt on the 'RTC_INT' pin every second.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino
+      /// @author Chris-80 (2025/07)
       void RTCinterrupt();
 
       /// @brief The method called to read the alarm time status (ON/OFF), for the default alarm, from the RTC.
@@ -690,9 +739,17 @@ namespace BinaryClockShield
       /// @details This method initializes the default melody from the PROGMEM array: `AlarmNotes`
       ///          This method is called from the constructor to ensure the `melodyRegistry` has
       ///          the default melody at index 0.
+      /// @author Chris-80 (2025/09)
       void initializeDefaultMelody();
       #endif
 
+      /// @brief Method to return the current colours for the hour row.
+      /// @remarks This method is only used when in 12 hour mode and either the
+      ///          AM or PM indicator is OFF (i.e. no colour).  
+      ///          This provides a clear distinction between 24 hour mode and AM/PM.
+      /// @return An `fl::array` of `CRGB` objects representing the current 
+      ///         colours for the hour row.
+      /// @author Chris-80 (2025/11)
       const fl::array<CRGB, NUM_HOUR_LEDS>& getCurHourColors();
 
       #if SERIAL_TIME_CODE
@@ -704,6 +761,18 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void serialTime();
       #endif
+
+      /// @brief Displays the splash screen on the LED matrix.
+      /// @details This method displays the splash screen on the LED matrix.  
+      ///          If the `testLEDs` parameter is true, the splash screen will test all 
+      ///          predefined `LedPattern` screens.  
+      ///          On boards that use `FreeRTOS` this method runs in its own thread.
+      ///          This provides some user indication of the clock setting up while the
+      ///          actual setup code can run in the background and the user doesn't 
+      ///          see a blank screen.
+      /// @param testLEDs If true, the splash screen will test all predefined screens.
+      /// @author Chris-80 (2025/11)
+      void splashScreen(bool testLEDs);
 
       /// @brief Helper method to register a callback function for the time or alarm.
       /// @details This method is called by the public methods to register a callback function
@@ -981,11 +1050,80 @@ namespace BinaryClockShield
    // Protected PROPERTIES   
    //#################################################################################//   
    protected:
+      /// @copydoc get_TimeFormat()
+      /// @param value The new time format string used by `DateTime::toString()` for output/display.
+      ///              e.g. "hh:mm:ss" for 24 hour mode; or "HH:mm:ss AP" for 12 hour mode.
+      /// @see get_TimeFormat()
       void set_TimeFormat(const char* value)
          { TimeFormat = (value == nullptr? get_TimeFormat() : value); }
 
+      /// @brief Property pattern for the 'AlarmFormat' property.
+      ///        This property controls the format string used to display/output the alarm time.
+      /// @param value The new alarm format string used by `DateTime::toString()` for output/display.
+      ///              e.g. "hh:mm" for 24 hour mode; or "HH:mm AP" for 12 hour mode.
+      /// @see get_AlarmFormat()
       void set_AlarmFormat(const char* value)
          { AlarmFormat = (value == nullptr? get_AlarmFormat() : value); }
+
+      /// @brief Property pattern for the 'RTCinterruptWasCalled' flag property.
+      ///        This flag indicates whether the RTC interrupt was triggered.
+      /// @param value The new value for the RTC interrupt triggered flag.
+      /// @see get_RTCinterruptWasCalled()
+      void set_RTCinterruptWasCalled(bool value)
+         { rtcInterruptWasCalled = value; }
+      /// @copydoc set_RTCinterruptWasCalled()
+      /// @return The current value of the RTC interrupt triggered flag.
+      /// @see set_RTCinterruptWasCalled()
+      bool get_RTCinterruptWasCalled()
+         { return rtcInterruptWasCalled; }
+
+      /// @brief Property pattern for the 'CallbackAlarmTriggered' flag property.
+      ///        This flag indicates whether the 'Alarm' callback needs to be called.
+      /// @param value The new value for the 'Alarm' callback triggered flag.
+      /// @see get_CallbackAlarmTriggered()
+      void set_CallbackAlarmTriggered(bool value)
+         { callbackAlarmTriggered = value; }
+      /// @copydoc set_CallbackAlarmTriggered()
+      /// @return The current value of the 'Alarm' callback triggered flag.
+      /// @see set_CallbackAlarmTriggered()
+      bool get_CallbackAlarmTriggered()
+         { return callbackAlarmTriggered; }
+
+      /// @brief Property pattern for the 'CallbackTimeTriggered' flag property.
+      ///        This flag indicates whether the 'Time' callback needs to be called.
+      /// @param value The new value for the 'Time' callback triggered flag.
+      /// @see get_CallbackTimeTriggered()
+      void set_CallbackTimeTriggered(bool value)
+         { callbackTimeTriggered = value; }
+      /// @copydoc set_CallbackTimeTriggered()
+      /// @return The current value of the 'Time' callback triggered flag.
+      /// @see set_CallbackTimeTriggered()
+      bool get_CallbackTimeTriggered()
+         { return callbackTimeTriggered; }
+
+      /// @brief Property pattern for the 'TimeDispatchHandle' property.
+      ///        This is the handle for the `TimeTask()`.
+      /// @param value The new handle for the `TimeTask()`.
+      /// @see get_TimeDispatchHandle()
+      void set_TimeDispatchHandle(TaskHandle_t value)
+         { timeDispatchHandle = value; }
+      /// @copydoc set_TimeDispatchHandle()
+      /// @return The current handle for the `TimeTask()`.
+      /// @see set_TimeDispatchHandle()
+      TaskHandle_t get_TimeDispatchHandle() const
+         { return timeDispatchHandle; }
+
+      /// @brief Property pattern for the 'CallbackTaskHandle' property.
+      ///        This is the handle for the `CallbackTask()`.
+      /// @param value The new handle for the `CallbackTask()`.
+      /// @see get_CallbackTaskHandle()
+      void set_CallbackTaskHandle(TaskHandle_t value)
+         { callbackTaskHandle = value; }
+      /// @copydoc set_CallbackTaskHandle()
+      /// @return The current handle for the `CallbackTask()`.
+      /// @see set_CallbackTaskHandle()
+      TaskHandle_t get_CallbackTaskHandle() const
+         { return callbackTaskHandle; }
 
    //#################################################################################//  
    // Private PROPERTIES   
@@ -1037,13 +1175,8 @@ namespace BinaryClockShield
       static CRGB PmColor;                         ///< Color for the PM indicator LED. Default is Indigo.
       static CRGB AmColor;                         ///< Color for the AM indicator LED. Default is SkyBlue.
 
-      // The UNO Compiler doesn't support this C++ style object initialization, move it to the constructor.
-      AlarmTime Alarm1;                            ///< DS3232 alarm 2, includes seconds in alarm.
+      AlarmTime Alarm1;                            ///< DS3232 alarm 1, includes seconds in alarm.
       AlarmTime Alarm2;                            ///< Default alarm, seconds set at 00.
-
-      volatile bool RTCinterruptWasCalled;         ///< Flag: The RTC interrupt was triggered.
-      volatile bool CallbackAlarmTriggered;        ///< Flag: The 'Alarm' callback needs to be called.
-      volatile bool CallbackTimeTriggered;         ///< Flag: The 'Time'  callback needs to be called.
 
       const char* TimeFormat = timeFormat24;       ///< Pointer to the current format string for the time.
       const char* AlarmFormat = alarmFormat24;     ///< Pointer to the current format string for the alarm.
@@ -1053,6 +1186,12 @@ namespace BinaryClockShield
    // ################################################################################
    private:
    TEST_PROTECTED
+
+      volatile bool rtcInterruptWasCalled;         ///< Flag: The RTC interrupt was triggered.
+      volatile bool callbackAlarmTriggered;        ///< Flag: The 'Alarm' callback needs to be called.
+      volatile bool callbackAlarm1Triggered;       ///< Flag: The 'Alarm1' callback needs to be called.
+      volatile bool callbackAlarm2Triggered;       ///< Flag: The 'Alarm2' callback needs to be called.
+      volatile bool callbackTimeTriggered;         ///< Flag: The 'Time'  callback needs to be called.
 
       /// @brief 2D table array to map the `AlarmTime::Repeat` enumerations with
       ///        the corresponding enumeration for Alarm1 and Alarm2.
@@ -1066,7 +1205,7 @@ namespace BinaryClockShield
 
       /// @brief This is just a copy of the hour portion of the `OnColor` array.
       /// @details This is used for the hour colors in 24 hour mode and when the AM or PM indicators are ON.  
-      ///          When either the AM or PM indicator is Black, the corresponding `OnHourAM` or `OnHourPM`
+      ///          When either the AM or PM indicators are Black, the corresponding `OnHourAM` or `OnHourPM`
       ///          color will be used instead.
       /// @remarks This was added to make the code simpler so that the hour colors are all the same type, 
       ///          `fl::array<CRGB, NUM_HOUR_LEDS>`, instead of using pointers for the current hour colors.
@@ -1205,11 +1344,17 @@ namespace BinaryClockShield
       const Note* alarmNotes;          ///< Pointer to the combined alarm notes array
       size_t alarmNotesSize;           ///< Size of the alarm notes array
       #endif
+
+      #if FREE_RTOS
+      TaskHandle_t rtcTaskHandle      = nullptr;   ///< RTC Interrupt Task Handle
+      TaskHandle_t timeDispatchHandle = nullptr;   ///< Time Dispatch Task Handle for processing RTC time events.
+      TaskHandle_t callbackTaskHandle = nullptr;   ///< Callback Task Handle for user callback functions.
+      #endif
    
       static const Note AlarmNotes[] PROGMEM;     ///< The default alarm melody, an array of `Notes`
       static const size_t AlarmNotesSize;         ///< Size of the AlarmNotes array
 
-      const char* IBinaryClock_IdName = "BinaryClock_v0.8";
+      const char* IBinaryClock_IdName = "BinaryClock_v0.8.5";
       }; // END Class BinaryClock
    }  // END namespace BinaryClockShield
 

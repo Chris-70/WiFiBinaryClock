@@ -13,8 +13,9 @@
 #include <String>
 #include <vector>
 
-#include "BinaryClock.Structs.h"    /// Global structures and enums used by the Binary Clock project. 
-#include "IBinaryClock.h"           /// The pure interface class that defines the minimum supported features.
+#include <BinaryClock.Structs.h>    /// Global structures and enums used by the Binary Clock project. 
+#include <IBinaryClockBase.h>           /// The pure interface class that defines the minimum supported features.
+
 #include "BinaryClockSettings.h"    /// Binary Clock Settings class: handles all settings kept on NVS.
 #include "BinaryClockNTP.h"         /// Binary Clock NTP class: handles all NTP related functionality.
 #include "BinaryClockWPS.h"         /// Binary Clock WPS class: handles WPS connection functionality.
@@ -31,17 +32,17 @@ namespace BinaryClockShield
    ///          The constructor scans for all available WiFi networks and saves this list. 
    ///          When `Begin()` is called, it attempts to connect to one of the known access points
    ///          stored in the `BinaryClockSettings` instance. If a connection is established, 
-   ///          it synchronizes the time with an NTP server and updates the `IBinaryClock` instance.
+   ///          it synchronizes the time with an NTP server and updates the `IBinaryClockBase` instance.
    /// @note    This class requires the `BinaryClockSettings` class to manage access point credentials.
-   ///          It also requires an `IBinaryClock` instance to update the time.
+   ///          It also requires an `IBinaryClockBase` instance to update the time.
    /// @author Chris-70 (2025/09)
    class BinaryClockWAN
       {
    protected:
-      /// @brief Construct a `BinaryClockWAN` instance with a reference to the `IBinaryClock` 
+      /// @brief Construct a `BinaryClockWAN` instance with a reference to the `IBinaryClockBase` 
       ///        Interface implementation (e.g `BinaryClock`).
       /// @details This constructor initializes the `BinaryClockWAN` instance with a reference
-      ///          to an `IBinaryClock` implementation. It also initializes the `BinaryClockSettings`
+      ///          to an `IBinaryClockBase` implementation. It also initializes the `BinaryClockSettings`
       ///          instance to manage access point credentials. The constructor scans for all
       ///          available WiFi networks and saves this list.   
       /// @remarks The `Begin()` method must be called before any other methods to attempt a connection.
@@ -66,14 +67,26 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    public:
+      /// @brief Connect to the specified access point using the provided credentials.
+      /// @details This method attempts to connect to the specified access point using the
+      ///          provided `APCreds`. If the connection is successful, it synchronizes the
+      ///          time with an NTP server and updates the `IBinaryClockBase` instance.
+      /// @return True if the connection was successful, false otherwise.
+      /// @author Chris-70 (2025/11)
       bool Connect(APCreds& creds);
+
+      /// @brief Get the singleton instance of the BinaryClockWAN class.
+      /// @details This static method returns a reference to the singleton instance of the 
+      ///          BinaryClockWAN class.
+      /// @return Reference to the singleton instance of the BinaryClockWAN class.
+      /// @author Chris-70 (2025/11)
       static BinaryClockWAN& get_Instance();
 
       /// @brief Connect to one of the local access points using the stored credentials.
       /// @details This method checks the list of local access points against the stored credentials.
       ///          If one of the local APs match a stored credential it attempts to connect to it.
       ///          If it fails it continues looking for other APs. If a connection is established, it 
-      ///          synchronizes the time with an NTP server and updates the `IBinaryClock` instance.
+      ///          synchronizes the time with an NTP server and updates the `IBinaryClockBase` instance.
       /// @return True if the connection was successful, false otherwise.
       /// @author Chris-70 (2025/09)
       bool ConnectLocal()  
@@ -93,11 +106,18 @@ namespace BinaryClockShield
       /// @brief Begin the WiFi connection process, prepare the enviroment and optionally connect.
       /// @details This method initiates the WiFi connection process. If `autoConnect` is true,
       ///          it will attempt to connect to a known access point automatically.
+      /// @param clock Reference to an `IBinaryClockBase` Interface class instance to ???????????
       /// @param autoConnect Flag [optional] - the method will attempt to connect to a known AP automatically.  
       ///                    The default is `true` if not specified.
+      /// @param startDelay Optional delay, in milliseconds, before starting the connection process. Default is 0.
       /// @return True if the connection process was initiated successfully, false otherwise.
       /// @author Chris-70 (2025/09)
-      bool Begin(IBinaryClock& clock, bool autoConnect = true);
+      bool Begin(IBinaryClockBase& clock, bool autoConnect = true, uint32_t startDelay = 0U);
+
+      /// @brief Connect to the SNTP server to setup the synchronize time server(s) and interval.
+      /// @return True if the connection was successful, false otherwise.
+      /// @author Chris-70 (2025/12)
+      bool ConnectSNTP();
 
       /// @brief End the WiFi connection and optionally save the settings.
       /// @details This method disconnects from the current WiFi network and optionally saves the settings.
@@ -114,12 +134,17 @@ namespace BinaryClockShield
       bool Save()
          { return settings.Save(); }
 
-      /// @brief Update the time from the NTP server and set it in the `IBinaryClock` instance.
+      /// @brief Update the time from the NTP server and set it in the `IBinaryClockBase` instance.
       /// @details This method synchronizes the time with the configured NTP server and updates
-      ///          the `IBinaryClock` instance with the new time.
+      ///          the `IBinaryClockBase` instance with the new time.  
+      ///          This method call `UpdateTime(DateTime&)` with the time from the NTP server.
       /// @return True if the time was updated successfully, false otherwise.
+      /// @see UpdateTime(DateTime&)
       /// @author Chris-70 (2025/09)
       bool UpdateTime();
+      /// @copydoc UpdateTime()
+      /// @param time Reference to a DateTime object with the time to set instead of the time from NTP.
+      /// @see UpdateTime()
       bool UpdateTime(DateTime& time);
 
       /// @brief Synchronize the time with the NTP server.
@@ -129,6 +154,9 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       DateTime SyncTimeNTP();
 
+      /// @brief Alert or notify callback method about a synchronization event.
+      /// @param dateTime The DateTime object representing the time of the synchronization event.
+      /// @author Chris-70 (2025/12)
       void SyncAlert(const DateTime& dateTime);
 
    //#################################################################################//  
@@ -136,9 +164,12 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    protected:
+      /// @brief Handle WiFi events. Registered in a call to the `WiFiClass::onEvent()`.
+      /// @details This method is called when a WiFi event occurs.  
+      ///          Mostly this method just prints debug/log messages on the event triggered.
+      /// @param event The WiFi event type.
+      /// @param info Additional information about the event.
       void WiFiEvent(WiFiEvent_t event, WiFiEventInfo_t info);
-
-      void WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info);
 
    //#################################################################################//  
    // Private METHODS                                                                 //   
@@ -214,22 +245,19 @@ namespace BinaryClockShield
       /// @see set_Timezone()
       String get_Timezone() const;
 
-   //#################################################################################//  
-   // Protected PROPERTIES                                                            //   
-   //#################################################################################//   
-
-   protected:
-
-      /// @brief `LocalCreds` Property: The `APCredsPlus` credentials of the AP for the current connection.
+      /// @brief `LocalCreds` Property: The `APCreds` credentials of the AP for the current connection.
       /// @details This property provides access to the credentials of the currently connected AP.
       ///          `get_` method returns the credentials of the connected AP.
       ///          `set_` method allows modifying the credentials of the connected AP.
-      /// @param value An `APCredsPlus` structure containing the SSID, BSSID, password, and ID of the connected AP.
+      /// @param value An `APCreds` structure containing the SSID, BSSID, password, and ID of the connected AP.
       /// @see get_WiFiCreds()
       /// @see get_LocalIP()
       /// @author Chris-70 (2025/09)
-      void set_LocalCreds(APCredsPlus value)
-         { localCreds = value; }
+      void set_LocalCreds(APCreds value)
+         { 
+         localCreds = value; 
+         settings.AddWiFiCreds(value);
+         }
 
       /// @copydoc set_LocalCreds()
       /// @return An `APCredsPlus` structure containing the SSID, BSSID, password, and ID of the connected AP.
@@ -237,8 +265,15 @@ namespace BinaryClockShield
       APCredsPlus get_LocalCreds() const
          { return localCreds; }
 
+   //#################################################################################//  
+   // Protected PROPERTIES                                                            //   
+   //#################################################################################//   
+
+   protected:
+
       /// @copydoc get_LocalIP()
       /// @param value An `IPAddress` object containing the local IP address on the network.
+      /// @see get_LocalIP()
       void set_LocalIP(IPAddress value)
          { localIP = value; }
 
@@ -247,14 +282,13 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    private:
-      /// @brief A pointer to the  `IBinaryClock` implementation instance.  
-      ///        The initial value is a placeholder until `Begin()` is called.
-      IBinaryClock* clockPtr = nullptr; 
+      /// @brief A pointer to the `IBinaryClockBase` implementation instance.  
+      IBinaryClockBase* clockPtr = nullptr; 
       BinaryClockSettings& settings = BinaryClockSettings::get_Instance();    ///< Local reference to the setting stored in NVS.
       BinaryClockNTP& ntp = BinaryClockNTP::get_Instance(); ///< NTP client reference to the time synchronization.
       BinaryClockWPS& wps = BinaryClockWPS::get_Instance(); ///< WPS handler reference to the WPS connections.
 
-      APCredsPlus localCreds;          ///< The credentials of the AP for the current connection.
+      APCreds localCreds;              ///< The credentials of the AP for the current connection.
       IPAddress localIP;               ///< The IP address of the local device when connected to WiFi.
       WiFiClient client;               ///< The WiFi client instance for network operations.
       WiFiEventId_t eventID;           ///< The WiFi event ID for managing event handlers.
