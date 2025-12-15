@@ -29,7 +29,7 @@
    #error "BinaryClockWPS requires either ESP32_WIFI or WIFIS3 to be defined and true in BinaryClock.Defines.h or board_select.h"
 #endif
 
-#include "BinaryClock.Structs.h"       /// Global structures and enums used by the Binary Clock project.
+#include <BinaryClock.Structs.h>       /// Global structures and enums used by the Binary Clock project.
 
 #define DEFAULT_WPS_TIMEOUT_MS 120000  ///< Default WPS timeout in milliseconds (2 minutes)
 
@@ -92,8 +92,9 @@ namespace BinaryClockShield
       /// @return True if initialization was successful.
       bool initWPS();
 
-      /// @brief Cleanup WPS resources.
-      void cleanupWPS();
+      /// @brief Cleanup the WPS resources, unregister event handlers, and reset state.
+      /// @param disconnectWiFi If true, disconnects the current WiFi connection; otherwise preserves it.
+      void cleanupWPS(bool disconnectWiFi);
 
       /// @brief Extract AP credentials from WiFi connection.
       /// @return APCreds structure with connection details.
@@ -101,7 +102,12 @@ namespace BinaryClockShield
 
       // Static callback functions for WPS events.
       static void wpsEventHandler(void* arg, esp_event_base_t event_base, int32_t event_id, void* event_data);
-      // static BinaryClockWPS* instance; // Static instance for callback access
+
+      void OnWPSSuccess();
+
+      bool WaitForConnection(uint32_t timeoutMs);
+
+      bool EnsureDHCPConfigured();
       
       uint32_t timeout;             // WPS connection timeout in milliseconds.
       bool wpsActive;               // Flag indicating WPS is active.

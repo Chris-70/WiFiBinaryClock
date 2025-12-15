@@ -5,7 +5,7 @@
 
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.
 
-#include "BinaryClock.Structs.h"       /// Global structures and enums used by the Binary Clock project.
+#include <BinaryClock.Structs.h>       /// Global structures and enums used by the Binary Clock project.
 
 // STL classes required to be included:
 #include <String>

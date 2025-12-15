@@ -9,6 +9,7 @@
 #endif
 
 #if WIFI
+   #include "TaskWrapper.h"
    #include "BinaryClockWAN.h"
 #endif
 
@@ -108,7 +109,6 @@ byte i2cList[I2C_SIZE] = { 0 };
 static BinaryClock& get_BinaryClock()
    {
    static BinaryClock& binClock = BinaryClock::get_Instance();
-   // Serial << "get_BinaryClock(): Address of binClock: " << (&binClock == nullptr? "NULL" : "Valid") << endl; // *** DEBUG ***
    return binClock;
    }
 
@@ -116,8 +116,31 @@ static BinaryClock& get_BinaryClock()
 static BinaryClockWAN& get_BinaryClockWAN()
    {
    static BinaryClockWAN& binClockWAN = BinaryClockWAN::get_Instance();
-   // Serial << "get_BinaryClockWAN(): Address of binClockWAN: " << (&binClockWAN == nullptr ? "NULL" : "Valid") << endl; // *** DEBUG ***
    return binClockWAN;
+   }
+
+void setupWiFi(BinaryClockWAN& wifi, BinaryClock& binClock, bool autoConnect, uint32_t startDelay)
+   {
+   bool wifiResult = wifi.Begin(binClock, true, startDelay);
+   SERIAL_STREAM("BinaryClockWAN::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
+   vTaskDelay(pdMS_TO_TICKS(125));
+   APCreds creds = wifi.get_WiFiCreds();
+   SERIAL_STREAM("[" << millis() << "] WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
+   if (!wifi.get_IsConnected())
+      {
+      BinaryClockWPS& wps = BinaryClockWPS::get_Instance();
+      auto result = wps.ConnectWPS();
+      if (result.success == true)
+         {
+         SERIAL_STREAM("WPS Connection successful! SSID: " << result.credentials.ssid << " BSSID: " << result.credentials.bssid << " Password: " << result.credentials.pw << " Time to connect (ms): " << result.connectionTimeMs << endl)
+         wifi.set_LocalCreds(result.credentials);
+         wifi.Save();
+         }
+      else
+         {
+         SERIAL_STREAM("WPS Connection failed! Error: " << result.errorMessage << endl)
+         }
+      }
    }
 #endif
 
@@ -183,7 +206,7 @@ __attribute__((used)) void setup()
                 << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
    SERIAL_STREAM("Starting the BinaryClock Setup" << endl)
 
-   binClock.setup(!oledValid);   // If the OLED display is installed, it's likely a dev board, not the shield.
+   binClock.setup(!oledValid || true);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);
 
    // Register `TimeAlert()` to get called every second.
@@ -195,46 +218,28 @@ __attribute__((used)) void setup()
    delay(125);
 
    #if WIFI
-   bool wifiResult = wifi.Begin(binClock, true);
-   SERIAL_STREAM("BinaryClockWAN::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
-   vTaskDelay(125 / portTICK_PERIOD_MS);
-////////////////////////////////////
-// Add WiFi event handler for reconnection
-   WiFi.onEvent([](WiFiEvent_t event, WiFiEventInfo_t info) {
-      Serial.printf("[%lu] [WiFi] ", millis());
-         switch (event)
-            {
-            case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-               Serial.println("Disconnected - attempting reconnection");
-               delay(1000);
-               WiFi.reconnect();
-               break;
-            case ARDUINO_EVENT_WIFI_STA_CONNECTED:
-               Serial.println("Reconnected successfully");
-               break;
-            default:
-               Serial.print("Default case for: ");
-               Serial.println(event);
-               break;
-            }
-         });
-////////////////////////////////////
-   APCreds creds = wifi.get_WiFiCreds();
-   SERIAL_STREAM("[" << millis() << "] WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
+   auto wifiRes = CreateMethodTask<BinaryClockWAN&, BinaryClock&, bool, uint32_t> 
+                        ( &setupWiFi
+                        , "SetupWiFiTask"
+                        , 4096
+                        , tskIDLE_PRIORITY + 1
+                        , get_BinaryClockWAN()
+                        , get_BinaryClock()
+                        , true
+                        , 7500U);
    #endif 
 
    SERIAL_STREAM("[" << millis() << "] Entering Loop() now" << endl)
    delay(125);
    OLED_DISPLAY(clearDisplay())
 
-   // binClock.set_IsSerialTime(!binClock.buttonDebugTime.read()); // *** DEBUG ***
    timeWatchdog = millis();   // Reset the Watchdog Timer.
    }
 
 __attribute__((used)) void loop()
    {
    static bool wdtError = false;
-   BinaryClock& binClock = get_BinaryClock();
+   static BinaryClock& binClock = get_BinaryClock();
 
    //////////////////////////////////////
    #if WIFI
@@ -245,12 +250,10 @@ __attribute__((used)) void loop()
       firstLoop = false;
       }
 
-   #if WIFI
    BinaryClockWAN& wifi = get_BinaryClockWAN();
-   #endif
 
    static uint32_t wifiCheckTime = 0;
-   static bool wasConnected = true;
+   static bool wasConnected = false;
 
    // Check WiFi status every second
    if (millis() - wifiCheckTime > 1000)

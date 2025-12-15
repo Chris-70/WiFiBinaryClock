@@ -2,6 +2,8 @@
 #ifndef __SERIALOUTPUT_DEFINES_H__
 #define __SERIALOUTPUT_DEFINES_H__
 
+#include <Streaming.h>           /// Streaming serial output with `operator<<` (https://github.com/janelia-arduino/Streaming)
+
 /// @file SerialOutput.Defines.h
 /// @brief Defines for controlling serial output statements.
 /// @details This file contains the MACRO definitions to control the serial output
@@ -44,7 +46,7 @@
 /// The base macros are defined first, then the higher level macros are defined that
 /// use the base macros. This allows for more flexibility in controlling the output.
 /// The output commands can be changed here if needed, e.g. to change from Serial to another output method.
-#if DEV_CODE || SERIAL_OUTPUT
+#if DEV_CODE || DEBUG_OUTPUT || SERIAL_OUTPUT
    #define SERIAL_PRINT_MACRO(STRING) Serial.print(STRING);
    #define SERIAL_PRINTLN_MACRO(STRING) Serial.println(STRING);
    #define SERIAL_STREAM_MACRO(CMD_STRING) Serial << CMD_STRING;

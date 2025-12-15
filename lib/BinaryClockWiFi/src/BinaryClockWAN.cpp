@@ -42,8 +42,8 @@ namespace BinaryClockShield
    {
    BinaryClockWAN::BinaryClockWAN()
       {
-      SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClock*: ")
-         SERIAL_PRINTLN(clockPtr? clockPtr->get_IdName() : "NULL")
+      SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClockBase*: ")
+      SERIAL_PRINTLN(clockPtr? clockPtr->get_IdName() : "NULL")
       WiFi.mode(WIFI_STA);
       zuluOffset = TimeSpan(0, -5, 0, 0); // Default to EST (UTC-5) // *** DEBUG ***
       }
@@ -96,7 +96,7 @@ namespace BinaryClockShield
 
          // Ensure clean state before connection attempt
          WiFi.disconnect(true);
-         vTaskDelay(100 / portTICK_PERIOD_MS);
+         vTaskDelay(pdMS_TO_TICKS(100));
 
          wl_status_t status;
          uint8_t bssidArray[6];
@@ -124,15 +124,15 @@ namespace BinaryClockShield
             wl_status_t currentStatus = WiFi.status();
 
             // Check for failure states
-            if (currentStatus == WL_CONNECT_FAILED ||
-                currentStatus == WL_NO_SSID_AVAIL ||
-                currentStatus == WL_CONNECTION_LOST)
+            if  (    currentStatus == WL_CONNECT_FAILED
+                  || currentStatus == WL_NO_SSID_AVAIL 
+                  || currentStatus == WL_CONNECTION_LOST)
                {
                SERIAL_STREAM("Connection failed with status: " << WiFiStatusString(currentStatus) << endl)   // *** DEBUG ***
                break;
                }
 
-            vTaskDelay(500 / portTICK_PERIOD_MS);
+            vTaskDelay(pdMS_TO_TICKS(500));
             SERIAL_PRINT(".")   // *** DEBUG ***
             count++;
             }
@@ -189,22 +189,28 @@ namespace BinaryClockShield
       return networks;
       }
 
-   bool BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect)
+   bool BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect, uint32_t startDelay)
       {
-      clockPtr = &binClock;   // Save the pointer to the implementation of IBinaryClock
+      clockPtr = &binClock;   // Save the pointer to the implementation of IBinaryClockBase
       bool result = !autoConnect;
 
+      SERIAL_STREAM("BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect) called with: " << binClock.get_IdName() 
+                  << " Saved as: " << clockPtr->get_IdName() << endl)   // *** DEBUG ***
+      if (clockPtr == nullptr || clockPtr != &binClock)  // Safety check
+         {
+         SERIAL_PRINTLN("ERROR: Invalid IBinaryClockBase reference!")
+         return false;
+         }
+         
       try
          {
-         SERIAL_STREAM("BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect) called with: " << binClock.get_IdName() 
-                    << " Saved as: " << clockPtr->get_IdName() << endl)   // *** DEBUG ***
-         if (clockPtr == nullptr || clockPtr != &binClock)  // Safety check
+         if (startDelay > 0)
             {
-            SERIAL_PRINTLN("ERROR: Invalid IBinaryClock reference!")
-            return false;
+            SERIAL_STREAM("BinaryClockWAN::Begin() - Delaying start by: " << startDelay << " milli seconds." << endl)
+            vTaskDelay(pdMS_TO_TICKS(startDelay));
             }
-         
-         // Register the `WiFiEvent()` instance method, through a lambda, to get all events.
+
+         // Register the `WiFiEvent()` instance method, through a lambda, to get all WiFi events.
          eventID = WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
                this->WiFiEvent(event, info);
                });
@@ -212,21 +218,36 @@ namespace BinaryClockShield
          settings.Begin();    // Read the settings from the Non-Volatile Storage.
          localAPs = GetAvailableNetworks();  // Find all the APs in the area.
          SERIAL_STREAM("BinaryClockWAN::Begin() - found " << localAPs.size() << " networks" << endl)
-         
-         // Register `SyncAlert()` to get called when SNTP syncs the time.
-         bool regResult = ntp.RegisterSyncCallback([this](const DateTime& time) {
-               this->SyncAlert(time);  // Call the instance method
-               });
 
-         if (autoConnect && connectLocalWiFi(true))
+         if (autoConnect)
             {
-            SERIAL_STREAM("Begin(): Connected to local AP: " << WiFi.SSID() << endl) // *** DEBUG ***
+            bool apResult = connectLocalWiFi(true);
+            SERIAL_STREAM("Begin(): Connected to local AP: " << (apResult ? WiFi.SSID() : "false") << endl) // *** DEBUG ***
 
             // Wait for connection to stabilize BEFORE initializing SNTP
-            vTaskDelay(2000 / portTICK_PERIOD_MS);  // Give WiFi time to stabilize
+            vTaskDelay(pdMS_TO_TICKS(2000));  // Give WiFi time to stabilize
 
             // Check connection is still active
-            if (WiFi.isConnected())
+            if (!apResult || !WiFi.isConnected())
+               {
+               //
+               WPSResult wpsResult = wps.ConnectWPS();
+               if (wpsResult.success)
+                  {
+                  SERIAL_STREAM("    WPS connected to " << wpsResult.credentials.ssid << " with IP " << WiFi.localIP() << endl) // *** DEBUG ***
+                  localIP = WiFi.localIP();
+                  localCreds = wpsResult.credentials;
+                  settings.AddWiFiCreds(wpsResult.credentials);
+                  settings.Save();
+                  result = ConnectSNTP();
+                  }
+               else
+                  {
+                  SERIAL_STREAM("    WPS connection failed: " << wpsResult.errorMessage << endl) // *** DEBUG ***
+                  result = false;
+                  }
+               }
+            else
                {
                SERIAL_STREAM("    Connected to WiFi. ")
                WiFi.setAutoReconnect(true);
@@ -236,22 +257,18 @@ namespace BinaryClockShield
                esp_wifi_set_ps(WIFI_PS_NONE);
 
                SERIAL_STREAM("BinaryClockWAN::Begin() - Connection is stable, now initializing NTP..." << endl) // *** DEBUG ***
-               ntp.Begin(NTP_SERVER_LIST, 10000);
-               SERIAL_STREAM("    initialized NTP; Updating time..." << endl) // *** DEBUG ***
-               // initialized = true; // Temporarily set to true to allow UpdateTime() to proceed
-               // result = UpdateTime();
-               // SERIAL_STREAM("    Updated time; Result: " << (result ? "Success" : "Failure") << endl) // *** DEBUG ***
-               }
-            else
-               {
-               SERIAL_STREAM("    Connection lost during stabilization" << endl)   // *** DEBUG ***
-               result = false;
+               result = ConnectSNTP();
                }
             }
          }  // try
       catch (const std::exception& e)
          {
-         SERIAL_STREAM("    Exception occurred in BinaryClockWAN::Begin(): " << e.what() << endl)
+         SERIAL_OUT_STREAM("    Exception occurred in BinaryClockWAN::Begin(): " << e.what() << endl)
+         result = initialized = false;
+         }
+      catch (...)
+         {
+         SERIAL_OUT_STREAM("    Unknown exception caught in BinaryClockWAN::Begin(" << binClock.get_IdName() << ")")
          result = initialized = false;
          }
 
@@ -261,8 +278,23 @@ namespace BinaryClockShield
       vTaskDelay(1250 / portTICK_PERIOD_MS);
       return result;
       }
+      
+   bool BinaryClockWAN::ConnectSNTP()
+      {
+      ntp.Begin(NTP_SERVER_LIST, 3000);
+      SERIAL_STREAM("    initialized NTP; Updating time..." << endl) // *** DEBUG ***
 
-void BinaryClockWAN::End(bool save)
+      // Register `SyncAlert()` to get called when SNTP syncs the time.
+      bool regResult = ntp.RegisterSyncCallback([this](const DateTime& time) {
+            SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - SyncAlert callback calling at: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
+            this->SyncAlert(time);  // Call the instance method
+            });
+      SERIAL_STREAM("    Registered SyncAlert callback: " << (regResult ? "Success" : "Failure") << endl) // *** DEBUG ***
+
+      return regResult;
+      }
+
+   void BinaryClockWAN::End(bool save)
       {
       ntp.UnregisterSyncCallback();
       WiFi.disconnect();
@@ -314,10 +346,11 @@ void BinaryClockWAN::End(bool save)
 
    void BinaryClockWAN::SyncAlert(const DateTime& dateTime)
       {
-      if (!initialized) { return; } // Ensure Begin() was called
+      String prefix("[" + String(millis()) + "] BinaryClockWAN::SyncAlert(" + dateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) + "): ");
+      if (!initialized) { SERIAL_PRINTLN(prefix + "- Not initialized") return; } // Ensure Begin() was called
 
       clockPtr->set_Time(dateTime);
-      SERIAL_STREAM("SyncAlert(): Time synchronized: " << dateTime.timestamp(clockPtr->get_Is12HourFormat()
+      SERIAL_STREAM(prefix << " Time synchronized: " << dateTime.timestamp(clockPtr->get_Is12HourFormat()
             ? DateTime::TIMESTAMP_DATETIME12 : DateTime::TIMESTAMP_DATETIME) << endl)  // *** DEBUG ***
       }
 
@@ -327,7 +360,7 @@ void BinaryClockWAN::End(bool save)
 
       String curZone = settings.get_Timezone();
       ntp.set_Timezone(value.c_str());
-      SERIAL_STREAM("set_Timezone(): Changing timezone from [" << curZone << "] to [" << value << "]" << endl) // *** DEBUG ***
+      SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::set_Timezone(): Changing timezone from [" << curZone << "] to [" << value << "]" << endl) // *** DEBUG ***
       if (curZone != value)
          {
          settings.set_Timezone(value);
@@ -385,13 +418,13 @@ void BinaryClockWAN::End(bool save)
          }
       }
 
-   // WARNING: This function is called from a separate FreeRTOS task (thread)!
-   void BinaryClockWAN::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
-      {
-      SERIAL_PRINTF("[%7lu] {WiFiGotIp} event %2d: ", millis(), event) // *** DEBUG ***
-      SERIAL_PRINTLN("        WiFi connected")
-      SERIAL_PRINT("        IP address: ")
-      SERIAL_PRINTLN(IPAddress(info.got_ip.ip_info.ip.addr))           // *** DEBUG ***
-      }
+   // // WARNING: This function is called from a separate FreeRTOS task (thread)!
+   // void BinaryClockWAN::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
+   //    {
+   //    SERIAL_PRINTF("[%7lu] {WiFiGotIp} event %2d: ", millis(), event) // *** DEBUG ***
+   //    SERIAL_PRINTLN("        WiFi connected")
+   //    SERIAL_PRINT("        IP address: ")
+   //    SERIAL_PRINTLN(IPAddress(info.got_ip.ip_info.ip.addr))           // *** DEBUG ***
+   //    }
 
    } // namespace BinaryClockShield

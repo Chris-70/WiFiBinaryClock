@@ -35,12 +35,12 @@
   This library provides the following classes:
 
   - Interface class:
-    - [**IBinaryClock**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/IBinaryClock.h):
+    - [**IBinaryClockBase**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/IBinaryClockBase.h):
                         A pure interface class for the Binary Clock. This is used to define the methods and properties
                         that the BinaryClock class must implement and that other classes can count on to be available.
   - Main class:
     - [**BinaryClock**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BinaryClock.h):
-                        The main class, implements the IBinaryClock interface, handles all aspects of the
+                        The main class, implements the IBinaryClockBase interface, handles all aspects of the
                         Binary Clock Shield, from display to settings and callbacks.
   - Helper classes:
     - [**BCButton**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/BCButton.h):
@@ -148,7 +148,7 @@
 #include <Arduino.h>
 
 #include "BinaryClock.h"         // Header file for this library 
-#include "MorseCodeLED.h"        // Used in PurgatoryTask() to flash error (Total delta bytes: 0 RAM; 220 ROM on UNO R3)
+#include <MorseCodeLED.h>        // Used in PurgatoryTask() to flash error (Total delta bytes: 0 RAM; 220 ROM on UNO R3)
 #include "pitches.h"             // Need to create the pitches.h library: https://arduino.cc/en/Tutorial/ToneMelody
 
 // Include libraries
@@ -157,6 +157,9 @@
 #include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
 
 #if FREE_RTOS
+   #define configUSE_TASK_NOTIFICATIONS            1
+   #define configTASK_NOTIFICATION_ARRAY_ENTRIES   1
+
    #if defined(UNO_R4_MINIMA) || defined(UNO_R4_WIFI)
       #define AUTOSTART_FREERTOS    // Enable FreeRTOS autostart feature
       #include <Arduino_FreeRTOS.h> // FreeRTOS for Arduino
@@ -167,7 +170,9 @@
       #include <FreeRTOS.h>         // FreeRTOS for ESP32
       #include <task.h>             // FreeRTOS task support
    #endif
-#endif
+
+   #include <TaskWrapper.h>         // Helper template methods to launch an instance method 1 time then exit task.
+#endif // FREE_RTOS
 
 #include <assert.h>              // Catch code logic errors during development.
 
@@ -282,6 +287,18 @@ namespace BinaryClockShield
          ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
             CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,
             CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue }
+
+         // `LedPattern::aText`:
+         // `Atext` pattern (index 8): A big RoyalBlue 'A' [ᐋ] (for AP Access WEB page)
+         ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
+            CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::Black,     CRGB::Black,
+            CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue }
+
+         // `LedPattern::pText`:
+         // `Ptext` pattern (index 9): A big RoyalBlue 'P' [ᐳ] (for Phone app)
+         ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
+            CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::Black,     CRGB::Black,
+            CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue }
          #endif
          };
 
@@ -457,6 +474,38 @@ namespace BinaryClockShield
              << (s2Pressed? "Pressed" : "OFF") << "; Value: " << buttonS2.get_Value() << " OnValue: is: " 
              << buttonS2.get_OnValue() << endl)   // *** DEBUG ***
 
+      TaskHandle_t timeHandle = CreateInstanceTask<BinaryClock, void*>
+            ( this
+            , &BinaryClock::TimeTask
+            , "TimeTask"
+            , 3096
+            , tskIDLE_PRIORITY + 1
+            , nullptr);
+
+      if (timeHandle == nullptr)
+         {
+         SERIAL_OUT_PRINTLN("Failed to create the 'TimeTask', unable to continue.")
+         PurgatoryTask("Time Task failed");
+         }
+
+      set_TimeDispatchHandle(timeHandle);
+
+      TaskHandle_t callbackHandle = CreateInstanceTask<BinaryClock, void*>
+            ( this
+            , &BinaryClock::CallbackTask
+            , "CallbackTask"
+            , 3096
+            , tskIDLE_PRIORITY + 1
+            , nullptr);
+
+      if (callbackHandle == nullptr)
+         {
+         SERIAL_OUT_PRINTLN("Failed to create the 'CallbackTask', unable to continue.")
+         PurgatoryTask("Callback Task failed");
+         }
+
+      set_CallbackTaskHandle(callbackHandle);
+
       if (SetupRTC())
          {
          testLeds = testLeds || RTC.lostPower();
@@ -464,7 +513,7 @@ namespace BinaryClockShield
          SetupAlarm();
 
          // Show the serial output, display the initial info.
-         if (isSerialSetup) 
+         if (get_IsSerialSetup()) 
             { settings.Begin(); } 
          }
       else
@@ -506,14 +555,14 @@ namespace BinaryClockShield
             if (Alarm2.fired)
                {
                PlayAlarm();
-               CallbackAlarmTriggered = true;
+               set_CallbackAlarmTriggered(true);
                Alarm2.fired = false;
                }
             }
 
          CallbackDispatch();
          yield();
-      }
+         }
       else
          {
          // Process settings even when time hasn't updated
@@ -530,9 +579,9 @@ namespace BinaryClockShield
    //################################################################################//
 
    BinaryClock::BinaryClock() 
-         : RTCinterruptWasCalled(false)
-         , CallbackAlarmTriggered(false)
-         , CallbackTimeTriggered(false)
+         : rtcInterruptWasCalled(false)
+         , callbackAlarmTriggered(false)
+         , callbackTimeTriggered(false)
          , onColors(OnColor)
          , offColors(OffColor)
          , onHourPM(OnHourPM)
@@ -643,9 +692,9 @@ namespace BinaryClockShield
       callbackAlarmEnabled = false;
   
       // Reset interrupt flags
-      RTCinterruptWasCalled = false;
-      CallbackTimeTriggered = false;
-      CallbackAlarmTriggered = false;
+      set_RTCinterruptWasCalled(false);
+      set_CallbackTimeTriggered(false);
+      set_CallbackAlarmTriggered(false);
       }
 
    //#####################################################################//
@@ -792,27 +841,9 @@ namespace BinaryClockShield
    //#            Initialize the FastLED library                         #//
    //#####################################################################//
 
-   void BinaryClock::SetupFastLED(bool testLEDs)
+   void BinaryClock::splashScreen(bool testLEDs)
       {
-      // Set the `OnHhour` to the default color (24 hour mode; PM; or always when AmColor isn't Black)
-      // The `OnColor` for the hours row is saved to the `OnHourPM` for use with the `OnHourAM` values.
-      // These hour colors are copied to save them when when the OnHourAM colors are in use as they 
-      // overwrite the hour LEDs. This only happens when the AM indicator is Black, otherwise it's unused.
-      // Given the target is an UNO board, a little bit bashing between between the same array types
-      // should be fine as the C++ standard states the data is contiguous.
-      memmove(OnHourPM.data(), (OnColor.data() + NUM_SECOND_LEDS + NUM_MINUTE_LEDS), sizeof(OnHourPM));
-      
-      FastLED.setBrightness(0);
-      FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
-      FastLED.clearData();
-      FastLED.show();
-      delay(50);
-      
       int frequency = 3;
-      FastLED.setCorrection(TypicalSMD5050);
-      // Limit to 450mA at 5V of power draw total for all LEDs
-      FastLED.setMaxPowerInVoltsAndMilliamps(5, 450);
-      FastLED.setBrightness(brightness);
       DisplayLedPattern(LedPattern::rainbow);      // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 2, 25, frequency);    // Acts as a delay(2000/3) and does something.
       // Display the LED test patterns for the user.
@@ -830,7 +861,11 @@ namespace BinaryClockShield
          FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(4000/3) and does something.
          #if WIFI
          DisplayLedPattern(LedPattern::wText); 
-         FlashLed(HeartbeatLED, 2, 50, frequency);      // Acts as a delay(2000/3) and does something.
+         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
+         DisplayLedPattern(LedPattern::aText); 
+         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
+         DisplayLedPattern(LedPattern::pText); 
+         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
          #endif
          frequency = 2;
          }
@@ -838,8 +873,56 @@ namespace BinaryClockShield
       // Display the rainbow pattern over all pixels to show everything working.
       DisplayLedPattern(LedPattern::rainbow);   // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 5, 25, frequency); // Acts as a delay(5000/2) and does something.
-      DisplayLedPattern(LedPattern::offColors);
-      FlashLed(HeartbeatLED, 1, 25, frequency); // Acts as a delay(1000/2) and does something.
+      // DisplayLedPattern(LedPattern::offColors);
+      // FlashLed(HeartbeatLED, 1, 25, frequency); // Acts as a delay(1000/2) and does something.
+      };
+
+
+   void BinaryClock::SetupFastLED(bool testLEDs)
+      {
+      // Set the `OnHhour` to the default color (24 hour mode; PM; or always when AmColor isn't Black)
+      // The `OnColor` for the hours row is saved to the `OnHourPM` for use with the `OnHourAM` values.
+      // These hour colors are copied to save them when when the OnHourAM colors are in use as they 
+      // overwrite the hour LEDs. This only happens when the AM indicator is Black, otherwise it's unused.
+      // Given the target is an UNO board, a little bit bashing between between the same array types
+      // should be fine as the C++ standard states the data is contiguous.
+      memmove(OnHourPM.data(), (OnColor.data() + NUM_SECOND_LEDS + NUM_MINUTE_LEDS), sizeof(OnHourPM));
+      
+      // Turn off the display, start with a blank display.
+      FastLED.setBrightness(0);
+      FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+      FastLED.clearData();
+      FastLED.show();
+      delay(50);
+      
+      FastLED.setCorrection(TypicalSMD5050);
+      // Limit to 450mA at 5V of power draw total for all LEDs
+      FastLED.setMaxPowerInVoltsAndMilliamps(5, 450);
+      FastLED.setBrightness(brightness);
+
+
+      #if FREE_RTOS
+      // Create splash screen task with error handling to allow setup to continue.
+      bool taskCreated = CreateInstanceTask<BinaryClock, bool>(
+            this,                         // Instance pointer
+            &BinaryClock::splashScreen,   // Method pointer
+            "LEDSplashTask",              // Task name
+            testLEDs                      // Argument
+            );
+
+      if (taskCreated)
+         {
+         SERIAL_STREAM("[" << millis() << "] Splash screen task created successfully" << endl)
+         }
+      else
+         {
+         SERIAL_PRINTLN("ERROR: Failed to create splash screen task!")
+         // Fall back to direct execution with a limited screen display.
+         splashScreen(false);
+         }
+      #else
+      splashScreen(testLEDs);
+      #endif
       }
 
    void BinaryClock::FlashLed(uint8_t ledNum, uint8_t repeat, uint8_t dutyCycle, uint8_t frequency)
@@ -880,9 +963,15 @@ namespace BinaryClockShield
 
    void BinaryClock::RTCinterrupt()
       {
-      RTCinterruptWasCalled = true;
+      set_RTCinterruptWasCalled(true);
+
+      #if FREE_RTOS
+      BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+      xTaskNotifyFromISR(get_TimeDispatchHandle(), 0, eNoAction, &xHigherPriorityTaskWoken);
+      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+      #endif
       // Set the trigger flag IFF the "callback time is enabled" flag is set.
-      CallbackTimeTriggered = callbackTimeEnabled;
+      set_CallbackTimeTriggered(callbackTimeEnabled);
       }
 
    void BinaryClock::set_Time(DateTime value)
@@ -908,7 +997,7 @@ namespace BinaryClockShield
             { 
             RTC.adjust(value, get_Is12HourFormat()); 
             time = ReadTime();
-            SERIAL_STREAM(">>> RTC time adjusted to: " << time.timestamp() << endl)   // *** DEBUG ***
+            SERIAL_STREAM(">>> RTC time adjusted to: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl)   // *** DEBUG ***
             }
          else
             { SERIAL_STREAM("     RTC has the same time: " << time.timestamp(timestampFormat) << ". Nothing to do." << endl) }  // *** DEBUG ***
@@ -1213,11 +1302,11 @@ namespace BinaryClockShield
       }
 
    #define TIMETASK_DELAY_MS  100      ///< The minimum time between time task calls.
-   bool BinaryClock::TimeDispatch()
+   bool BinaryClock::TimeDispatch(uint32_t notificationFlags)
       {
       bool result = false;
 
-      if (RTCinterruptWasCalled)
+      if (get_RTCinterruptWasCalled() || (notificationFlags & TIME_TRIGGER))
          {
          static unsigned long curTime  = 0UL;
          static unsigned long lastTime = 0UL;
@@ -1225,9 +1314,7 @@ namespace BinaryClockShield
          //////////////////////////////////////
          curTime = millis();
          if ((lastTime + TIMETASK_DELAY_MS) > curTime)
-            { 
-            return result; 
-            }
+            { return result; }
          else
             { lastTime = curTime; }
          //////////////////////////////////////
@@ -1252,7 +1339,7 @@ namespace BinaryClockShield
                   if (alarm.freq == AlarmTime::Repeat::Never)
                      {
                      RTC.disableAlarm(alarm.number);
-                     alarm.status = 0;
+                     alarm.status = 0; // Inactive
                      }
                   }
                else
@@ -1261,30 +1348,62 @@ namespace BinaryClockShield
                return alarm.fired;
                };
 
-         CallbackAlarmTriggered = checkAlarm(Alarm2); // Set the alarm callback flag
+         #if FREE_RTOS
+         notificationFlags |= TIME_TRIGGER;  // Set the time trigger flag in case we got here from a wait timeout.
+         if (checkAlarm(Alarm1)) 
+            { 
+            notificationFlags |= ALARM1_TRIGGER; 
+            set_CallbackAlarmTriggered(true);
+            }
+         if (checkAlarm(Alarm2)) 
+            { 
+            notificationFlags |= ALARM2_TRIGGER; 
+            set_CallbackAlarmTriggered(true);
+            }
+
+         // Notify the callback task with the flags.
+         xTaskNotify(get_CallbackTaskHandle(), notificationFlags, eSetBits);
+         #else
+         set_CallbackAlarmTriggered(checkAlarm(Alarm1) || checkAlarm(Alarm2)); // Set the alarm callback flag
+         #endif
 
          uint8_t hour = time.hour();
          HourColor ampmColor = (hour < 12)? HourColor::Am : HourColor::Pm;
          // Check if we need to switch the hour colors, i.e. from PM to AM or AM to PM.
          if (((prevHour == 23) && (hour == 0)) || ((prevHour == 11) && (hour == 12)))
             {
-            switchColors = true; // Signal a color switch is needed
+            switchColors = true; // Signal a color switch is neede~        d
             curHourColor = (get_Is12HourFormat() ? ampmColor : HourColor::Hour24);
             }
 
-         RTCinterruptWasCalled = false;
+         set_RTCinterruptWasCalled(false);
          result = true;
-         }  // RTCinterruptWasCalled
+         }  // get_RTCinterruptWasCalled()
 
       return result;
-      }
+      } // TimeDispatch()
 
    #if FREE_RTOS
-   void BinaryClock::TimeTask()
+   void BinaryClock::TimeTask(void*)
       {
+      uint32_t notificationValue;
       FOREVER
          {
-         if (RTCinterruptWasCalled)
+         BaseType_t notifyResult = xTaskNotifyWait ( TIME_TRIGGER | EXIT_TRIGGER
+                                                   , 0x0000
+                                                   , &notificationValue
+                                                   , pdMS_TO_TICKS(TIMETASK_DELAY_MS));
+
+         if (notifyResult == pdTRUE)
+            {
+            if (notificationValue & EXIT_TRIGGER)
+               { break; }
+            if (notificationValue & TIME_TRIGGER)
+               { set_CallbackTimeTriggered(true); }
+
+            TimeDispatch(notificationValue);
+            }
+         if (get_RTCinterruptWasCalled())
             { TimeDispatch(); }
 
          // vTaskDelay to prevent busy waiting
@@ -1292,49 +1411,68 @@ namespace BinaryClockShield
          }
       }
 
-   void BinaryClock::CallbackTask()
+   void BinaryClock::CallbackTask(void*)
       {
+      uint32_t notificationValue;
       FOREVER
          {
-         if (CallbackTimeTriggered || CallbackAlarmTriggered)
-            { CallbackDispatch(); }
+         BaseType_t notifyResult = xTaskNotifyWait ( ALL_TRIGGERS
+                                                   , ALL_TRIGGERS
+                                                   , &notificationValue
+                                                   , pdMS_TO_TICKS(CB_MAX_WAIT_MS));
 
-         // vTaskDelay to prevent busy waiting
-         vTaskDelay(pdMS_TO_TICKS(50));
+         if (notifyResult == pdTRUE)
+            {
+            if (notificationValue & EXIT_TRIGGER)
+               { break; }
+            if (notificationValue & TIME_TRIGGER)
+               { set_CallbackTimeTriggered(true); }
+            if (notificationValue & ALARMS_TRIGGER)
+               { set_CallbackAlarmTriggered(true); }
+
+            CallbackDispatch();
+            }
+         else if (notifyResult == pdFALSE)
+            {
+            if (get_CallbackTimeTriggered() || get_CallbackAlarmTriggered())
+               { CallbackDispatch(); }
+            }
          }
       }
    #endif
 
    void BinaryClock::CallbackDispatch()
       {
-      if (callbackTimeEnabled && CallbackTimeTriggered && timeCallback != nullptr)
+      if (callbackTimeEnabled && get_CallbackTimeTriggered() && timeCallback != nullptr)
          {
-         CallbackFtn(CallbackTimeTriggered, get_Time(), timeCallback);
+         set_CallbackTimeTriggered(false);
+         CallbackFtn(get_Time(), timeCallback);
          }
 
-      if (callbackAlarmEnabled && CallbackAlarmTriggered && alarmCallback != nullptr)
+      if (callbackAlarmEnabled && get_CallbackAlarmTriggered() && alarmCallback != nullptr)
          {
-         CallbackFtn(CallbackAlarmTriggered, get_Alarm().time, alarmCallback);
+         set_CallbackAlarmTriggered(false);
+         CallbackFtn(get_Alarm().time, alarmCallback);
          }
       }
 
-   void BinaryClock::CallbackFtn(volatile bool& triggerFlag, const DateTime& time, void(*callback)(const DateTime&))
+   void BinaryClock::CallbackFtn(DateTime time, void(*callback)(const DateTime&))
       {
-      // Atomically check and reset flag
-      bool shouldCall = false;
-      {
-      noInterrupts(); // Critical section
-      if (triggerFlag)
+      // Protect ourselves against come unknow callback function.
+      try
          {
-         triggerFlag = false;
-         shouldCall = true;
+         if (callback != nullptr)
+            {
+            callback(time);
+            }
          }
-      interrupts();
-      }
-
-      if (shouldCall && callback != nullptr)
+      catch (std::exception& e)
          {
-         callback(time);
+         SERIAL_OUT_STREAM("BinaryClock::CallbackFtn() - Caught exception: '" << e.what() << "' at " << time.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
+         }
+      catch (...)
+         {
+         SERIAL_OUT_STREAM("BinaryClock::CallbackFtn() - Caught an unknow exception at " << time.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
          }
       }
 
@@ -1343,6 +1481,9 @@ namespace BinaryClockShield
       // This is where failure comes to die.
       FastLED.clear(true); // Clear the LEDs.
       #ifdef ESP32_D1_R32_UNO
+      // We are in Purgatory, button S3 isn't used, flash the builtin LED.
+      // To leave Purgatory the RTC must appear, then we reboot and
+      // IO02 is defined as the S3 button again and BUILTIN_LED is redefined.
       HeartbeatLED = 2;
       #else
       HeartbeatLED = LED_BUILTIN;
@@ -1378,7 +1519,7 @@ namespace BinaryClockShield
       // So, flash the message: 
       //       CQD NO RTC  -  Come Quick Distress NO Real Time Clock.
       //       -.-. --.- -..  -. ---   .-. - -.-.
-      // We can't get out of purgatory without a Real Time Clock
+      // We can't get out of purgatory without a Real Time Clock.
       // ---
       // (*) Its actual meaning is: "General Call To Any Station - Distress"
       //     CQ is shorthand for: General Call To Any Station. 
@@ -1400,7 +1541,13 @@ namespace BinaryClockShield
 
       FOREVER
          {
-         morseCode.Flash_CQD_NO_RTC();        
+         #if UNO_R3
+         morseCode.Flash_CQD_NO_RTC();
+         #else
+         morseCode.FlashString("CQD");
+         delay(750);
+         morseCode.FlashString(message);
+         #endif
          delay(1950);
 
          if (RTC.begin())

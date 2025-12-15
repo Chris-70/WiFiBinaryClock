@@ -144,8 +144,8 @@ namespace BinaryClockShield
       /// @details 
       /// @param servers List of NTP servers to use, default is the `NTP_SERVER_LIST` define.
       /// @param delayMS Delay in milliseconds before starting SNTP service, default is 0 ms.
-      /// @param block If true, the call will block until initialization is complete, otherwise 
-      ///              initialization will be performed asynchronously.
+      /// @param block Optionsal flag: If true, the call will block until initialization is complete,  
+      ///              otherwise initialization will be performed asynchronously. Default: false.
       void Begin(const std::vector<String>& servers = NTP_SERVER_LIST, size_t delayMS = 0U, bool block = false);
 
       /// @brief End SNTP service

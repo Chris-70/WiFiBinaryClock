@@ -1,3 +1,9 @@
+/// @file BinaryClock.Structs.h
+/// @brief Header file defining global structures and enums for the Binary Clock WiFi project.
+/// @details This file contains the structures and enums used throughout the Binary Clock WiFi project.
+///          These elements are referenced in multiple libraries and the main program.
+/// @author Chris-70 (2025/11)
+
 #pragma once
 #ifndef __BINARYCLOCKSTRUCTS_H__
 #define __BINARYCLOCKSTRUCTS_H__
@@ -13,7 +19,7 @@
 
 #if ESP32_WIFI // == true
    #include <WiFi.h>                   /// For WiFi connectivity class: `WiFiClass`
-#elif WIFIS3 // == true
+#elif WIFIS3   // == true
    #include <WiFiS3.h>                 /// For WiFi connectivity class: `WiFiS3Class`
 #endif
 
@@ -84,6 +90,8 @@ namespace BinaryClockShield
          rainbow,       ///< The colors of the rainbow on the diagnal pattern.
          #if WIFI
          wText,         ///< The big RoyalBlue **`W`** [📶] for the WPS / WiFi pattern.
+         aText,         ///< The big RoyalBlue **`A`** [ᐋ] for the AP Access WEB page pattern.
+         pText,         ///< The big RoyalBlue **`P`** [ᐳ] for the Phone app pattern.
          #endif
          endTAG         ///< The end marker, also equal to the number of patterns defined (7 or 8).
          };
@@ -97,6 +105,14 @@ namespace BinaryClockShield
    ///          This is the base structure for the other WiFi structures defined below.  
    ///          This combination is assumed to be unique for each AP.  The BSSID can be
    ///          empty, in which case the first AP with the matching SSID will be used.
+   /// @remarks This is the common base structure for two different child structures:  
+   ///          1. WiFiInfo - holds additional info about the AP such as RSSI and AuthMode.   
+   ///          2. APCreds  - holds the password (pw) for the AP.  
+   ///          The `WiFiInfo` holds all the information returned from `WiFiClass::scanNetworks()` 
+   ///          while `APCreds` stores the AP password in `BinaryClockSettings` on NVS.  
+   ///          This structure allows linking the two information streams for connecting to an AP.
+   /// @see APCreds
+   /// @see WiFiInfo
    /// @author Chris-70 (2025/09)
    struct APNames
       {
@@ -140,7 +156,9 @@ namespace BinaryClockShield
    /// @details This structure extends the `APNames` structure to include the signal strength (RSSI)
    ///          and authentication mode (AuthMode) of the Access Point. It includes equality operators
    ///          that extend APNames to include comparing the `authMode` values.  
-   ///          This is used when scanning for available networks to encapsulate the information about each AP.
+   ///          This is used when scanning for available networks to encapsulate the information 
+   ///          about each AP from a call to `WiFiClass::scanNetworks()`.
+   /// @see APNames
    /// @author Chris-70 (2025/09)
    struct WiFiInfo : public APNames
       {
@@ -160,6 +178,7 @@ namespace BinaryClockShield
    /// @brief The structure to hold the WiFi Access Point credentials including SSID, BSSID and password.
    /// @details This structure extends the `APNames` structure to include the password (pw) for the Access Point.  
    ///          This structure is used to store the credentials needed to connect to a WiFi Access Point.
+   /// @see APNames
    /// @author Chris-70 (2025/09)
    struct APCreds : public APNames
       {
@@ -174,6 +193,8 @@ namespace BinaryClockShield
    /// @brief The structure to hold the WiFi Access Point credentials including an ID.
    /// @details This structure extends the `APCreds` structure to include a unique ID for the Access Point.  
    ///          This structure is used to manage multiple WiFi Access Points and their credentials.
+   /// @remarks This structure is only used internally in the `BinaryClockSettings` class.         
+   /// @see APCreds
    /// @author Chris-70 (2025/09)
    struct APCredsPlus : public APCreds
       {
@@ -265,19 +286,19 @@ namespace BinaryClockShield
    /// @details This array maps the `wifi_auth_mode_t` enum values to human-readable strings.
    ///          This is useful for logging and debugging purposes to understand the authentication modes.
    /// @see AuthModeString()
-   static const char* AuthModeStr[] =
-      {
-      "Open",                 // WIFI_AUTH_OPEN = 0,      
-      "WEP",                  // WIFI_AUTH_WEP,           
-      "WPA_PSK",              // WIFI_AUTH_WPA_PSK,       
-      "WPA2_PSK",             // WIFI_AUTH_WPA2_PSK,      
-      "WPA_WPA2_PSK",         // WIFI_AUTH_WPA_WPA2_PSK,  
-      "ENTERPRISE",           // WIFI_AUTH_ENTERPRISE,    
-      "WPA3_PSK",             // WIFI_AUTH_WPA3_PSK,      
-      "WPA2_WPA3_PSK",        // WIFI_AUTH_WPA2_WPA3_PSK, 
-      "WAPI_PSK",             // WIFI_AUTH_WAPI_PSK,      
-      "WPA3_ENT_192"          // WIFI_AUTH_WPA3_ENT_192,  
-      };
+   static const char* AuthModeStr[] 
+      =  {
+         "Open",                 // WIFI_AUTH_OPEN = 0,      
+         "WEP",                  // WIFI_AUTH_WEP,           
+         "WPA_PSK",              // WIFI_AUTH_WPA_PSK,       
+         "WPA2_PSK",             // WIFI_AUTH_WPA2_PSK,      
+         "WPA_WPA2_PSK",         // WIFI_AUTH_WPA_WPA2_PSK,  
+         "ENTERPRISE",           // WIFI_AUTH_ENTERPRISE,    
+         "WPA3_PSK",             // WIFI_AUTH_WPA3_PSK,      
+         "WPA2_WPA3_PSK",        // WIFI_AUTH_WPA2_WPA3_PSK, 
+         "WAPI_PSK",             // WIFI_AUTH_WAPI_PSK,      
+         "WPA3_ENT_192"          // WIFI_AUTH_WPA3_ENT_192,  
+         };
    static const size_t AuthModeSize = sizeof(AuthModeStr) / sizeof(AuthModeStr[0]); ///< The number of strings in the array.
    static_assert(AuthModeSize == WIFI_AUTH_MAX); // Test we have the correct number of strings.
 
@@ -303,17 +324,17 @@ namespace BinaryClockShield
    ///          This is useful for logging and debugging purposes to understand the WiFi connection status.
    /// @remarks The `WL_NO_SHIELD` value is 255, so it is placed at index 0 by adding 1 to the enum value.
    /// @see WiFiStatusString()
-   static const char* WlStatusStr[WL_STATUS_SIZE] =
-      {
-      "WL_NO_SHIELD",        // WL_NO_SHIELD        = 255 + 1 == 0,   // for compatibility with WiFi Shield library
-      "WL_IDLE_STATUS",      // WL_IDLE_STATUS      = 0   + 1 == 1,
-      "WL_NO_SSID_AVAIL",    // WL_NO_SSID_AVAIL    = 1   + 1 == 2,
-      "WL_SCAN_COMPLETED",   // WL_SCAN_COMPLETED   = 2   + 1 == 3,
-      "WL_CONNECTED",        // WL_CONNECTED        = 3   + 1 == 4,
-      "WL_CONNECT_FAILED",   // WL_CONNECT_FAILED   = 4   + 1 == 5,
-      "WL_CONNECTION_LOST",  // WL_CONNECTION_LOST  = 5   + 1 == 6,
-      "WL_DISCONNECTED"      // WL_DISCONNECTED     = 6   + 1 == 7
-      };
+   static const char* WlStatusStr[WL_STATUS_SIZE] 
+      =  {
+         "WL_NO_SHIELD",        // WL_NO_SHIELD        = 255 + 1 == 0,   // for compatibility with WiFi Shield library
+         "WL_IDLE_STATUS",      // WL_IDLE_STATUS      = 0   + 1 == 1,
+         "WL_NO_SSID_AVAIL",    // WL_NO_SSID_AVAIL    = 1   + 1 == 2,
+         "WL_SCAN_COMPLETED",   // WL_SCAN_COMPLETED   = 2   + 1 == 3,
+         "WL_CONNECTED",        // WL_CONNECTED        = 3   + 1 == 4,
+         "WL_CONNECT_FAILED",   // WL_CONNECT_FAILED   = 4   + 1 == 5,
+         "WL_CONNECTION_LOST",  // WL_CONNECTION_LOST  = 5   + 1 == 6,
+         "WL_DISCONNECTED"      // WL_DISCONNECTED     = 6   + 1 == 7
+         };
    static const size_t WlStatusSize = sizeof(WlStatusStr) / sizeof(WlStatusStr[0]); ///< The number of strings in the array (i.e. 8).
 
    /// @brief Lookup function for WiFi status strings. Convert `wl_status_t` to a string.

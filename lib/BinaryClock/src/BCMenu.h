@@ -2,7 +2,7 @@
 /// @brief This file contains the declaration of the `BCMenu` class for the menu.
 /// @details The `BCMenu` class manages the settings menu for the Binary Clock Shield.
 ///          It allows the user to set the time and alarm using the shield buttons.   
-///          The `IBinaryClock` interface is used to interact with the clock hardware.  
+///          The `IBinaryClockBase` interface is used to interact with the clock hardware.  
 ///          The settings menu is a state machine that processes button presses.  
 ///          This class also handles the serial output of the settings menu.
 /// @author Chris-70 (2025/09)
@@ -11,7 +11,7 @@
 #ifndef __BC_MENU_H__
 #define __BC_MENU_H__
 
-#include "IBinaryClock.h"
+#include <IBinaryClockBase.h>
 
 namespace BinaryClockShield
    {
@@ -34,10 +34,10 @@ namespace BinaryClockShield
    ///          The settings menu is a state machine that processes button presses
    ///          and updates the settings state accordingly. This class is designed
    ///          to be called from the main loop of the program every few ms.  
-   /// @par IBinaryClock Interface
-   ///          This class requires an implementation of the `IBinaryClock` interface
+   /// @par IBinaryClockBase Interface
+   ///          This class requires an implementation of the `IBinaryClockBase` interface
    ///          to interact with the clock hardware. This is passed in the constructor.  
-   ///          The `IBinaryClock` interface provides methods to get and set the time, alarm,
+   ///          The `IBinaryClockBase` interface provides methods to get and set the time, alarm,
    ///          12/24 hour mode and display the menu items on the shield.
    /// @par Menu Navigation
    ///          The alarm settings have 3 stages: 
@@ -67,13 +67,13 @@ namespace BinaryClockShield
    class BCMenu
       {
    public:
-      /// @brief Constructor that takes a reference to the `IBinaryClock` interface
+      /// @brief Constructor that takes a reference to the `IBinaryClockBase` interface
       /// @details This constructor initializes the `BCMenu` class with a reference
-      ///          to an `IBinaryClock` implementation. This allows the settings class to
+      ///          to an `IBinaryClockBase` implementation. This allows the settings class to
       ///          interact with the clock hardware.
-      /// @param clockInterface Reference to the `IBinaryClock` implementation
+      /// @param clockInterface Reference to the `IBinaryClockBase` implementation
       /// @author Chris-70 (2025/09)
-      explicit BCMenu(IBinaryClock& clockInterface);
+      explicit BCMenu(IBinaryClockBase& clockInterface);
 
       /// @brief Destructor - Exit with a clean state.
       virtual ~BCMenu();
@@ -345,12 +345,12 @@ namespace BinaryClockShield
 
    private:
       // Reference to the clock interface
-      IBinaryClock& clock;
+      IBinaryClockBase& clock;
 
       // Local button references for efficiency
-      const BCButton& buttonS1;  ///< Local reference to S1 button
-      const BCButton& buttonS2;  ///< Local reference to S2 button
-      const BCButton& buttonS3;  ///< Local reference to S3 button
+      const IBCButtonBase& buttonS1;  ///< Local reference to S1 button
+      const IBCButtonBase& buttonS2;  ///< Local reference to S2 button
+      const IBCButtonBase& buttonS3;  ///< Local reference to S3 button
 
       // Settings state variables
       SettingsState currentState = SettingsState::Inactive;

@@ -2,13 +2,18 @@
 #ifndef __BINARYCLOCK_DEFINES_H__
 #define __BINARYCLOCK_DEFINES_H__
 
-#if __has_include("board_select.h")
-   #include "board_select.h"  // Include the user defined board selection file if it exists
-#endif
+#ifdef __has_include
+   #if __has_include("board_select.h")
+      #include "board_select.h"  // Include the user defined board selection file if it exists
+   #endif
+#else
+   #warning "BinaryClock.Defines.h - Cannot check for board_select.h file, including by default."
+   #include "board_select.h"     // Include the user defined board selection file, assume it exists   
+#endif // __has_include
 /// @file BinaryClock.Defines.h  
 ///###############################################################################################///  
 /// @brief  System defines and MACROs, needed as part of the software to run the shield.
-/// @verbatim
+/// @verbatim 
 ///         'Binary Clock Shield for Arduino' by Marcin Saj https://nixietester.com   
 ///           (https://nixietester.com/products/binary-clock-shield-for-arduino/)   
 ///  
@@ -91,7 +96,7 @@
 
 // ##################################################################################### //
 /// These methods/functions can be redefined if the definition is placed BEFORE the 
-/// #include "BinaryClock.Defines.h" statement in the source file where it is used.
+/// #include <BinaryClock.Defines.h> statement in the source file where it is used.
 /// Define any of these in the "board_select.h" file as it is included first.
 /// Note: These defines are for developers who are modifying/extending the library and
 ///       need to tailor the `SERIAL_TIME()`; `SERIAL_TIME_STREAM()`; and `SERIAL_SETUP_STREAM()`
@@ -410,15 +415,22 @@
 /// `IsSerialTime` properety flag for printing and eleminates the
 /// need to surrond the statements with `#if SERIAL_TIME_CODE...#endif`
 /// directives. Don't use for multiple statements as it unnecessarly
-/// adds an `if ()` statement to each line, use conditional compilation `#if ...` instead.
+/// adds an `if ()` statement to each line
+/// For multiple lines use conditional compilation `#if ... #endif` instead.
 #if SERIAL_TIME_CODE
    #define SERIAL_TIME() \
-         if (SERIAL_TIME_TEST) { SERIAL_TIME_FTN; }
+         if (SERIAL_TIME_TEST) { SERIAL_PRINT("SerialTime() - ") SERIAL_TIME_FTN; }
    #define SERIAL_TIME_STREAM(CMD_STRING) \
          if (SERIAL_TIME_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
 #else
    #define SERIAL_TIME()
    #define SERIAL_TIME_STREAM(CMD_STRING)
+#endif
+
+#if FREE_RTOS
+   #define BINARYCLOCK_DELAY_MS(ms) vTaskDelay(ms / portTICK_PERIOD_MS)
+#else
+   #define BINARYCLOCK_DELAY_MS(ms) delay(ms)
 #endif
 
 //#####################################################################################//  
