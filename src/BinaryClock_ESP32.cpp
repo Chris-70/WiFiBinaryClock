@@ -8,8 +8,10 @@
    #include <functional>
 #endif
 
-#if WIFI
+#if FREE_RTOS
    #include "TaskWrapper.h"
+#endif   
+#if WIFI
    #include "BinaryClockWAN.h"
 #endif
 
@@ -215,7 +217,7 @@ __attribute__((used)) void setup()
          };
    bool regResult = binClock.RegisterTimeCallback(callback);
    SERIAL_STREAM("Registered time callback: " << (regResult? "True" : "False") << endl)
-   delay(125);
+   delay((regResult? 125 : 0)); // ToDo: Handle the callback failure.
 
    #if WIFI
    auto wifiRes = CreateMethodTask<BinaryClockWAN&, BinaryClock&, bool, uint32_t> 

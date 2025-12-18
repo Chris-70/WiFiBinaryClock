@@ -71,6 +71,7 @@
    #define SERIAL_OUT_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
    #define SERIAL_OUT_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
 #else
+   // Replace the macros with whitespace.
    #define SERIAL_OUT_PRINT(STRING)
    #define SERIAL_OUT_PRINTLN(STRING)
    #define SERIAL_OUT_STREAM(CMD_STRING)
@@ -87,6 +88,7 @@
    #define SERIAL_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
    #define SERIAL_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
 #else
+   // Replace the macros with whitespace.
    #define SERIAL_PRINT(STRING)
    #define SERIAL_PRINTLN(STRING)
    #define SERIAL_STREAM(CMD_STRING)
@@ -103,6 +105,7 @@
    #define DEBUG_STREAM(CMD_STRING) SERIAL_STREAM_MACRO(CMD_STRING)
    #define DEBUG_PRINTF(FORMAT, ...) SERIAL_PRINTF_MACRO(FORMAT, __VA_ARGS__)
 #else
+   // Replace the macros with whitespace.
    #define DEBUG_PRINT(STRING)
    #define DEBUG_PRINTLN(STRING)
    #define DEBUG_STREAM(CMD_STRING)

@@ -124,10 +124,33 @@
 #if STL_USED
    // STL classes required to be included (when using the STL):
    #include <vector>
+   #include <exception>          /// For std::exception
    #include <functional>
 #endif
 
-#ifdef TESTING                   ///< Changes needed for unit testing of this code.
+#if FREE_RTOS
+   // __has_include is C++17 and beyond, or an extension in some compilers.
+   #ifdef __has_include
+      // FreeRTOS include files we need, find the location and include them.
+      #if __has_include(<FreeRTOS.h>)              // Typical
+         #include <FreeRTOS.h>
+         #include <task.h>
+      #elif __has_include(<freertos/FreeRTOS.h>)   // ESP32 boards
+         #include <freertos/FreeRTOS.h>
+         #include <freertos/task.h>
+      #elif __has_include(<Arduino_FreeRTOS.h>)    // Arduino UNO R4 WiFi
+         #include <Arduino_FreeRTOS.h>
+      #else
+         #error "FreeRTOS header not found. Please check your FreeRTOS installation/path location."
+      #endif // __has_include(<FreeRTOS.h>)
+   #else
+      #warning "BinaryClock.h - Cannot check for FreeRTOS.h file name variant/location. Using #include <freertos/FreeRTOS.h> as the default."
+      #include <freertos/FreeRTOS.h>
+      #include <freertos/task.h>
+   #endif // __has_include
+#endif // FREE_RTOS
+
+#if TESTING    ///< Changes needed for unit testing of this code.
    #define TEST_VIRTUAL virtual        ///< Virtul methods for unit testing ony.
    #define TEST_PROTECTED protected:   ///< Access specifier for unit testing ony.
 #else
@@ -135,15 +158,13 @@
    #define TEST_PROTECTED              ///< Access specifier only for unit testing, removed otherwise.
 #endif
 
-#if FREE_RTOS
-   #define CB_MAX_WAIT_MS              1050 
-   #define TIME_TRIGGER                0x0001
-   #define ALARM1_TRIGGER              0x0002
-   #define ALARM2_TRIGGER              0x0004
-   #define ALARMS_TRIGGER  (ALARM1_TRIGGER | ALARM2_TRIGGER)
-   #define EXIT_TRIGGER                0x8000   
-   #define ALL_TRIGGERS                0xFFFF
-#endif
+#define CB_MAX_WAIT_MS              1050 
+#define TIME_TRIGGER                0x0001
+#define ALARM1_TRIGGER              0x0002
+#define ALARM2_TRIGGER              0x0004
+#define ALARMS_TRIGGER  (ALARM1_TRIGGER | ALARM2_TRIGGER)
+#define EXIT_TRIGGER                0x8000   
+#define ALL_TRIGGERS                0xFFFF
 
 /// @namespace BinaryClockShield
 /// @brief
@@ -448,7 +469,7 @@ namespace BinaryClockShield
       #endif
 
    //#################################################################################//  
-   //                         BinaryClock DEFINITION                                  //
+   //                      BinaryClock Class DEFINITION                               //
    //#################################################################################//   
 
    //#################################################################################//
@@ -618,7 +639,9 @@ namespace BinaryClockShield
       ///          is notified with all the flags.
       /// @param notificationFlags The notification flags from FreeRTOS TimeTask() notification.
       /// @returns bool - Flag indicating the interrupt had fired and time was read from the RTC.
-      /// @design  This method exists to be called by boards that don't have FreeRTOS.
+      /// @note    The `notificationFlags` parameter is only used when called from the `FreeRTOS`
+      ///          `TimeTask()`. On boards that don't run FreeRTOS this parameter is ignored.
+      /// @design  This method exists to be called by boards that don't have `FreeRTOS`.
       ///          Instead of executing the code in 'TimeTask()' the code is encompassed in 
       ///          this method so that it can be called from within the 'loop()' method.  
       ///          The `CallbackTask()` is notified of the alarm/time triggers using the
@@ -678,17 +701,25 @@ namespace BinaryClockShield
       virtual void DisplayLedBuffer(const fl::array<CRGB, NUM_LEDS>& ledBuffer);
 
       /// @brief This method is called when the BinaryClock has died. It signals **CQD NO RTC** 
-      ///        (Come Quick Distress NO RTC) in Morse code on the builtin led forever. 
+      ///        (Come Quick Distress NO RTC) in Morse code on the builtin led forever, or
+      ///        `CQD` + `message` if a message was provided. 
       /// @details The LEDs on shield are turned OFF first (in case the shield is attached).
       ///        This is called for a catastrophic failure such as missing/failed RTC chip. 
       ///        If the RTC (i.e. shield) is attached/found the board is rebooted.
       ///        This is where the BinaryClock software goes to die.
+      /// @param message An optional message to display over serial before entering Purgatory.
+      ///        The message is also flashed out in Morse code (except for UNO R3).
+      /// @param rtcFault Flag indicating whether the fault is due to RTC failure (true).
+      ///        When the fault is RTC related, it checks for an RTC and if found it reboots.
+      ///        This  happens when the shield isn't attached at startup but is attached later.
       /// @note  We do **NOT** use the actual distress code: _SOS_, as this is reserved for actual
       ///        life critical emergencies. We use the old distress code: CQD ["-.-.  --.-  -.."] 
-      ///        which means: 'Come Quick Distress`. This was replaced more than a century ago by 
+      ///        which means: 'Come Quick Distress`(*). This was replaced more than a century ago by 
       ///        SOS. **SOS** is the international distress signal for life critical emergencies.
+      /// @par   (*) Okay, it doesn't really mean "Come Quick - Distress." `CG` is a call to all 
+      ///        stations, `D` is actually for Distress. `CGD` means: "All stations - Distress."
       /// @author Chris-70 (2025/07)
-      void PurgatoryTask(const char* message = nullptr);
+      void PurgatoryTask(const char* message = nullptr, bool rtcFault = true);
 
       /// @brief This method is called to reset the BinaryClock and restart the program.
       /// @details This method is called when the BinaryClock needs to be reset, e.g. after a fatal error.
@@ -1101,6 +1132,7 @@ namespace BinaryClockShield
       bool get_CallbackTimeTriggered()
          { return callbackTimeTriggered; }
 
+      #if FREE_RTOS
       /// @brief Property pattern for the 'TimeDispatchHandle' property.
       ///        This is the handle for the `TimeTask()`.
       /// @param value The new handle for the `TimeTask()`.
@@ -1124,6 +1156,7 @@ namespace BinaryClockShield
       /// @see set_CallbackTaskHandle()
       TaskHandle_t get_CallbackTaskHandle() const
          { return callbackTaskHandle; }
+      #endif //FREE_RTOS
 
    //#################################################################################//  
    // Private PROPERTIES   
@@ -1216,8 +1249,8 @@ namespace BinaryClockShield
       const char* alarmFormat24 = "hh:mm";         ///< 24-hour alarm format string: 00:00 to 23:59
       const char* alarmFormat12 = "HH:mm AP";      ///< 12-hour alarm format string: 12:00 AM to 11:59 PM
 
-      CRGB leds[NUM_LEDS] = {0};                   ///< Array of LED colors to display the current time
-      bool binaryArray[NUM_LEDS];                  ///< Serial Debug: Array for binary representation of the time
+      CRGB leds[TOTAL_LEDS] = {0};                 ///< Array of colors on the physical LED matrix not just the time display.
+      bool binaryArray[NUM_LEDS];                  ///< Serial Debug: Array for binary representation of the time display.
 
       fl::array<CRGB, NUM_LEDS>& onColors;         ///< Reference to the current ON  colors.
       fl::array<CRGB, NUM_LEDS>& offColors;        ///< Reference to the current OFF colors.
