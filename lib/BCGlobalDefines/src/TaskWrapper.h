@@ -81,44 +81,6 @@
    #include <Arduino.h>                // For millis(), used in debug output only.
 #endif
 
-// __has_include is C++17 and beyond, or an extension in some compilers.
-#ifdef __has_include
-   // FreeRTOS include files we need.
-	#if __has_include(<FreeRTOS.h>)
-		#include <FreeRTOS.h>
-      #include <task.h>
-   #elif __has_include(<freertos/FreeRTOS.h>)
-      #include <freertos/FreeRTOS.h>
-      #include <freertos/task.h>
-	#elif __has_include(<Arduino_FreeRTOS.h>)
-		#include <Arduino_FreeRTOS.h>
-	#else
-		#error "FreeRTOS header not found."
-	#endif // __has_include(<FreeRTOS.h>)
-
-   // Serial output include file we need, otherwise remove all output code.
-   #if __has_include("SerialOutput.Defines.h")
-      #include "SerialOutput.Defines.h"      // For SERIAL_PRINTLN, SERIAL_STREAM, SERIAL_OUT_STREAM
-   #else
-      // Check if `Streaming.h` is available for `Serial` (Arduino) streaming output of important error handling messages.
-      #if __has_include("Streaming.h")
-         #include <Streaming.h>           /// Streaming serial output with `operator<<` (https://github.com/janelia-arduino/Streaming)
-         #define SERIAL_OUT_STREAM(CMD_STRING) Serial << CMD_STRING;
-      #else
-         #define SERIAL_OUT_STREAM(CMD_STRING) 
-      #endif // __has_include("streaming.h")
-      // Remove the development output code
-      #define SERIAL_PRINTLN(STRING)
-      #define SERIAL_STREAM(CMD_STRING)
-   #endif // __has_include("SerialOutput.Defines.h")
-#else
-   #warning "TaskWrapper.h - Cannot check for FreeRTOS.h file name variant/location. Using #include <FreeRTOS.h> as the default."
-   #include <FreeRTOS.h>
-
-   #warning "TaskWrapper.h - Cannot check for 'SerialOutput.Defines.h' file name existance. Using #include 'SerialOutput.Defines.h' as the default."
-   #include "SerialOutput.Defines.h"      // For SERIAL_PRINTLN, SERIAL_STREAM, SERIAL_OUT_STREAM
-#endif
-
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // Generic Task Wrapper for Instance Methods
 ////////////////////////////////////////////////////////////////////////////////////////////////

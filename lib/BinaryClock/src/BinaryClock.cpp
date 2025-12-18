@@ -141,8 +141,9 @@
 #endif
 
 #if STL_USED
-   #include <vector>
-   #include <functional>
+   #include <vector>             // For std::vector<>
+   #include <exception>          // For std::exception
+   #include <functional>         // For std::function<>
 #endif 
 
 #include <Arduino.h>
@@ -160,21 +161,10 @@
    #define configUSE_TASK_NOTIFICATIONS            1
    #define configTASK_NOTIFICATION_ARRAY_ENTRIES   1
 
-   #if defined(UNO_R4_MINIMA) || defined(UNO_R4_WIFI)
-      #define AUTOSTART_FREERTOS    // Enable FreeRTOS autostart feature
-      #include <Arduino_FreeRTOS.h> // FreeRTOS for Arduino
-   #elif defined(ESP32) || defined(ARDUINO_ARCH_ESP3232)
-      #include <freertos/FreeRTOS.h>   // FreeRTOS for ESP32
-      #include <freertos/task.h>       // FreeRTOS task support
-   #else
-      #include <FreeRTOS.h>         // FreeRTOS for ESP32
-      #include <task.h>             // FreeRTOS task support
-   #endif
-
    #include <TaskWrapper.h>         // Helper template methods to launch an instance method 1 time then exit task.
 #endif // FREE_RTOS
 
-#include <assert.h>              // Catch code logic errors during development.
+#include <assert.h>                 // Catch code logic errors during development.
 
 namespace BinaryClockShield
    {
@@ -289,16 +279,16 @@ namespace BinaryClockShield
             CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue }
 
          // `LedPattern::aText`:
-         // `Atext` pattern (index 8): A big RoyalBlue 'A' [ᐋ] (for AP Access WEB page)
-         ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
-            CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::Black,     CRGB::Black,
-            CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue }
+         // `Atext` pattern (index 8): A big Indigo 'A' [ᐋ] (for AP Access WEB page)
+         ,{ CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Black,
+            CRGB::Indigo, CRGB::Black,  CRGB::Indigo, CRGB::Black,  CRGB::Black,  CRGB::Black,
+            CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo }
 
          // `LedPattern::pText`:
-         // `Ptext` pattern (index 9): A big RoyalBlue 'P' [ᐳ] (for Phone app)
-         ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
-            CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::Black,     CRGB::Black,
-            CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue }
+         // `Ptext` pattern (index 9): A big Orange 'P' [ᐳ] (for Phone app)
+         ,{ CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Black,  CRGB::Black,  CRGB::Black,
+            CRGB::Orange, CRGB::Black,  CRGB::Orange, CRGB::Black,  CRGB::Black,  CRGB::Black,
+            CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Orange }
          #endif
          };
 
@@ -474,6 +464,23 @@ namespace BinaryClockShield
              << (s2Pressed? "Pressed" : "OFF") << "; Value: " << buttonS2.get_Value() << " OnValue: is: " 
              << buttonS2.get_OnValue() << endl)   // *** DEBUG ***
 
+      if (SetupRTC())
+         {
+         testLeds = testLeds || RTC.lostPower();
+         SetupFastLED(testLeds | true);   // *** DEBUG *** " | true"
+         SetupAlarm();
+
+         // Show the serial output, display the initial info.
+         if (get_IsSerialSetup()) 
+            { settings.Begin(); } 
+         }
+      else
+         {
+         // Send this to Purgatory, we're dead.
+         PurgatoryTask("No RTC found.");
+         }
+
+      #if FREE_RTOS
       TaskHandle_t timeHandle = CreateInstanceTask<BinaryClock, void*>
             ( this
             , &BinaryClock::TimeTask
@@ -485,7 +492,7 @@ namespace BinaryClockShield
       if (timeHandle == nullptr)
          {
          SERIAL_OUT_PRINTLN("Failed to create the 'TimeTask', unable to continue.")
-         PurgatoryTask("Time Task failed");
+         PurgatoryTask("Time Task failed", false);
          }
 
       set_TimeDispatchHandle(timeHandle);
@@ -501,26 +508,11 @@ namespace BinaryClockShield
       if (callbackHandle == nullptr)
          {
          SERIAL_OUT_PRINTLN("Failed to create the 'CallbackTask', unable to continue.")
-         PurgatoryTask("Callback Task failed");
+         PurgatoryTask("Callback Task failed", false);
          }
 
       set_CallbackTaskHandle(callbackHandle);
-
-      if (SetupRTC())
-         {
-         testLeds = testLeds || RTC.lostPower();
-         SetupFastLED(testLeds);
-         SetupAlarm();
-
-         // Show the serial output, display the initial info.
-         if (get_IsSerialSetup()) 
-            { settings.Begin(); } 
-         }
-      else
-         {
-         // Send this to Purgatory, we're dead.
-         PurgatoryTask("No RTC found.");
-         }
+      #endif // FREE_RTOS
 
       isAmBlack = (AmColor == CRGB::Black);
       isPmBlack = (PmColor == CRGB::Black);
@@ -545,9 +537,17 @@ namespace BinaryClockShield
          {
          SettingsState settingsState = settings.ProcessMenu();
 
+         // Only display time when not in settings
          if (settingsState == SettingsState::Inactive)
             {
-            // Only display time when not in settings
+            #if FREE_RTOS
+            static bool firstTime = true;  // *** DEBUG ***
+            if (firstTime) // *** DEBUG ***
+               {
+               vTaskDelay(15000); // *** DEBUG ***
+               firstTime = false;
+               }
+            #endif
             DisplayBinaryTime(time.hour(), time.minute(), time.second(), get_Is12HourFormat());
             SERIAL_TIME()
 
@@ -612,7 +612,7 @@ namespace BinaryClockShield
       memset(leds, 0, sizeof(leds)); // Clear the LED array
       memset(binaryArray, 0, sizeof(binaryArray)); // Clear the binary array
       // Copy the  hour portion of the `OnColor` array to the `onHour24` array to initialize it.
-      memmove(onHour24.data(), OnColor.data() + HOUR_LED_OFFSET, sizeof(onHour24));
+      memmove(onHour24.data(), OnColor.data() + HOUR_ROW_OFFSET, sizeof(onHour24));
 
       Alarm1.number = ALARM_1;
       Alarm1.clear();
@@ -890,7 +890,7 @@ namespace BinaryClockShield
       
       // Turn off the display, start with a blank display.
       FastLED.setBrightness(0);
-      FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, NUM_LEDS);
+      FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, TOTAL_LEDS);
       FastLED.clearData();
       FastLED.show();
       delay(50);
@@ -1458,13 +1458,18 @@ namespace BinaryClockShield
 
    void BinaryClock::CallbackFtn(DateTime time, void(*callback)(const DateTime&))
       {
+      #if STL_USED
       // Protect ourselves against come unknow callback function.
       try
          {
+      #endif
+
          if (callback != nullptr)
             {
             callback(time);
             }
+
+      #if STL_USED
          }
       catch (std::exception& e)
          {
@@ -1474,12 +1479,14 @@ namespace BinaryClockShield
          {
          SERIAL_OUT_STREAM("BinaryClock::CallbackFtn() - Caught an unknow exception at " << time.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
          }
+      #endif
       }
 
-   void BinaryClock::PurgatoryTask(const char* message)
+   void BinaryClock::PurgatoryTask(const char* message, bool rtcFault)
       {
       // This is where failure comes to die.
       FastLED.clear(true); // Clear the LEDs.
+
       #ifdef ESP32_D1_R32_UNO
       // We are in Purgatory, button S3 isn't used, flash the builtin LED.
       // To leave Purgatory the RTC must appear, then we reboot and
@@ -1490,14 +1497,13 @@ namespace BinaryClockShield
       #endif
       pinMode(HeartbeatLED, OUTPUT);
 
-      #if SERIAL_OUTPUT
-      Serial.println(F("Failure: Unable to continue."));
+      SERIAL_OUT_PRINTLN("")
+      SERIAL_OUT_PRINTLN(F("Failure: Unable to continue."))
       if (message != nullptr)
          {
-         Serial << F("Message: ") << message << endl << endl;
+         SERIAL_OUT_STREAM(F("Message: ") << message << endl << endl)
          }
-      Serial.println(F("    CQD - Entering Purgatory..."));
-      #endif
+      SERIAL_OUT_PRINTLN(F("    CQD - Entering Purgatory..."))
 
       // =================================================================
       // -.-. --.- -..  -.-. --.- -..  -.-. --.- -..  -.-. --.- -..  
@@ -1527,13 +1533,6 @@ namespace BinaryClockShield
       MorseCodeLED morseCode(HeartbeatLED);
       morseCode.Begin();
 
-      #ifndef UNO_R3
-      morseCode.FlashString("CQD");
-      delay(1250);
-      morseCode.FlashString(message);
-      delay(1750);
-      #endif
-
       // Flash CQD NO RTC (Come Quick Distress NO Real Time Clock) to signal the failure.
       SERIAL_OUT_STREAM(F("  C    Q    D     N  O     R   T C ") << endl
                      << F(" [-.-. --.- -..   -. ---   .-. - -.-.] ") << endl
@@ -1541,7 +1540,7 @@ namespace BinaryClockShield
 
       FOREVER
          {
-         #if UNO_R3
+         #ifdef UNO_R3
          morseCode.Flash_CQD_NO_RTC();
          #else
          morseCode.FlashString("CQD");
@@ -1550,7 +1549,10 @@ namespace BinaryClockShield
          #endif
          delay(1950);
 
-         if (RTC.begin())
+         // If RTC missing was the error, check if it gets connected.
+         //    e.g. shield wasn't attached at start.
+         // Otherwise we'll spend eternity in Purgatory.
+         if (rtcFault && RTC.begin())
             {
             resetBoard(); // Reset the board if RTC is available
             }
@@ -1563,20 +1565,42 @@ namespace BinaryClockShield
    void BinaryClock::DisplayLedPattern(LedPattern patternType)
       {
       const CRGB* pattern = patternLookup(patternType);
+      // Copy the pattern to the FastLED display array and display.
+      // The pattern is based on the display LEDS size/layout.
+      // We need to translate this to the physical layoutof the LEDs
+      // on the clock. In the normal case these two are identical, in
+      // other cases we need to remap the pattern to the physical layout.
+      // If we are displaying on a larger LED matrix, e.g. 8x8, then we
+      // need to map the pattern to the smaller clock display, row by row.
       if (pattern != nullptr)
          {
-         // memmove(leds, pattern, sizeof(CRGB) * NUM_LEDS);
-         for (int i = 0; i < NUM_LEDS; i++)
+         // The number of display LEDs in each row
+         int displayLeds[NUM_ROWS] 
+               = { NUM_SECOND_LEDS  // 6
+                 , NUM_MINUTE_LEDS  // 6
+                 , NUM_HOUR_LEDS};  // 5
+         int displayOffset = 0;
+         // The physical LED offsets for each row..
+         int physicalLeds[NUM_ROWS] 
+               = { SECOND_ROW_OFFSET
+                 , MINUTE_ROW_OFFSET
+                 , HOUR_ROW_OFFSET};
+         for (int j = 0; j < NUM_ROWS; j++)
             {
-            leds[i].r = pgm_read_byte(&pattern[i].r);
-            leds[i].g = pgm_read_byte(&pattern[i].g);
-            leds[i].b = pgm_read_byte(&pattern[i].b);
+            for (int i = 0; i < displayLeds[j]; i++)
+               {
+               leds[physicalLeds[j] + i].r = pgm_read_byte(&pattern[displayOffset + i].r);
+               leds[physicalLeds[j] + i].g = pgm_read_byte(&pattern[displayOffset + i].g);
+               leds[physicalLeds[j] + i].b = pgm_read_byte(&pattern[displayOffset + i].b);
+               }
+            // Offset to the first LED in the next row.
+            displayOffset += displayLeds[j];
             }
          FastLED.show();
          }
       }
    
-   void BinaryClock::DisplayLedBuffer(const fl::array<CRGB, NUM_LEDS>& ledBuffer)
+   void BinaryClock::DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>& ledBuffer)
       {
       if (ledBuffer.empty()) { return; }
 
@@ -1585,12 +1609,85 @@ namespace BinaryClockShield
       FastLED.show();
       }
 
+   ////////////////////////////////////////////////////////////////////////////////////
+   // Convert values from DEC to BIN format and display
+
+   void BinaryClock::DisplayBinaryTime(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode)
+      {
+      // Serial << "[" << millis() << "] DisplayBinaryTime() start" << endl;
+      #if SERIAL_TIME_CODE
+         // If SERIAL_TIME_CODE is true, we need to keep track of the binary representation of the time
+      #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
+                  leds[led_num] = (binaryArray[display_num] = ((value) & (bitmask))) ? on_color : off_color;
+      #else
+      #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
+                  leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
+      #endif
+      // Use local variables for the calculations
+      uint8_t hourBits, minuteBits, secondBits;
+      // Use the (6) bit masks to test for the bits values.
+      static const uint8_t bitMasks_P[] = { 0x01, 0x02, 0x04, 0x08, 0x10, 0x20 };
+
+      if (use12HourMode)
+         {
+         hourBits = hoursRow % 12;
+         if (hourBits == 0)
+            {
+            hourBits = 12;
+            }
+       // Display the indicator for AM or PM.
+         leds[(HOUR_ROW_OFFSET + NUM_HOUR_LEDS) - 1] = (hoursRow >= 12) ? PmColor : AmColor;
+         }
+      else
+         {
+         hourBits = hoursRow & HOUR_MASK_24; // 5 bits for 24-hour
+         }
+
+      minuteBits = minutesRow & MINUTE_MASK; // 6 bits
+      secondBits = secondsRow & SECOND_MASK; // 6 bits
+
+      uint8_t ledIndex;
+      uint8_t displayIndex;
+      const fl::array<CRGB, NUM_HOUR_LEDS>& onColorsHour = getCurHourColors();
+      // Hours (LEDs 12-15/16, skip LED 16 if in 12-hour mode)
+      for (uint8_t i = 0; i < (use12HourMode ? NUM_HOUR_LEDS - 1 : NUM_HOUR_LEDS); i++)
+         {
+         ledIndex = HOUR_ROW_OFFSET + i;
+         displayIndex = HOUR_LED_OFFSET + i;
+         SET_LEDS(ledIndex, displayIndex, hourBits, bitMasks_P[i], onColorsHour[i], offColors[displayIndex]);
+         }
+
+      // Minutes (LEDs 6-11)
+      for (uint8_t i = 0; i < NUM_MINUTE_LEDS; i++)
+         {
+         ledIndex = MINUTE_ROW_OFFSET + i;
+         displayIndex = MINUTE_LED_OFFSET + i;
+         SET_LEDS(ledIndex, displayIndex, minuteBits, bitMasks_P[i], onColors[displayIndex], offColors[displayIndex]);
+         }
+
+      // Seconds (LEDs 0-5)
+      for (uint8_t i = 0; i < NUM_SECOND_LEDS; i++)
+         {
+         ledIndex = SECOND_ROW_OFFSET + i;
+         displayIndex = SECOND_LED_OFFSET + i;
+         SET_LEDS(ledIndex, displayIndex, secondBits, bitMasks_P[i], onColors[displayIndex], offColors[displayIndex]);
+         }
+
+      FastLED.show();
+      }
+
+   #undef SET_LEDS   // Undefine the MACRO, it isn't needed anymore.
+
+   //################################################################################//
+   // MELODY ALARM
+   //################################################################################//
+
    #if STL_USED
    // Add this private method to initialize the default melody:
    void BinaryClock::initializeDefaultMelody()
       {
       defaultMelody.reserve(AlarmNotesSize);
-      
+
       // Copy the default melody from the PROGMEM array
       for (size_t i = 0; i < AlarmNotesSize; i++)
          {
@@ -1604,69 +1701,6 @@ namespace BinaryClockShield
       RegisterMelody(defaultMelody);
       }
    #endif
-
-   ////////////////////////////////////////////////////////////////////////////////////
-   // Convert values from DEC to BIN format and display
-
-   void BinaryClock::DisplayBinaryTime(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode)
-      {
-      // Serial << "[" << millis() << "] DisplayBinaryTime() start" << endl;
-      #if SERIAL_TIME_CODE
-         // If SERIAL_TIME_CODE is true, we need to keep track of the binary representation of the time
-         #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
-               leds[led_num] = (binaryArray[led_num] = ((value) & (bitmask))) ? on_color : off_color;
-      #else
-         #define SET_LEDS(led_num, value, bitmask, on_color, off_color) \
-               leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
-      #endif
-      // Use local variables for the calculations
-      uint8_t hourBits, minuteBits, secondBits;
-      // Use the (6) bit masks to test for the bits values.
-      static const uint8_t bitMasks_P[] = {0x01, 0x02, 0x04, 0x08, 0x10, 0x20};
-      
-      if (use12HourMode)
-         {
-         hourBits = hoursRow % 12;
-         if (hourBits == 0) 
-            { hourBits = 12; }
-         // Display the indicator for AM or PM.
-         leds[NUM_LEDS - 1] = (hoursRow >= 12) ? PmColor : AmColor;
-         }
-      else
-         {
-         hourBits = hoursRow & HOUR_MASK_24; // 5 bits for 24-hour
-         }
-
-      minuteBits = minutesRow & MINUTE_MASK; // 6 bits
-      secondBits = secondsRow & SECOND_MASK; // 6 bits
-
-      const fl::array<CRGB, NUM_HOUR_LEDS>& onColorsHour = getCurHourColors();
-      // Hours (LEDs 12-15/16, skip LED 16 if in 12-hour mode)
-      for (uint8_t i = 0; i < (use12HourMode ? NUM_HOUR_LEDS - 1 : NUM_HOUR_LEDS); i++)
-         {
-         uint8_t ledIndex = HOUR_LED_OFFSET + i;
-         SET_LEDS(ledIndex, hourBits, bitMasks_P[i], onColorsHour[i], offColors[ledIndex]);
-         }
-
-      // Minutes (LEDs 6-11)
-      for (uint8_t i = 0; i < NUM_MINUTE_LEDS; i++)
-         {
-         uint8_t ledIndex = MINUTE_LED_OFFSET + i;
-         SET_LEDS(ledIndex, minuteBits, bitMasks_P[i], onColors[ledIndex], offColors[ledIndex]);
-         }
-      
-      // Seconds (LEDs 0-5)
-      for (uint8_t i = 0; i < NUM_SECOND_LEDS; i++)
-         {
-         SET_LEDS(i, secondBits, bitMasks_P[i], onColors[i], offColors[i]);
-         }
-      
-      FastLED.show();
-      }
-
-   //################################################################################//
-   // MELODY ALARM
-   //################################################################################//
 
    ////////////////////////////////////////////////////////////////////////////////////
    // During playing the alarm melody, time display function is disabled

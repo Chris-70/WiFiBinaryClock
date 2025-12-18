@@ -2,6 +2,7 @@
 #ifndef __BINARYCLOCK_DEFINES_H__
 #define __BINARYCLOCK_DEFINES_H__
 
+// __has_include is C++17 and beyond, or an extension in some compilers.
 #ifdef __has_include
    #if __has_include("board_select.h")
       #include "board_select.h"  // Include the user defined board selection file if it exists
@@ -250,9 +251,12 @@
 
    #define ESP32_WIFI false         ///< No ESP32 WiFi on any Arduino boards, only WIFIS3 for UNO R4 WIFI.
    #if defined(UNO_R3)
-      #define FREE_RTOS  false
+      #define FREE_RTOS    false
+      #define STL_USED     false
+      #define WIFIS3       false
    #else
       #define FREE_RTOS  true
+      #define STL_USED   true
       #if defined(UNO_R4_WIFI)
          #define WIFIS3    false // true    ///< The UNO R4 WiFi board uses WIFIS3.h; similar to ESP32 WiFi but different, no WPS. 
       #endif
@@ -292,29 +296,53 @@
 /// Defines for WiFi and FreeRTOS support based on the selected board.
 /// These can be overridden by defining them in the "board_select.h" file.
 #if defined(CUSTOM_UNO) && CUSTOM_UNO
+   /// For a custom UNO board, assume no WiFi and no internal pullup resistors unless defined. 
+   /// We will assume a minimum capability greater than an UNO R3 board unless otherwise defined.
    #ifndef ESP32_WIFI
-      #define ESP32_WIFI false   /// Assume no WiFi capability if not defined.
+      #define ESP32_WIFI false         ///< Assume no WiFi capability if not defined.
    #endif
    #ifndef WIFIS3
-      #define WIFIS3     false   /// Assume no WIFIS3 capability if not defined.
+      #define WIFIS3          false    ///< Assume no WIFIS3 capability if not defined.
+   #endif
+   #ifndef STL_USED
+      #define STL_USED        true     ///< Assume STL support if not defined.
    #endif
    #ifndef FREE_RTOS
-      #define FREE_RTOS  false   /// Assume no FreeRTOS support if not defined.
+      #define FREE_RTOS       true     ///< Assume FreeRTOS support if not defined.
+   #endif
+   #ifndef PRINTF_OK
+      #define PRINTF_OK       true     ///< Use printf style code if STL is being used.
    #endif
    #ifndef ESP32_INPUT_PULLDOWN
       #define ESP32_INPUT_PULLDOWN  INPUT   /// Define for INPUT without an internal pull-down resistor
    #endif
-#else                            ///< Supported boards; set WiFi and FreeRTOS flags.
+#elif UNO_R3
+   /// Not enough resources on the UNO R3 board to use the development board code.
+   /// The UNO R3 board doesn't have the resources to include the code for an
+   /// OLED display (on the development board) in addition to the code for the 
+   /// Binary Clock Shield.
+   #undef DEV_BOARD
+   #undef DEV_CODE
+   #define SERIAL_TIME_CODE   false
+   #define PRINTF_OK          false
+#else
+   /// For all other supported boards, assume STL, FreeRTOS and WiFi support unless otherwise defined.
+   #ifndef STL_USED
+      #define STL_USED        true     ///< Use the STL library if not using the UNO R3 board.
+   #endif
+   #ifndef FREE_RTOS
+      #define FREE_RTOS       true     ///< Assume all other supported boards have FreeRTOS support.
+   #endif
+   #ifndef PRINTF_OK
+      #define PRINTF_OK       true     ///< Use printf style code if STL is being used.
+   #endif
    #ifndef WIFIS3
-      #define WIFIS3      false  /// Assume no WIFIS3 capability for Arduino boards if not defined.
+      #define WIFIS3          false    ///< Assume no WIFIS3 capability for Arduino boards if not defined.
    #endif
-   #ifndef ESP32_WIFI            /// IF the WiFi hasn't been defined:
-      #define ESP32_WIFI  true   /// Assume all other supported boards have WiFi capability.
+   #ifndef ESP32_WIFI
+      #define ESP32_WIFI      true     ///< Assume all other supported boards have WiFi capability.
    #endif
-   #ifndef FREE_RTOS             /// IF FreeRTOS hasn't been defined:
-      #define FREE_RTOS   true   /// Assume all other supported boards have FreeRTOS support.
-   #endif
-#endif // else #if defined(CUSTOM_UNO) && !CUSTOM_UNO
+#endif // #if defined(CUSTOM_UNO) && !CUSTOM_UNO
 
 #if ESP32_WIFI && WIFIS3
    #error "Both ESP32_WIFI and WIFIS3 cannot be true at the same time. Please check your board definitions."
@@ -326,27 +354,10 @@
 #endif
 
 //################################################################################//  
-/// Defines to control the use of the STL library and printf code use and to 
-/// disable as much code as possible for the UNO_R3 boards.
-#if defined(UNO_R3)
-   /// Not enough resources on the UNO R3 board to use the development board code.
-   /// The UNO R3 board doesn't have the resources to include the code for an
-   /// OLED display (on the development board) in addition to the code for the 
-   /// Binary Clock Shield.
-   #undef DEV_BOARD
-   #undef DEV_CODE
-   #define SERIAL_TIME_CODE false
-   #define STL_USED         false
-   #define PRINTF_OK        false
-#elif !defined(STL_USED)
-   #define STL_USED         true    ///< Use the STL library if not using the UNO R3 board.
-#endif
-
-//################################################################################//  
 /// Defines to control the inclusion/removal of development board code.
 #ifndef DEV_BOARD
    #define DEV_BOARD false    ///< If DEV_BOARD hasn't been defined, don't include code for the development board
-#elif defined(DEV_BOARD) && DEV_BOARD
+#elif DEV_BOARD
    #define DEV_CODE  true     ///< If using a development board, include the development code
 #endif
 #ifndef DEV_CODE
@@ -354,9 +365,16 @@
 #endif
 
 #if DEV_CODE
-   #define SERIAL_SETUP_CODE       true   ///< If using a development board/code, include the Serial Setup code
-   #define SERIAL_TIME_CODE        true   ///< If using a development board/code, include the Serial Time  code
-#else     // else #if !(DEV_BOARD)
+   #ifndef SERIAL_SETUP_CODE
+      #define SERIAL_SETUP_CODE     true  ///< If using a development board/code, include the Serial Setup code
+   #endif
+   #ifndef SERIAL_TIME_CODE
+      #define SERIAL_TIME_CODE      true  ///< If using a development board/code, include the Serial Time  code
+   #endif
+#endif
+/// Unless we have a development board, remove all hardware development board related items.
+/// This ensures that no development board code is included when not using a development board.
+#if !DEV_BOARD
    #undef DEBUG_SETUP_PIN
    #undef DEBUG_TIME_PIN
    #define DEBUG_SETUP_PIN   -1   ///< No development board, so no H/W debug setup
@@ -400,7 +418,7 @@
 
 //#####################################################################################//  
 /// Wrapper macro for single serial print statements to check the
-/// `IsSerialSetup` properety flag for printing and eleminates the
+/// `IsSerialSetup` properety flag for printing menu items and eleminates the
 /// need to surrond the statements with `#if SERIAL_SETUP_CODE...#endif`
 /// directives. Don't use for multiple statements as it unnecessarly
 /// adds an `if ()` statement to each line, use conditional compilation `#if ...` instead.
@@ -408,6 +426,7 @@
    #define SERIAL_SETUP_STREAM(CMD_STRING) \
          if (SERIAL_SETUP_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
 #else
+   // Replace the macro with whitespace.
    #define SERIAL_SETUP_STREAM(CMD_STRING)
 #endif
 
@@ -423,6 +442,7 @@
    #define SERIAL_TIME_STREAM(CMD_STRING) \
          if (SERIAL_TIME_TEST) { SERIAL_STREAM_MACRO(CMD_STRING) }
 #else
+   // Replace the macros with whitespace.
    #define SERIAL_TIME()
    #define SERIAL_TIME_STREAM(CMD_STRING)
 #endif
@@ -434,15 +454,36 @@
 #endif
 
 //#####################################################################################//  
-/// General defines for the Binary Clock Shield
+/// General defines for the Binary Clock Shield display layout.
 // The physical layout of the LEDs on the shield, one row each.
-#define NUM_HOUR_LEDS     5            ///< The LEDs on the top row of the shield.
-#define NUM_MINUTE_LEDS   6            ///< The LEDs on the middle row of the shield.
-#define NUM_SECOND_LEDS   6            ///< The LEDs on the bottom row of the shield.
-#define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
-#define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
-#define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
-#define SECOND_LED_OFFSET 0
+#ifndef DISPLAY_LAYOUT
+   #define NUM_HOUR_LEDS     5         ///< The LEDs on the top row of the shield.
+   #define NUM_MINUTE_LEDS   6         ///< The LEDs on the middle row of the shield.
+   #define NUM_SECOND_LEDS   6         ///< The LEDs on the bottom row of the shield.
+   #define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
+   #define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
+   #define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
+   #define SECOND_LED_OFFSET 0
+#endif
+#define NUM_ROWS             3         ///< The number of LED time display rows on the shield.
+// Define the number of LEDs in each row, can be overridden if needed.
+// This allows for different LED configurations if needed.
+// If the rows have more LEDs than needed, the extra LEDs will be unused (OFF).
+#ifndef PHYSICAL_LAYOUT
+   #define HOUR_ROW_LEDS    NUM_HOUR_LEDS    ///< The number of hour LEDs in the hour row.
+   #define MINUTE_ROW_LEDS  NUM_MINUTE_LEDS  ///< The number of minute LEDs in the minute row.
+   #define SECOND_ROW_LEDS  NUM_SECOND_LEDS  ///< The number of second LEDs in the second row.
+   #define HOUR_ROW_OFFSET   (SECOND_ROW_LEDS + MINUTE_ROW_LEDS)
+   #define MINUTE_ROW_OFFSET (SECOND_ROW_LEDS)
+   #define SECOND_ROW_OFFSET 0
+#endif
+// This is to account for the physical layout beyond the 3 rows for the time display.
+// This is used in the `FastLED` setup for the total buffer size. For example to
+// display the time on an 8x8 matrix, the total LEDs would be 64, even though only
+// 17 LEDs are used for the time display and each row is 8 LEDs long.
+#ifndef TOTAL_LEDS
+   #define TOTAL_LEDS     (HOUR_ROW_LEDS + MINUTE_ROW_LEDS + SECOND_ROW_LEDS)
+#endif
 #define HOUR_MASK_24      0x1F         ///< Mask for the 24 hour format (5 bits)
 #define HOUR_MASK_12      0x0F         ///< Mask for the 12 hour format (4 bits)
 #define MINUTE_MASK       0x3F         ///< Mask for the minutes (6 bits)
