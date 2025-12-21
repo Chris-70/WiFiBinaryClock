@@ -185,8 +185,20 @@ namespace BinaryClockShield
       /// @details The patterns are defined in the `LedPattern` enum.  
       /// @param patternType The LED pattern to display.
       /// @see LedPattern
+      /// @see DisplayLedPattern(LedPattern patternType, unsigned long duration)
       /// @author Chris-70 (2025/08)
       virtual void DisplayLedPattern(LedPattern patternType) = 0;
+      
+      #ifndef UNO_R3
+      /// @copydoc DisplayLedPattern(LedPattern patternType)
+      /// @param   displayDuration The maximum duration to display the pattern in milliseconds.
+      /// @remarks The display duration is only used to pause the binary time display.
+      ///          Calling this method before the duration has expired will reset the timer
+      ///          with the new value and will display the selected pattern overwriting the previous.
+      /// @see DisplayLedPattern(LedPattern patternType)
+      /// @author Chris-70 (2025/12)
+      virtual void DisplayLedPattern(LedPattern patternType, unsigned long duration) = 0;
+      #endif
 
       /// @brief The method called to convert the time to binary and update the LEDs.
       /// @details This method converts the current time to binary and updates the LEDs 

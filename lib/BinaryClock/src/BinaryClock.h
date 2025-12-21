@@ -425,8 +425,23 @@ namespace BinaryClockShield
       /// @param patternType The LED pattern type to display.
       /// @see LedPattern
       /// @see DisplayBinaryTime()
+      /// @see DisplayLedPattern(LedPattern, unsigned long)
       /// @author Chris-70 (2025/08)
       virtual void DisplayLedPattern(LedPattern patternType) override;
+
+      #ifndef UNO_R3
+      /// @copydoc DisplayLedPattern(LedPattern)
+      /// @param   displayDuration The maximum duration to display the pattern in milliseconds.
+      /// @remarks The display duration is only used to pause the binary time display.
+      ///          Calling this method before the duration has expired will reset the timer
+      ///          with the new value and will display the selected pattern overwriting the previous.
+      /// @see DisplayLedPattern(LedPattern)
+      virtual void DisplayLedPattern(LedPattern patternType, unsigned long displayDuration) override
+         {
+         set_DisplayPause(displayDuration);
+         DisplayLedPattern(patternType);
+         }
+      #endif
 
       /// @brief The method called to play the melody from `alarm.melody`.
       /// @details This method plays the melody id defined in the `AlarmTime` structure
@@ -533,15 +548,18 @@ namespace BinaryClockShield
 
       /// @brief Method to flash the 'ledNum' ON/OFF for ~(1 sec / frequency). with an ON/OFF 'dutyCycle' 0-100
       /// @param ledNum The output pin number to flash ON/OFF (HIGH/LOW).
-      /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).{1}
-      /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.       {50}
-      /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.       {1}
-      /// @note The LED must be wired CC, where the LED is on when the pin goes HIGH.
-      ///       The LED is in the OFF (LOW) state when this method returns.
+      /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).   {1}
+      /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.          {50}
+      /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.          {1}
+      /// @param onValue The value to set the pin to turn the LED ON (e.g. CC_O or CCA_ON). {CC_ON}
+      /// @note CC_ON - The LED is wired CC, where the LED is on when the pin goes HIGH.  
+      ///               The LED is in the OFF (LOW) state when this method returns.  
+      ///       CA_ON - The LED is wired CA, where the LED is on when the pin goes LOW.  
+      ///               The LED is in the OFF (HIGH) state when this method returns.
       /// @remarks A duty cycle outside of the range 10 - 90 or a frequency > 10 will not 
       ///          appear to be flashing. Use a duty cycle between 25 - 75 and a frequency between 1 - 5
       /// @author Chris-70 (2025/08)
-      void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1);
+      void FlashLed (uint8_t ledNum, uint8_t repeat = 1, uint8_t dutyCycle = 50, uint8_t frequency = 1, uint8_t onValue = CC_ON) const;
 
       #if STL_USED
       /// @brief Play a specific melody by reference to a `vector` of `Note` objects.
@@ -696,9 +714,27 @@ namespace BinaryClockShield
       /// @brief The method called to display the given LED buffer on the shield.
       /// @details This method just copies the given `ledBuffer` contents directly to the 
       ///          FastLED buffer and displays it.
+      /// @remarks This method can be used to display custom patterns on the shield.  
+      ///          The `ledBuffer` must be of size `TOTAL_LEDS` and contain the color values
+      ///          for each LED in the shield. The method copies the buffer and displays it.
       /// @param ledBuffer The array buffer containing the LED colors to display.
+      /// @see DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>&, unsigned long)
       /// @author Chris-70 (2025/07)
-      virtual void DisplayLedBuffer(const fl::array<CRGB, NUM_LEDS>& ledBuffer);
+      virtual void DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>& ledBuffer);
+
+      #ifndef UNO_R3
+      /// @copydoc DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>& ledBuffer)
+      /// @param displayDuration The maximum duration to display the LED buffer in milliseconds.
+      /// @remarks The display duration is only used to pause the binary time display.
+      ///          Calling this method before the duration has expired will reset the timer
+      ///          with the new value and will display the selected buffer overwriting the previous.
+      //// @see DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>& ledBuffer)
+      virtual void DisplayLedBuffer(const fl::array<CRGB, TOTAL_LEDS>& ledBuffer, unsigned long displayDuration)
+         {
+         set_DisplayPause(displayDuration);
+         DisplayLedBuffer(ledBuffer);
+         }
+      #endif
 
       /// @brief This method is called when the BinaryClock has died. It signals **CQD NO RTC** 
       ///        (Come Quick Distress NO RTC) in Morse code on the builtin led forever, or
@@ -1132,6 +1168,31 @@ namespace BinaryClockShield
       bool get_CallbackTimeTriggered()
          { return callbackTimeTriggered; }
 
+      #ifndef UNO_R3
+      /// @brief Property pattern for the 'DisplayPause' property.  
+      ///        This property controls the pause expiry time, in ms, for the 
+      ///        binary time display.
+      /// @details When the binary time display is paused, the `DisplayBinaryTime()`
+      ///          method does not write the binary time to the display. The display
+      ///          can show the menu and other LED patterns without being overwritten.
+      ///          the current time (millis()) exceeds the `DisplayPause` time. 
+      /// @remarks The `value` is the number of ms to pause the display from "NOW."
+      ///          The actual `DisplayPause` time is calculated as `NOW + value` 
+      ///          when setting the property. Getting the property returns a value 
+      ///          that can be compared with the result from `millis()` to see if the
+      ///          pause period has expired.
+      /// @param value The pause expiry time in milliseconds from now.
+      /// @see get_DisplayPause()
+      void set_DisplayPause(unsigned long value)
+         { displayPause = millis() + value; }
+      /// @copydoc set_DisplayPause()
+      /// @return The current pause expiry time in milliseconds since start.  
+      ///         This is a value that can be compared with the value from `millis()`. 
+      /// @see set_DisplayPause()
+      unsigned long get_DisplayPause() const
+         { return displayPause; }
+      #endif
+
       #if FREE_RTOS
       /// @brief Property pattern for the 'TimeDispatchHandle' property.
       ///        This is the handle for the `TimeTask()`.
@@ -1270,6 +1331,10 @@ namespace BinaryClockShield
       BCButton buttonDebugTime;  ///< Debug time button
       #endif
 
+      #ifndef UNO_R3
+      unsigned long displayPause = 0UL;      ///< The delay expiry time to pause the display binary time update.
+      #endif
+
       BCMenu settings;       ///< Settings handler instance
 
       DateTime time;                         ///< Current time from the RTC, updated every second.
@@ -1387,7 +1452,7 @@ namespace BinaryClockShield
       static const Note AlarmNotes[] PROGMEM;     ///< The default alarm melody, an array of `Notes`
       static const size_t AlarmNotesSize;         ///< Size of the AlarmNotes array
 
-      const char* IBinaryClock_IdName = "BinaryClock_v0.8.5";
+      const char* IBinaryClock_IdName = "BinaryClock_v0.9.0"; ///< Interface implementation identification name
       }; // END Class BinaryClock
    }  // END namespace BinaryClockShield
 
