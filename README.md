@@ -393,8 +393,8 @@ ___
 [rtc]: https://www.analog.com/en/products/ds3231.html
 [rtclib]: https://github.com/adafruit/RTClib
 [rtclib_h]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src/RTClib.h
-[RTClibPlus_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/srcW
-[RTClibPlus]: https://github.com/Chris-70/RTClibPlus
+[RTClibPlus_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src
+[RTClibPlus]: https://github.com/Chris-70/RTClibPlus/tree/RTClibPlus
 [SerialOutputDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/SerialOutput.Defines.h
 [settings]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockSettings.h
 [settings_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockSettings.cpp

@@ -499,6 +499,7 @@
 #define ALARM_2                    2   ///< Alarm 2, the default alarm used by the shield.
 
 #define MAX_BUFFER_SIZE           64   ///< Maximum size of temporary buffers.
+#define MAX_DISPLAY_PAUSE      60000   ///< Maximum display pause time in ms (1 minute).
 #define DEFAULT_TIME_FORMAT   "HH:mm:ss AP"  ///< Default time  format when not defined.
 #define DEFAULT_ALARM_FORMAT  "HH:mm AP"     ///< Default alarm format when not defined.
 

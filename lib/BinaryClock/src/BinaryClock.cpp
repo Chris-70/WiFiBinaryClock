@@ -486,7 +486,7 @@ namespace BinaryClockShield
             , &BinaryClock::TimeTask
             , "TimeTask"
             , 3096
-            , tskIDLE_PRIORITY + 1
+            , tskIDLE_PRIORITY + 3
             , nullptr);
 
       if (timeHandle == nullptr)
@@ -502,7 +502,7 @@ namespace BinaryClockShield
             , &BinaryClock::CallbackTask
             , "CallbackTask"
             , 3096
-            , tskIDLE_PRIORITY + 1
+            , tskIDLE_PRIORITY + 2
             , nullptr);
 
       if (callbackHandle == nullptr)
@@ -531,23 +531,25 @@ namespace BinaryClockShield
 
    void BinaryClock::loop()
       {
+      SettingsState settingsState = settings.ProcessMenu();
+
+      #if FREE_RTOS
       yield();  // Give WiFi time
 
-      if (TimeDispatch())
+      // When the time task is running, resetting the RTC interrupt flag happens here.
+      // We use the flag to enter the section to display the time and play the alarm.
+      // The time task has called `TimeDispatch()` and `CallbackDispatch()` already.
+      // ToDo: Clean this up. This needs to be integrated elsewhere when using tasks.
+      //       We have two different logic paths depending on board type.
+      bool processTime = get_RTCinterruptWasCalled();
+      #else
+      bool processTime = TimeDispatch();
+      #endif
+      if (processTime)
          {
-         SettingsState settingsState = settings.ProcessMenu();
-
          // Only display time when not in settings
          if (settingsState == SettingsState::Inactive)
             {
-            #if FREE_RTOS
-            static bool firstTime = true;  // *** DEBUG ***
-            if (firstTime) // *** DEBUG ***
-               {
-               vTaskDelay(15000); // *** DEBUG ***
-               firstTime = false;
-               }
-            #endif
             DisplayBinaryTime(time.hour(), time.minute(), time.second(), get_Is12HourFormat());
             SERIAL_TIME()
 
@@ -555,18 +557,15 @@ namespace BinaryClockShield
             if (Alarm2.fired)
                {
                PlayAlarm();
-               set_CallbackAlarmTriggered(true);
                Alarm2.fired = false;
                }
             }
 
+         #if FREE_RTOS
+         set_RTCinterruptWasCalled(false);
+         #else
          CallbackDispatch();
-         yield();
-         }
-      else
-         {
-         // Process settings even when time hasn't updated
-         settings.ProcessMenu();
+         #endif
          }
       
       #if HARDWARE_DEBUG
@@ -841,42 +840,49 @@ namespace BinaryClockShield
    //#            Initialize the FastLED library                         #//
    //#####################################################################//
 
+   // For an UNO_R3 board, the FastLED DisplayLedPattern method does not have 
+   // a duration parameter. Not enough flash memory.
+   // Define a MACRO to handle this difference.
+   #ifdef UNO_R3
+   #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN);
+   #else
+   #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN, DURATION);
+   #endif
    void BinaryClock::splashScreen(bool testLEDs)
       {
       int frequency = 3;
-      DisplayLedPattern(LedPattern::rainbow);      // Turn on all LEDS showing a rainbow of colors.
-      FlashLed(HeartbeatLED, 2, 25, frequency);    // Acts as a delay(2000/3) and does something.
+      const unsigned long maxDuration = 2000;               // Display for up to 2 seconds
+      DISPLAY_PATTERN(LedPattern::rainbow, maxDuration)     // Turn on all LEDS showing a rainbow of colors.
+      FlashLed(HeartbeatLED, 2, 25, frequency);             // Acts as a delay(2000/3) and does something.
       // Display the LED test patterns for the user.
       if (testLEDs)
          {
-         DisplayLedPattern(LedPattern::onColors);
-         FlashLed(HeartbeatLED, 3, 75, frequency);       // Acts as a delay(3000/3) and does something.
-         DisplayLedPattern(LedPattern::onText);
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(4000/3) and does something.
-         DisplayLedPattern(LedPattern::offTxt);
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(4000/3) and does something.
-         DisplayLedPattern(LedPattern::xAbort);
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(4000/3) and does something.
-         DisplayLedPattern(LedPattern::okText);
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(4000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::onColors, maxDuration) // Turn on all LEDS showing the ON colors.
+         FlashLed(HeartbeatLED, 3, 75, frequency);          // Acts as a delay(3000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::onText, maxDuration)
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(4000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::offTxt, maxDuration)
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(4000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::xAbort, maxDuration)
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(4000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::okText, maxDuration)
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(4000/3) and does something.
          #if WIFI
-         DisplayLedPattern(LedPattern::wText); 
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
-         DisplayLedPattern(LedPattern::aText); 
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
-         DisplayLedPattern(LedPattern::pText); 
-         FlashLed(HeartbeatLED, 4, 50, frequency);      // Acts as a delay(2000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::wText, maxDuration) 
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::aText, maxDuration) 
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::pText, maxDuration) 
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
          #endif
          frequency = 2;
          }
 
       // Display the rainbow pattern over all pixels to show everything working.
-      DisplayLedPattern(LedPattern::rainbow);   // Turn on all LEDS showing a rainbow of colors.
+      DISPLAY_PATTERN(LedPattern::rainbow, maxDuration)   // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 5, 25, frequency); // Acts as a delay(5000/2) and does something.
-      // DisplayLedPattern(LedPattern::offColors);
-      // FlashLed(HeartbeatLED, 1, 25, frequency); // Acts as a delay(1000/2) and does something.
       };
-
+   #undef DISPLAY_PATTERN  // MACRO no needed anymore
 
    void BinaryClock::SetupFastLED(bool testLEDs)
       {
@@ -925,7 +931,7 @@ namespace BinaryClockShield
       #endif
       }
 
-   void BinaryClock::FlashLed(uint8_t ledNum, uint8_t repeat, uint8_t dutyCycle, uint8_t frequency)
+   void BinaryClock::FlashLed(uint8_t ledNum, uint8_t repeat, uint8_t dutyCycle, uint8_t frequency, uint8_t onValue) const
       {
       // Validate/correct the inputs.
       if (dutyCycle > 100) { dutyCycle = 100; }
@@ -936,9 +942,9 @@ namespace BinaryClockShield
       uint32_t offTime = ((100 - dutyCycle) * 10) / (frequency);  // Off time in ms.
       for (unsigned i = 0; i < repeat; i++)
          {
-         digitalWrite(ledNum, HIGH);
+         digitalWrite(ledNum, onValue);
          delay(onTime);
-         digitalWrite(ledNum, LOW);
+         digitalWrite(ledNum, !onValue);
          delay(offTime);
          }
       }
@@ -1365,6 +1371,7 @@ namespace BinaryClockShield
          xTaskNotify(get_CallbackTaskHandle(), notificationFlags, eSetBits);
          #else
          set_CallbackAlarmTriggered(checkAlarm(Alarm1) || checkAlarm(Alarm2)); // Set the alarm callback flag
+         set_RTCinterruptWasCalled(false);
          #endif
 
          uint8_t hour = time.hour();
@@ -1376,7 +1383,6 @@ namespace BinaryClockShield
             curHourColor = (get_Is12HourFormat() ? ampmColor : HourColor::Hour24);
             }
 
-         set_RTCinterruptWasCalled(false);
          result = true;
          }  // get_RTCinterruptWasCalled()
 
@@ -1403,7 +1409,7 @@ namespace BinaryClockShield
 
             TimeDispatch(notificationValue);
             }
-         if (get_RTCinterruptWasCalled())
+         else if (get_RTCinterruptWasCalled())
             { TimeDispatch(); }
 
          // vTaskDelay to prevent busy waiting
@@ -1605,7 +1611,7 @@ namespace BinaryClockShield
       if (ledBuffer.empty()) { return; }
 
       // Copy the LED buffer to the FastLED display array and display
-      memmove(leds, ledBuffer.data(), sizeof(CRGB) * ledBuffer.size());
+      memmove(leds, ledBuffer.data(), sizeof(CRGB) * TOTAL_LEDS);
       FastLED.show();
       }
 
@@ -1614,7 +1620,11 @@ namespace BinaryClockShield
 
    void BinaryClock::DisplayBinaryTime(int hoursRow, int minutesRow, int secondsRow, bool use12HourMode)
       {
-      // Serial << "[" << millis() << "] DisplayBinaryTime() start" << endl;
+      #ifndef UNO_R3
+      if (((int64_t)get_DisplayPause() - (int64_t)millis()) > MAX_DISPLAY_PAUSE)
+         { set_DisplayPause(0); } // Pause is too long, perhaps millis() wrapped around
+      #endif
+
       #if SERIAL_TIME_CODE
          // If SERIAL_TIME_CODE is true, we need to keep track of the binary representation of the time
       #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
@@ -1622,7 +1632,14 @@ namespace BinaryClockShield
       #else
       #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
                   leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
-      #endif
+
+         #ifndef UNO_R3
+         // Check for expired delay now, we don't need to create `binaryArray` time values.
+         if (millis() < get_DisplayPause())
+            { return; } // Exit if display is paused and SERIAL_TIME_CODE is false
+         #endif
+      #endif // SERIAL_TIME_CODE
+
       // Use local variables for the calculations
       uint8_t hourBits, minuteBits, secondBits;
       // Use the (6) bit masks to test for the bits values.
@@ -1673,7 +1690,14 @@ namespace BinaryClockShield
          SET_LEDS(ledIndex, displayIndex, secondBits, bitMasks_P[i], onColors[displayIndex], offColors[displayIndex]);
          }
 
-      FastLED.show();
+      // The check for expiration is done here to populate the `binaryArray`
+      // This allows us to see the binary time in the serial monitor
+      // even when the delay hasn't expired.
+      #if SERIAL_TIME_CODE && !defined(UNO_R3)
+      // If the pause time expired, display the binary time.
+      if (millis() >= get_DisplayPause())
+      #endif
+         { FastLED.show(); }
       }
 
    #undef SET_LEDS   // Undefine the MACRO, it isn't needed anymore.
