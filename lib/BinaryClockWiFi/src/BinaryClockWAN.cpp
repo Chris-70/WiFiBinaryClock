@@ -85,7 +85,7 @@ namespace BinaryClockShield
 
       bool result = false;
       bool sta = WiFi.mode(WIFI_STA);
-      SERIAL_STREAM("WiFi Station Mode: " << (sta ? "YES" : "NO") << endl)  // *** DEBUG ***
+      SERIAL_STREAM("connectLocalWiFi() - WiFi Station Mode: " << (sta ? "YES" : "NO") << endl)  // *** DEBUG ***
 
       std::vector<std::pair<APCredsPlus, WiFiInfo>> apCredList = settings.GetWiFiAPs(localAPs);
 
@@ -105,7 +105,7 @@ namespace BinaryClockShield
             {
             // Single WiFi.begin() call with BSSID
             status = WiFi.begin(cred.ssid.c_str(), cred.pw.c_str(), info.channel, bssidArray, true);
-            SERIAL_STREAM("BinaryClockWAN() connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl)   // *** DEBUG ***
+            SERIAL_STREAM("  BinaryClockWAN()::connectLocalWiFi() - connecting to " << cred.ssid << ", on channel: " << info.channel << ", with BSSID" << endl)   // *** DEBUG ***
             }
          else
             {

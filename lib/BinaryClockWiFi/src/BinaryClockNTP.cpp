@@ -114,7 +114,7 @@ namespace BinaryClockShield
                instance->ntpServers = param->servers;
                }
 
-            SERIAL_STREAM("    Initializing SNTP..." << endl)
+            SERIAL_STREAM("    BinaryClockNTP::Begin() - Initializing SNTP..." << endl)
             instance->initialized = instance->initializeSNTP();
 
             SERIAL_STREAM("[" << millis() << "] BinaryClockNTP singleton " << (instance->initialized ? "initialized" : "failed to initialize") << endl)
