@@ -178,10 +178,17 @@ namespace BinaryClockShield
       bool UndeleteID(uint8_t id)
          { return changeDeleteStatus(id, false); }
 
+      /// @brief `Timezone` Property: The timezone string in Proleptic Format.
+      /// @details This property provides access to the timezone string used for time calculations.
+      ///          The timezone string is in Proleptic Format, e.g. "EST+5EDT,M3.2.0/2,M11.1.0/2".
+      ///          See `BinaryClockNTP::set_Timezone()` for the format details.
+      /// @see BinaryClockNTP::set_Timezone()
+      /// @see get_Timezone()
+      /// @author Chris-70 (2025/10)
       void set_Timezone(String value)
          { 
-         if (value.isEmpty())
-            { value = TIMEZONE_UTC; }
+         // if (value.isEmpty())
+         //    { value = TIMEZONE_UTC; }
             
          if (value != timezone)
             {
@@ -190,8 +197,17 @@ namespace BinaryClockShield
             }
          }
 
+      /// @copydoc set_Timezone()
+      /// @return A String object containing the timezone in Proleptic Format.
+      /// @see set_Timezone()
       String get_Timezone() const
          { return timezone; }
+         
+      /// @brief `Modified` Property: Indicates if the settings have been modified since last save.
+      /// @details This property indicates whether any settings have been changed since the last save.
+      /// @return True if settings have been modified, false otherwise.
+      bool get_Modified() const
+         { return modified; }
 
    //#################################################################################//  
    // Protected METHODS                                                               //   

@@ -216,6 +216,7 @@ namespace BinaryClockShield
       nvs.putUChar(nvsKeyNumAPs, numAPs);
       nvs.putUChar(nvsKeyLastID, lastID);
       nvs.putString(nvsKeyTimezone, timezone);
+      SERIAL_STREAM("Save(): Saved timezone: [" << timezone << "]" << endl) // *** DEBUG ***
       nvs.end();
 
       return result;
@@ -308,7 +309,7 @@ namespace BinaryClockShield
 
    uint8_t BinaryClockSettings::GetID(const APNames& names) const
       {
-      SERIAL_STREAM("GetID(): Looking for SSID: " << names.ssid << " BSSID: " << names.bssid << " Initialized? " << (initialized ? "Yes" : "No") << endl) // *** DEBUG ***
+      SERIAL_STREAM("- GetID(): Looking for SSID: " << names.ssid << " BSSID: " << names.bssid << endl) // *** DEBUG ***
       uint8_t result = 0;
       if (!initialized || names.ssid.isEmpty()) { return result; } // Error
 
@@ -326,7 +327,7 @@ namespace BinaryClockShield
 
 std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
       {
-      SERIAL_STREAM("GetIDs(): Looking for SSID: " << ssid << " Initialized? " << (initialized ? "Yes" : "No") << endl)  // *** DEBUG ***
+      SERIAL_STREAM("- GetIDs(): Looking any matches for SSID: " << ssid << endl)  // *** DEBUG ***
       std::vector<uint8_t> result;
       if (!initialized || ssid.isEmpty()) { return result; } // Error
 
@@ -519,6 +520,7 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
 
    std::vector<APCredsPlus> BinaryClockSettings::GetWiFiAPs(const std::vector<APNames>& names) const
       {
+      SERIAL_STREAM("GetWiFiAPs(APNames): Looking for " << names.size() << " APs. Initialized? " << (initialized ? "Yes" : "No") << endl)  // *** DEBUG ***
       std::vector<APCredsPlus> result;
       if (!initialized || names.empty()) { return result; } // Error
 
@@ -537,6 +539,7 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
 
    std::vector<std::pair<APCredsPlus, WiFiInfo>> BinaryClockSettings::GetWiFiAPs(const std::vector<WiFiInfo>& wifiInfos) const
       {
+      SERIAL_STREAM("GetWiFiAPs(WiFiInfo): Looking for " << wifiInfos.size() << " APs. Initialized? " << (initialized ? "Yes" : "No") << endl)  // *** DEBUG ***
       std::vector<std::pair<APCredsPlus, WiFiInfo>> result;
       if (!initialized || wifiInfos.empty()) { return result; } // Error
 
@@ -545,6 +548,7 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
          uint8_t id = GetID(info);
          if (id != 0)
             {
+            SERIAL_STREAM("GetWiFiAPs(WiFiInfo): Found matching AP SSID: " << info.ssid << " BSSID: " << info.bssid << " with ID: " << static_cast<int>(id) << endl)  // *** DEBUG ***
             APCredsPlus cred = GetWiFiAP(id);
             result.push_back(std::make_pair(cred, info));
             }

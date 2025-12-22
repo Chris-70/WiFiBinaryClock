@@ -127,22 +127,22 @@ void setupWiFi(BinaryClockWAN& wifi, BinaryClock& binClock, bool autoConnect, ui
    SERIAL_STREAM("BinaryClockWAN::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
    vTaskDelay(pdMS_TO_TICKS(125));
    APCreds creds = wifi.get_WiFiCreds();
-   SERIAL_STREAM("[" << millis() << "] WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
-   if (!wifi.get_IsConnected())
-      {
-      BinaryClockWPS& wps = BinaryClockWPS::get_Instance();
-      auto result = wps.ConnectWPS();
-      if (result.success == true)
-         {
-         SERIAL_STREAM("WPS Connection successful! SSID: " << result.credentials.ssid << " BSSID: " << result.credentials.bssid << " Password: " << result.credentials.pw << " Time to connect (ms): " << result.connectionTimeMs << endl)
-         wifi.set_LocalCreds(result.credentials);
-         wifi.Save();
-         }
-      else
-         {
-         SERIAL_STREAM("WPS Connection failed! Error: " << result.errorMessage << endl)
-         }
-      }
+   SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
+   // if (!wifi.get_IsConnected())
+   //    {
+   //    BinaryClockWPS& wps = BinaryClockWPS::get_Instance();
+   //    auto result = wps.ConnectWPS();
+   //    if (result.success == true)
+   //       {
+   //       SERIAL_STREAM("WPS Connection successful! SSID: " << result.credentials.ssid << " BSSID: " << result.credentials.bssid << " Password: " << result.credentials.pw << " Time to connect (ms): " << result.connectionTimeMs << endl)
+   //       wifi.set_LocalCreds(result.credentials);
+   //       wifi.Save();
+   //       }
+   //    else
+   //       {
+   //       SERIAL_STREAM("WPS Connection failed! Error: " << result.errorMessage << endl)
+   //       }
+   //    }
    }
 #endif
 
@@ -228,7 +228,7 @@ __attribute__((used)) void setup()
                         , get_BinaryClockWAN()
                         , get_BinaryClock()
                         , true
-                        , 7500U);
+                        , 12500U);
    #endif 
 
    SERIAL_STREAM("[" << millis() << "] Entering Loop() now" << endl)
