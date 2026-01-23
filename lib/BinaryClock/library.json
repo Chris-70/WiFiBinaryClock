@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Chris-70/BinaryClock_ESP32.git"
+    "url": "https://github.com/Chris-70/WiFiBinaryClock.git"
   },
   "frameworks": "arduino",
   "platforms": "*",

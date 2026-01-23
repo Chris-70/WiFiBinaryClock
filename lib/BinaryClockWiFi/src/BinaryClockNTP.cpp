@@ -33,13 +33,16 @@
 
 namespace BinaryClockShield
    {
+   size_t NTPEventBits::ntpDefaultOffset = 0U; // Initialize static property
+
    BinaryClockNTP::BinaryClockNTP()
          : syncInProgress(false)
          , lastSyncStatus(false)
          , initialized(false)
+         , callbacksEnabled(false)
       {
       // Private constructor - no initialization here
-      // Use Initialize() method instead
+      // Use Begin() method instead
       }
 
    BinaryClockNTP::~BinaryClockNTP()
@@ -48,31 +51,79 @@ namespace BinaryClockShield
       }
 
    ////////////////////////////////////////////////////////////////////////////////////////////////
-
-   template<typename P>
-   struct TaskParamWrapper
+   // Task initialization functions (no duplicate struct definition needed - it's in the header)
+   ////////////////////////////////////////////////////////////////////////////////////////////////
+   
+   /// @brief Performs the actual NTP initialization work.
+   /// This is extracted to a static function to avoid lambda lifetime issues.
+   /// @param param Task parameter containing the NTP instance
+   void ntpDoInitialize(NTPTaskParam* param)
       {
-      std::function<void (struct TaskParamWrapper<P>*)> taskFunction;  ///< Pointer to the task function to execute.
-      P* taskParameter;      ///< Pointer to the parameter to pass to the task function.
-      };
-
-   template<typename P>
-   auto TaskWrapper = [](void* param) 
-      {
-      using TaskParamType = TaskParamWrapper<P>;
-      TaskParamType* taskParam = static_cast<TaskParamType*>(param);
-      if (taskParam)
+      if ((param == nullptr) || (param->instance == nullptr))
          {
-         if (taskParam->taskFunction)
-            {
-            taskParam->taskFunction(taskParam);
-            }
+         SERIAL_PRINTLN("ERROR: ntpDoInitialize() - param or instance is NULL!")
+         return;
+         }
 
-         delete taskParam;
-         }         
+      BinaryClockNTP* instance = param->instance;
 
-      vTaskDelete(NULL); // Delete this task when done
-      };
+      // CRITICAL: Wait the specified delay before initializing SNTP to avoid race conditions
+      // The delay allows the main SetupWiFiTask to complete and yield the CPU
+      // before SNTP callbacks start firing. This prevents Core conflicts and data races.
+      // Note: The caller (SetupWiFiTask) also adds a 5-second delay after Begin() returns.
+      if (param->delayMS > 0U)
+         {
+         SERIAL_STREAM("BinaryClockNTP::ntpDoInitialize() - delaying initialization for " << param->delayMS << " ms" << endl)
+         vTaskDelay(pdMS_TO_TICKS(param->delayMS));
+         SERIAL_STREAM("BinaryClockNTP::ntpDoInitialize() - delay complete, now initializing SNTP" << endl)
+         }
+
+      // NOTE: Servers are already stored in instance->ntpServers before task creation
+      // No need to copy them here - they're already in the singleton instance
+
+      // Perform SNTP initialization
+      SERIAL_STREAM("    BinaryClockNTP::ntpDoInitialize() - Initializing SNTP..." << endl)
+      instance->initialized = instance->initializeSNTP();
+
+      SERIAL_STREAM("[" << millis() << "] BinaryClockNTP singleton " << (instance->initialized ? "initialized" : "failed to initialize") << endl)
+      }
+
+   /// @brief Static task wrapper for FreeRTOS xTaskCreate.
+   /// This must be a true function pointer (not a lambda) for reliable operation with xTaskCreate.
+   /// @param pvParameters Pointer to NTPTaskParam structure
+   void ntpTaskWrapper(void* pvParameters)
+      {
+      NTPTaskParam* param = static_cast<NTPTaskParam*>(pvParameters);
+      
+      if (param == nullptr)
+         {
+         SERIAL_PRINTLN("ERROR: ntpTaskWrapper() - param is NULL!")
+         vTaskDelete(nullptr);
+         return;
+         }
+
+      try
+         {
+         // Call the static initialization function
+         ntpDoInitialize(param);
+
+         SERIAL_PRINTLN("ntpTaskWrapper() - deleting param.")
+         delete param;
+         }
+      catch (const std::exception& e)
+         {
+         SERIAL_OUT_STREAM("Exception in ntpTaskWrapper(): " << e.what() << endl)
+         if (param != nullptr) { delete param; }
+         }
+      catch (...)
+         {
+         SERIAL_OUT_STREAM("Unknown exception in ntpTaskWrapper() at line " << __LINE__ << endl)
+         if (param != nullptr) { delete param; }
+         }
+
+      SERIAL_PRINTLN("ntpTaskWrapper() - task ending.")
+      vTaskDelete(nullptr);
+      }
 
    ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -80,115 +131,76 @@ namespace BinaryClockShield
       {
       if (initialized)
          {
-         SERIAL_STREAM("BinaryClockNTP::Initialize() - already initialized; Call End() then reinitialize." << endl)
+         SERIAL_STREAM("BinaryClockNTP::Begin() - already initialized; Call End() then reinitialize." << endl)
          return;
          }
 
-      // Task parameter structure to pass to the FreeRTOS task
-      struct TaskParam
-         {
-         BinaryClockNTP* instance;
-         std::vector<String> servers;
-         size_t delayMS;
-         std::function<void(TaskParam*)> work;
-         };
-
       try
          {
-         // Create a heap-allocated initNTP closure that performs the initialization.
-         // This reuses the same logic/code for both blocking and non-blocking modes.
-         std::function<void(TaskParam*)> initNTP = [](TaskParam *param)
-            {
-            if ((param == nullptr) || (param->instance == nullptr)) { return; }
-
-            BinaryClockNTP* instance = param->instance;
-
-            if (param->delayMS > 0U)
-               {
-               SERIAL_STREAM("BinaryClockNTP::initNTP() - delaying initialization for " << param->delayMS << " ms" << endl)
-                  vTaskDelay(pdMS_TO_TICKS(param->delayMS));
-               }
-
-            if (!param->servers.empty())
-               {
-               instance->ntpServers = param->servers;
-               }
-
-            SERIAL_STREAM("    BinaryClockNTP::Begin() - Initializing SNTP..." << endl)
-            instance->initialized = instance->initializeSNTP();
-
-            SERIAL_STREAM("[" << millis() << "] BinaryClockNTP singleton " << (instance->initialized ? "initialized" : "failed to initialize") << endl)
-            };
-
-         // Non-capturing wrapper so it can be passed as a FreeRTOS task function pointer
-         auto taskWrapper = [](void* p) {
-            try
-               {
-               TaskParam* param = static_cast<TaskParam*>(p);
-               // This is a task, we can't return. Test for a valid `TaskParam` pointer
-               // which we'll delete, test for a valid `work` function before calling.
-               if (param != nullptr) 
-                  {
-                  if (param->work)
-                     {
-                     param->work(param);
-                     }
-
-                  SERIAL_PRINTLN("    deleting param in taskWrapper().")
-                  delete param;
-                  }
-
-               SERIAL_PRINTLN("    taskWrapper() done, deleting task.")
-               // Destroy this task, we are done, this was a one time task.
-               vTaskDelete(nullptr);
-               }
-            catch (const std::exception& e)
-               {
-               SERIAL_OUT_STREAM("    Exception occurred in BinaryClockNTP::Initialize.taskWrapper(): " << e.what() << endl)
-               }
-            catch (...)
-               { SERIAL_OUT_STREAM("    Unknown exception occurred in BinaryClockNTP::Initialize.taskWrapper() " << __LINE__ << endl) }
-            };
-
          // Set timezone to the default value.
          if (get_Timezone() == nullptr)
             { set_Timezone(DEFAULT_TIMEZONE); }
 
-         // Create the task parameter structure with the given/known values.
-         TaskParam* taskParam = new TaskParam{ this, servers, delayMS, initNTP };
+         // CRITICAL: Store servers in the instance BEFORE creating the async task
+         // This avoids passing std::vector through task parameters which can cause
+         // heap corruption or threading issues. The async task will find them in the instance.
+         if (!servers.empty())
+            {
+            ntpServers = servers;
+            }
 
-         if (block)
+         // CRITICAL: Copy server names to persistent C-string storage BEFORE creating async task
+         // The ESP-IDF SNTP library holds pointers to these strings, so they must persist
+         // for the lifetime of the SNTP service. We cannot use String objects because their
+         // internal buffers can be invalidated. We copy them NOW in the main task context
+         // to avoid any thread-safety issues with the async task accessing the vector.
+         ntpServerCount = 0;
+         for (size_t i = 0; i < ntpServers.size() && i < MAX_NTP_SERVERS; i++)
             {
-            SERIAL_STREAM("    Blocking call to initNTP()..." << endl)
-            initNTP(taskParam);
-            delete taskParam;
+            // Copy String to C-string buffer in the main task context (thread-safe)
+            ntpServers[i].toCharArray(ntpServerNames[i], sizeof(ntpServerNames[i]));
+            ntpServerCount++;
             }
-         else
+         SERIAL_STREAM("    BinaryClockNTP::Begin() - copied " << ntpServerCount << " server names to persistent storage" << endl)
+
+         // Create the task parameter structure with the given/known values.
+         // NOTE: Servers are NOT stored in taskParam anymore - they're in the instance and persistent C-string array
+         NTPTaskParam* taskParam = new NTPTaskParam();
+         taskParam->instance = this;
+         taskParam->delayMS = delayMS;
+
+         // ALWAYS use async execution - blocking mode disabled permanently (BUILD_MARKER_ASYNC_ONLY_V001)
+         // The async task wrapper will handle initialization on a separate task
+         SERIAL_STREAM("    [ASYNC_ONLY_V001] Creating async task for NTP initialization" << endl)
+         BaseType_t xReturned = xTaskCreate(
+               ntpTaskWrapper,          // Static function pointer - reliable with xTaskCreate
+               "NTPInitTask",
+               4096,                    // Stack size - reduced to free more heap for WiFi/other tasks
+               (void*)taskParam,        // Explicit cast to void*
+               tskIDLE_PRIORITY + 2,    // Increased priority for more reliable execution
+               nullptr
+               );
+         
+         if (xReturned != pdPASS)
             {
-            SERIAL_STREAM("    New task for non-blocking call to initNTP()..." << endl)
-            // Create the task to run initialization asynchronously
-            xTaskCreate(
-                  taskWrapper,
-                  "NTPInitTask",
-                  4096,
-                  taskParam,
-                  tskIDLE_PRIORITY + 1,
-                  nullptr
-                  );
+            SERIAL_PRINTLN("ERROR: xTaskCreate failed for NTPInitTask!")
+            delete taskParam;  // Clean up if task creation failed
             }
-         } // try
+         }
       catch (const std::exception& e)
          {
-         SERIAL_OUT_STREAM("    Exception occurred in BinaryClockNTP::Initialize(): " << e.what() << endl)
+         SERIAL_OUT_STREAM("    Exception occurred in BinaryClockNTP::Begin(): " << e.what() << endl)
          }
       catch (...)
-         { SERIAL_OUT_STREAM("    Unknown exception occurred in BinaryClockNTP::Initialize() " << __LINE__ << endl) }
-      } // Initialize
+         { SERIAL_OUT_STREAM("    Unknown exception occurred in BinaryClockNTP::Begin() " << __LINE__ << endl) }
+      }
 
    void BinaryClockNTP::End()
       {
       if (initialized)
          {
+         // Disable callbacks before stopping SNTP
+         callbacksEnabled = false;
          stopSNTP();
          ntpServers.clear();
          initialized = false;
@@ -202,6 +214,10 @@ namespace BinaryClockShield
       if (sntp_enabled())
          { sntp_stop(); }
 
+      // CRITICAL: Disable callbacks before configuring SNTP to prevent
+      // callback execution while initialization is in progress
+      callbacksEnabled = false;
+
       // Configure SNTP
       // Set SNTP operating mode
       sntp_setoperatingmode(SNTP_OPMODE_POLL);
@@ -210,16 +226,25 @@ namespace BinaryClockShield
       // Set time sync notification callback
       sntp_set_time_sync_notification_cb(timeSyncCallback);
 
-      SERIAL_STREAM("[" << millis() << "] SNTP initialized with " << min((int)ntpServers.size(), SNTP_MAX_SERVERS) << " servers" << endl)
+      // NOTE: Server names were already copied to persistent C-string storage in Begin()
+      // before the async task was created. The ntpServerCount and ntpServerNames[] 
+      // array are already populated and ready to use.
 
-      // Set NTP servers
-      for (size_t i = 0; i < ntpServers.size() && i < SNTP_MAX_SERVERS; i++)
+      SERIAL_STREAM("[" << millis() << "] SNTP initialized with " << ntpServerCount << " servers" << endl)
+
+      // Set NTP servers using persistent C-string storage (populated in main task context)
+      for (size_t i = 0; i < ntpServerCount && i < MAX_NTP_SERVERS; i++)
          {
-         sntp_setservername(i, (char*)ntpServers[i].c_str());
-         SERIAL_STREAM("      - SNTP server " << i << " set to: " << ntpServers[i] << endl)
+         sntp_setservername(i, ntpServerNames[i]);
+         SERIAL_STREAM("      - SNTP server " << i << " set to: " << ntpServerNames[i] << endl)
          }
 
       sntp_init();
+
+      // CRITICAL: Enable callbacks now that SNTP is fully initialized
+      // This ensures no callback is invoked until the SNTP service is ready
+      callbacksEnabled = true;
+      SERIAL_STREAM("[" << millis() << "] Callbacks enabled for SNTP time sync notifications" << endl) // *** DEBUG ***
 
       return true;
       }
@@ -321,6 +346,7 @@ namespace BinaryClockShield
       if (!syncCallback) { return false; }
 
       syncCallback = nullptr;
+      callbacksEnabled = false;  // Disable callbacks when unregistering
       return true;
       }
 
@@ -438,7 +464,7 @@ namespace BinaryClockShield
       SERIAL_STREAM("[" << millis() << "] ")  // *** DEBUG ***
       SERIAL_STREAM("Local   time from NTP: " << lastSyncDateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
 
-      if (syncCallback)
+      if (syncCallback && callbacksEnabled)  // <-- CRITICAL: Only invoke if callbacks are enabled
          {
          SERIAL_STREAM("[" << millis() << "] Invoking sync callback..." << endl)  // *** DEBUG ***
 

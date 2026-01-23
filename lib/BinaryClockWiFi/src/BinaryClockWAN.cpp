@@ -189,7 +189,7 @@ namespace BinaryClockShield
       return networks;
       }
 
-   bool BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect, uint32_t startDelay)
+   bool BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect)
       {
       clockPtr = &binClock;   // Save the pointer to the implementation of IBinaryClockBase
       bool result = !autoConnect;
@@ -202,13 +202,11 @@ namespace BinaryClockShield
          return false;
          }
          
+         
       try
          {
-         if (startDelay > 0)
-            {
-            SERIAL_STREAM("BinaryClockWAN::Begin() - Delaying start by: " << startDelay << " milli seconds." << endl)
-            vTaskDelay(pdMS_TO_TICKS(startDelay));
-            }
+         if (get_WanEventGroup() == nullptr)
+            { set_WanEventGroup(xEventGroupCreate()); }
 
          // Register the `WiFiEvent()` instance method, through a lambda, to get all WiFi events.
          eventID = WiFi.onEvent([this](WiFiEvent_t event, WiFiEventInfo_t info) {
@@ -227,7 +225,7 @@ namespace BinaryClockShield
             // Wait for connection to stabilize BEFORE initializing SNTP
             vTaskDelay(pdMS_TO_TICKS(2000));  // Give WiFi time to stabilize
 
-            // Check connection is still active
+            // Check connection was made and is still active
             if (!apResult || !WiFi.isConnected())
                {
                //
@@ -274,22 +272,69 @@ namespace BinaryClockShield
 
       initialized = result;   // Sync the flag with the final result.
       SERIAL_STREAM("    BinaryClockWAN::Begin() Result: " << (result ? "Success" : "Failure") << endl) // *** DEBUG ***
-      binClock.DisplayLedPattern((result ? LedPattern::okText : LedPattern::xAbort));
-      vTaskDelay(1250 / portTICK_PERIOD_MS);
+      // SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - Waiting for splash screen to complete (via EventGroup)..." << endl)
+   
+      // // Wait for splash screen to finish using FreeRTOS EventGroup (proper synchronization, no polling/delays)
+      // // 30-second timeout if splash screen doesn't complete
+      // EventBits_t uxBits = xEventGroupWaitBits
+      //                            ( taskEventGroup        // Event group handle
+      //                            , SPLASH_COMPLETE_BIT   // Bits to wait for
+      //                            , pdFALSE               // Don't clear bits on exit
+      //                            , pdFALSE               // Don't require all bits
+      //                            , SEC_TO_TICKS(30));    // 30-second timeout
+      
+      // if ((uxBits & SPLASH_COMPLETE_BIT) == 0)
+      //    {
+      //    SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - TIMEOUT waiting for splash screen!" << endl)
+      //    }
+      // else
+      //    {
+      //    SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - Splash screen complete, exitting WiFi Begin..." << endl)
+      //    }
+      
+      // DISABLED: DisplayLedPattern was causing LoadProhibited crash on Core 0
+      // binClock.DisplayLedPattern((result ? LedPattern::okText : LedPattern::xAbort), 2500);
+      // vTaskDelay(pdMS_TO_TICKS(1250));
       return result;
       }
       
    bool BinaryClockWAN::ConnectSNTP()
       {
-      ntp.Begin(NTP_SERVER_LIST, 3000);
-      SERIAL_STREAM("    initialized NTP; Updating time..." << endl) // *** DEBUG ***
-
+      // IMPORTANT: Register the callback FIRST, before calling ntp.Begin()
+      // This prevents a race condition where the NTP initialization task (which runs asynchronously)
+      // could call the callback before it's registered, or call it with an uninitialized clockPtr.
+      // The callback will be called from the NTP task context, so we must ensure the callback
+      // is properly registered and that clockPtr and initialized flags are set correctly.
+      
       // Register `SyncAlert()` to get called when SNTP syncs the time.
-      bool regResult = ntp.RegisterSyncCallback([this](const DateTime& time) {
-            SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - SyncAlert callback calling at: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
-            this->SyncAlert(time);  // Call the instance method
-            });
+      // bool regResult = ntp.RegisterSyncCallback([this](const DateTime& time) {
+      //       SERIAL_STREAM("[" << millis() << "] BinaryClockWAN::Begin() - SyncAlert callback calling at: " << time.timestamp(DateTime::TIMESTAMP_DATETIME12) << endl) // *** DEBUG ***
+      //       this->SyncAlert(time);  // Call the instance method
+      //       });
+      bool regResult = ntp.RegisterSyncCallback(std::bind(&BinaryClockWAN::SyncAlert, this, std::placeholders::_1));
       SERIAL_STREAM("    Registered SyncAlert callback: " << (regResult ? "Success" : "Failure") << endl) // *** DEBUG ***
+      
+      if (!regResult)
+         {
+         SERIAL_PRINTLN("    ERROR: Failed to register NTP sync callback!")
+         return false;
+         }
+      
+      ntp.set_NtpEventGroup(get_WanEventGroup());
+      ntp.set_Timezone(settings.get_Timezone().c_str());
+      
+      // CRITICAL: Create a non-temporary vector for the NTP server list.
+      // NTP_SERVER_LIST macro creates a temporary initializer list that goes out of scope
+      // immediately after this statement. The vector must persist for the async task.
+      // By creating a named vector, we ensure it stays in scope while the async task runs.
+      std::vector<String> ntpServers = NTP_SERVER_LIST;
+      
+      // Give the system a moment to stabilize after callback registration
+      vTaskDelay(pdMS_TO_TICKS(100));
+      
+      ntp.Begin(ntpServers, 5000, false);  // Increased delay to 5000ms to give Core 0/1 time to stabilize
+      
+      SERIAL_STREAM("    BinaryClockWAN::ConnectSNTP() - initialized NTP; Updating time..." << endl) // *** DEBUG ***
 
       return regResult;
       }
@@ -313,7 +358,7 @@ namespace BinaryClockShield
 
    bool BinaryClockWAN::UpdateTime(DateTime& time)
       {
-      if (!initialized) { return initialized; } // Ensure Begin() was called
+      if (!initialized || clockPtr == nullptr) { return false; } // Ensure Begin() was called and clockPtr is valid
 
       bool result = false;
       if (time > DateTime::DateTimeEpoch)
@@ -346,8 +391,24 @@ namespace BinaryClockShield
 
    void BinaryClockWAN::SyncAlert(const DateTime& dateTime)
       {
+      // Safety check: Ensure the object is properly initialized before proceeding
+      // This prevents crashes from race conditions where the callback might be called
+      // from a different task/core context before or after object destruction
+      if (!initialized || clockPtr == nullptr) 
+         { 
+         String prefix("[" + String(millis()) + "] BinaryClockWAN::SyncAlert(): ");
+         SERIAL_PRINTLN(prefix + (clockPtr == nullptr ? "- clockPtr is NULL!" : "- Not initialized"))
+         return; 
+         }
+
       String prefix("[" + String(millis()) + "] BinaryClockWAN::SyncAlert(" + dateTime.timestamp(DateTime::TIMESTAMP_DATETIME12) + "): ");
-      if (!initialized) { SERIAL_PRINTLN(prefix + "- Not initialized") return; } // Ensure Begin() was called
+      
+      // Double-check clockPtr is still valid (multi-core safety)
+      if (clockPtr == nullptr)
+         {
+         SERIAL_PRINTLN(prefix + "- clockPtr became NULL during callback execution!")
+         return;
+         }
 
       clockPtr->set_Time(dateTime);
       SERIAL_STREAM(prefix << " Time synchronized: " << dateTime.timestamp(clockPtr->get_Is12HourFormat()
@@ -417,14 +478,5 @@ namespace BinaryClockShield
          default:                                    SERIAL_PRINTLN("default case") break;
          }
       }
-
-   // // WARNING: This function is called from a separate FreeRTOS task (thread)!
-   // void BinaryClockWAN::WiFiGotIP(WiFiEvent_t event, WiFiEventInfo_t info)
-   //    {
-   //    SERIAL_PRINTF("[%7lu] {WiFiGotIp} event %2d: ", millis(), event) // *** DEBUG ***
-   //    SERIAL_PRINTLN("        WiFi connected")
-   //    SERIAL_PRINT("        IP address: ")
-   //    SERIAL_PRINTLN(IPAddress(info.got_ip.ip_info.ip.addr))           // *** DEBUG ***
-   //    }
 
    } // namespace BinaryClockShield

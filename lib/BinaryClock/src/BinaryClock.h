@@ -1452,7 +1452,7 @@ namespace BinaryClockShield
       static const Note AlarmNotes[] PROGMEM;     ///< The default alarm melody, an array of `Notes`
       static const size_t AlarmNotesSize;         ///< Size of the AlarmNotes array
 
-      const char* IBinaryClock_IdName = "BinaryClock_v0.9.0"; ///< Interface implementation identification name
+      const char* IBinaryClock_IdName = "BinaryClock_v0.9.1"; ///< Interface implementation identification name
       }; // END Class BinaryClock
    }  // END namespace BinaryClockShield
 

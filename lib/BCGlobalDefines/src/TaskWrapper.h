@@ -253,9 +253,9 @@ void TaskWrapper(void* param)
          {
          // Call the instance method with unpacked arguments
          CallInstance<T, Args...> ( taskParam->instance
-                                          , taskParam->method
-                                          , taskParam->args
-                                          , std::index_sequence_for<Args...>{});
+                                  , taskParam->method
+                                  , taskParam->args
+                                  , std::index_sequence_for<Args...>{});
 
          SERIAL_STREAM("[" << millis() << "] Task '" << taskParam->taskName << "' completed successfully" << endl)
          }
