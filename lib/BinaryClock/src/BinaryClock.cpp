@@ -166,6 +166,10 @@
 
 #include <assert.h>                 // Catch code logic errors during development.
 
+// External EventGroup handle for FreeRTOS task synchronization
+extern EventGroupHandle_t taskEventGroup;
+#define SPLASH_COMPLETE_BIT  (1 << 0)
+
 namespace BinaryClockShield
    {
    #define NOTE_MS(N) (1000 / N) ///< Convert note duration (1/N fractions, of a second) to milliseconds
@@ -881,6 +885,12 @@ namespace BinaryClockShield
       // Display the rainbow pattern over all pixels to show everything working.
       DISPLAY_PATTERN(LedPattern::rainbow, maxDuration)   // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 5, 25, frequency); // Acts as a delay(5000/2) and does something.
+      
+      // Signal to the main sketch that splash screen is complete (using FreeRTOS EventGroup)
+      if (taskEventGroup != nullptr)
+         {
+         xEventGroupSetBits(taskEventGroup, SPLASH_COMPLETE_BIT);
+         }
       };
    #undef DISPLAY_PATTERN  // MACRO no needed anymore
 

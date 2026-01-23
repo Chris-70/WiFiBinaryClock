@@ -63,12 +63,18 @@ void setup(void);
 void loop(void);
 bool checkWatchdog();
 void TimeAlert(const DateTime& time);
-// #if WIFI
+static BinaryClock& get_BinaryClock();
+
 #ifdef UNO_R3
    #define ScanI2C(ARRAY, SIZE) 0
 #else
-int ScanI2C(byte* addrList, size_t listSize);
+   int ScanI2C(byte* addrList, size_t listSize);
 #endif 
+
+#if WIFI
+   void setupWiFi(BinaryClock & binClock, BinaryClockWAN & wifi, bool autoConnect);
+   static BinaryClockWAN& get_BinaryClockWAN();
+#endif
 
 #if (DEVELOPMENT || SERIAL_OUTPUT) && !defined(UNO_R3)
 char buffer[32] = {0};
@@ -78,17 +84,10 @@ const char *timeFormat = nullptr; // format24;
 const char *daysOfTheWeek[7] = { "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday" };
 #endif 
 
-// // Get the singleton instance of BinaryClock
-// static BinaryClock& binClock = BinaryClock::get_Instance();
-
-// #if WIFI
-// static BinaryClockWAN& wifi = BinaryClockWAN::get_Instance();
-// #endif
-
 // Initialize the watchdog field values.
-static long watchdogTimeout = 2100; 
-volatile long timeWatchdog = 0;
-bool wdtFault = false;
+static long watchdogTimeout = 2100;    ///< Timeout period for the watchdog in milliseconds, ~2.1 * expected period.
+volatile long timeWatchdog = 0;        ///< The next expiry time for the watchdog.
+bool wdtFault = false;                 ///< Flag: Indicates if the watchdog has faulted.
 
 long curMillis = 0;
 long deltaMillis = 0;
@@ -101,11 +100,10 @@ int heartbeat = LOW;             // Heartbeat LED state: OFF
    #define rtcValid     true     // Assume we have the shield
    #define eepromValid  false
 #else
-bool oledValid = false;
-bool rtcValid = false;
-bool eepromValid = false;
-byte i2cList[I2C_SIZE] = { 0 };
-// std::vector<WiFiInfo> wifiApList; // Vector to hold the found WiFi access point info.
+   bool oledValid = false;
+   bool rtcValid = false;
+   bool eepromValid = false;
+   byte i2cList[I2C_SIZE] = { 0 };
 #endif
 
 static BinaryClock& get_BinaryClock()
@@ -115,36 +113,87 @@ static BinaryClock& get_BinaryClock()
    }
 
 #if WIFI
+// FreeRTOS synchronization primitives
+// EventGroup for task signaling (splash screen, NTP completion)
+// #define SPLASH_COMPLETE_BIT  (1 << NTP_EVENT_SIZE)
+// #define NTP_COMPLETE_BIT     (1 << 1)
+EventGroupHandle_t taskEventGroup = nullptr;
+
+// // Binary Semaphore: NTP initialization complete
+// SemaphoreHandle_t ntpCompleteSemaphore = nullptr;
+
 static BinaryClockWAN& get_BinaryClockWAN()
    {
    static BinaryClockWAN& binClockWAN = BinaryClockWAN::get_Instance();
    return binClockWAN;
    }
 
-void setupWiFi(BinaryClockWAN& wifi, BinaryClock& binClock, bool autoConnect, uint32_t startDelay)
+void setupWiFi(BinaryClock& binClock, BinaryClockWAN& wifi, bool autoConnect)
    {
-   bool wifiResult = wifi.Begin(binClock, true, startDelay);
-   SERIAL_STREAM("BinaryClockWAN::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
-   vTaskDelay(pdMS_TO_TICKS(125));
-   APCreds creds = wifi.get_WiFiCreds();
-   SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
-   // if (!wifi.get_IsConnected())
-   //    {
-   //    BinaryClockWPS& wps = BinaryClockWPS::get_Instance();
-   //    auto result = wps.ConnectWPS();
-   //    if (result.success == true)
-   //       {
-   //       SERIAL_STREAM("WPS Connection successful! SSID: " << result.credentials.ssid << " BSSID: " << result.credentials.bssid << " Password: " << result.credentials.pw << " Time to connect (ms): " << result.connectionTimeMs << endl)
-   //       wifi.set_LocalCreds(result.credentials);
-   //       wifi.Save();
-   //       }
-   //    else
-   //       {
-   //       SERIAL_STREAM("WPS Connection failed! Error: " << result.errorMessage << endl)
-   //       }
-   //    }
-   }
-#endif
+   SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - Waiting for splash screen to complete (via EventGroup)..." << endl)
+   
+   // Wait for splash screen to finish using FreeRTOS EventGroup (proper synchronization, no polling/delays)
+   // 30-second timeout if splash screen doesn't complete
+   EventBits_t uxBits = xEventGroupWaitBits
+                              ( taskEventGroup        // Event group handle
+                              , SPLASH_COMPLETE_MASK  // Bits to wait for
+                              , pdFALSE               // Don't clear bits on exit
+                              , pdFALSE               // Don't require all bits
+                              , SEC_TO_TICKS(30));    // 30-second timeout
+   
+   if ((uxBits & SPLASH_COMPLETE_MASK) == 0)
+      {
+      SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - TIMEOUT waiting for splash screen!" << endl)
+      }
+   else
+      {
+      SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - Splash screen complete, starting WiFi initialization..." << endl)
+      }
+   
+   bool wifiResult = wifi.Begin(binClock, true);
+   SERIAL_STREAM("setupWiFi()->                                                                                                                        wifi::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
+   
+   // CRITICAL: Give Core 0 and Core 1 extra time to stabilize after Begin()
+   // The async NTP task needs time to complete initialization and the DisplayLedPattern() call
+   // must complete before we continue. This prevents LoadProhibited crashes from Core 0/Core 1 interference.
+   vTaskDelay(pdMS_TO_TICKS(5000));
+   SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - Post-Begin() stabilization delay complete." << endl)
+   
+   if (wifiResult)
+      {
+      APCreds creds = wifi.get_WiFiCreds();
+      SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
+
+      SERIAL_STREAM("[" << millis() << "] SetupWiFi() - WiFi initialization complete. Waiting for NTP completion..." << endl)
+      
+      // Wait for NTP initialization to complete using a binary semaphore.
+      auto x = wifi.get_NtpEventBits();   // ToDo: Cleanup
+      uxBits = xEventGroupWaitBits
+                     ( taskEventGroup        // Event group handle
+                     , x->get_CompletedMask()   // Bits to wait for
+                     , pdFALSE               // Don't clear bits on exit
+                     , pdFALSE               // Don't require all bits
+                     , SEC_TO_TICKS(30));    // 30-second timeout
+      
+      // NTPInitTask will signal this flag when NTP is fully initialized.
+      // Timeout after 30 seconds if NTP doesn't complete.
+      if ((uxBits & x->get_CompletedMask()) == 0)
+         {
+         SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - TIMEOUT waiting for NTP compleated flag." << endl)
+         }
+      else
+         {
+         SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - NTP completion flag is true." << endl)
+         }
+      }
+   else
+      {
+      SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi Begin() failed. Skipping NTP initialization." << endl)
+      }
+   
+   SERIAL_STREAM("[" << millis() << "] SetupWiFi() - Task exiting successfully." << endl)
+   } // setupWiFi()
+#endif // WIFI
 
 __attribute__((used)) void setup()
    {
@@ -152,12 +201,13 @@ __attribute__((used)) void setup()
    SERIAL_PRINTLN("================================================================================")
    SERIAL_PRINT("Starting setup(). ")
    SERIAL_PRINTLN(__FILE__)
+   
+   // Monitor heap at startup
+   SERIAL_STREAM("Initial Free Heap: " << ESP.getFreeHeap() << " bytes" << endl)
+   
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
    Wire.begin();
-   
-   SERIAL_PRINTLN("In setup(): Getting the BinaryClock instance.")
-   BinaryClock& binClock = get_BinaryClock();
 
    #ifndef UNO_R3
    // Scan the I2C bus looking for the devices we use.
@@ -166,14 +216,13 @@ __attribute__((used)) void setup()
    for (int i = 0; i < i2cDevices; i++)
       {
       if (i2cList[i] == OLED_IIC_ADDR) { oledValid = true; SERIAL_PRINTLN("  - OLED display is present.") } 
-      if (i2cList[i] == RTC_ADDR)       { rtcValid = true; SERIAL_PRINTLN("  - RTC is present.")          } 
+      if (i2cList[i] == RTC_ADDR)      {  rtcValid = true; SERIAL_PRINTLN("  - RTC is present.")          } 
       if (i2cList[i] == RTC_EEPROM)  { eepromValid = true; SERIAL_PRINTLN("  - RTC EEPROM is present.")   } 
       }
-   delay(500); 
 
-   #if (DEVELOPMENT || SERIAL_OUTPUT)
-   timeFormat = binClock.get_TimeFormat();
-   #endif
+   SERIAL_PRINTLN("")  
+   SERIAL_PRINTLN("In setup(): Getting the BinaryClock instance.")
+   BinaryClock& binClock = get_BinaryClock();
 
    #if WIFI
    SERIAL_PRINTLN("In setup(): Getting the BinaryClockWAN instance.")
@@ -181,7 +230,10 @@ __attribute__((used)) void setup()
    #endif // WIFI
    #endif // !UNO_R3
 
-   SERIAL_PRINTLN("")
+   #if (DEVELOPMENT || SERIAL_OUTPUT)
+   timeFormat = binClock.get_TimeFormat();
+   #endif
+
    #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
    // display.begin(SSD1306_SWITCHCAPVCC, OLED_IIC_ADDR);  // initialize with the I2C addr 0x3C (for the 128x32)
@@ -198,14 +250,13 @@ __attribute__((used)) void setup()
          display.display();
          }
       }
-   delay(500);
    #else
       // Non-dev board configuration, no OLED display, define the `displayResult` to be false.
       #define displayResult false
    #endif
 
    SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "OLED Begin: " << (displayResult? "Success: " : "Failure: ") 
-                << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
+               << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
    SERIAL_STREAM("Starting the BinaryClock Setup" << endl)
 
    binClock.setup(!oledValid || true);   // If the OLED display is installed, it's likely a dev board, not the shield.
@@ -215,24 +266,39 @@ __attribute__((used)) void setup()
    auto callback = [](const DateTime& time) {
          TimeAlert(time);
          };
+
    bool regResult = binClock.RegisterTimeCallback(callback);
    SERIAL_STREAM("Registered time callback: " << (regResult? "True" : "False") << endl)
    delay((regResult? 125 : 0)); // ToDo: Handle the callback failure.
 
+   // // Create binary semaphore for NTP completion signaling
+   // ntpCompleteSemaphore = xSemaphoreCreateBinary();
+   // if (ntpCompleteSemaphore == nullptr)
+   //    { SERIAL_PRINTLN("ERROR: Failed to create NTP completion semaphore!") }
+
    #if WIFI
-   auto wifiRes = CreateMethodTask<BinaryClockWAN&, BinaryClock&, bool, uint32_t> 
+   // Create EventGroup for task synchronization (splash screen, NTP completion)
+   taskEventGroup = xEventGroupCreate();
+   if (taskEventGroup == nullptr)
+      { SERIAL_PRINTLN("ERROR: Failed to create task EventGroup!") }
+   else
+      {
+      // Pass the EventGroup to BinaryClock and BinaryClockWAN instances
+      binClock.set_ClockEventGroup(taskEventGroup);
+      wifi.set_WanEventGroup(taskEventGroup);
+      }
+
+   auto wifiHandle = CreateMethodTask<BinaryClock&, BinaryClockWAN&, bool> 
                         ( &setupWiFi
                         , "SetupWiFiTask"
-                        , 4096
+                        , 6144
                         , tskIDLE_PRIORITY + 1
-                        , get_BinaryClockWAN()
-                        , get_BinaryClock()
-                        , true
-                        , 12500U);
+                        , binClock
+                        , wifi
+                        , true);
    #endif 
 
    SERIAL_STREAM("[" << millis() << "] Entering Loop() now" << endl)
-   delay(125);
    OLED_DISPLAY(clearDisplay())
 
    timeWatchdog = millis();   // Reset the Watchdog Timer.
@@ -242,6 +308,8 @@ __attribute__((used)) void loop()
    {
    static bool wdtError = false;
    static BinaryClock& binClock = get_BinaryClock();
+   static uint32_t heapCheckTimer = 0;
+   static uint32_t loopCounter = 0;
 
    //////////////////////////////////////
    #if WIFI
@@ -270,6 +338,24 @@ __attribute__((used)) void loop()
       wifiCheckTime = millis();
       }
    #endif
+   //////////////////////////////////////
+
+   //////////////////////////////////////
+   // // Monitor heap health every 10 seconds to catch memory issues early
+   // if (millis() - heapCheckTimer > 10000)
+   //    {
+   //    uint32_t freeHeap = ESP.getFreeHeap();
+   //    SERIAL_STREAM("[" << millis() << "] Loop #" << loopCounter << " - Free Heap: " << freeHeap << " bytes" << endl)
+      
+   //    // Alert if heap is getting dangerously low
+   //    if (freeHeap < 50000)  // Less than 50KB
+   //       {
+   //       SERIAL_STREAM("WARNING: Free heap is low: " << freeHeap << " bytes. Memory pressure detected!" << endl)
+   //       }
+      
+   //    heapCheckTimer = millis();
+   //    }
+   // loopCounter++;
    //////////////////////////////////////
 
    binClock.loop();
