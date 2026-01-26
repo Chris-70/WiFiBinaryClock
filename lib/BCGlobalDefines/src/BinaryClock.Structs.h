@@ -11,7 +11,7 @@
 #if !defined(ESP32_WIFI) && !defined(WIFIS3) /// If `ESP32_WIFI` nor `WIFIS3` are defined, then they aren't set to a `false` value.
    #define ESP32_WIFI   true                 /// Define `ESPP32_WIFI` as `true` to include all structures.
    #define WIFIS3      false                 /// Define `WIFIS3` as `false` to exclude Arduino WIFIS3 structures.
-   #define WIFI         true                 /// Define `WIFI` as `true` to include all structures as we have ESP32_WIFI
+   #define WIFI         true                 /// Define `WIFI` as `true` to include all structures as we have ESP32_WIFI or Arduino WiFiS3.
 #endif 
 
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.
@@ -51,6 +51,7 @@ namespace BinaryClockShield
       uint8_t  status;        ///< Status of the alarm: 0 - inactive, 1 - active
       Repeat   freq;          ///< The alarm repeat frequency, default: Daily.
       bool     fired;         ///< The alarm has fired (e.g. alarm is 'ringing').
+
       void clear()            ///< Clear all data except the alarm 'number'
          {
          time = DateTime();   // 00:00:00 (2000-01-01)
@@ -90,15 +91,14 @@ namespace BinaryClockShield
          rainbow,       ///< The colors of the rainbow on the diagnal pattern.
          #if WIFI
          wText,         ///< The big RoyalBlue **`W`** [📶] for the WPS / WiFi pattern.
-         aText,         ///< The big RoyalBlue **`A`** [ᐋ] for the AP Access WEB page pattern.
-         pText,         ///< The big RoyalBlue **`P`** [ᐳ] for the Phone app pattern.
+         aText,         ///< The big Indigo    **`A`** [ᐋ]  for the AP Access WEB page pattern.
+         pText,         ///< The big Orange    **`P`** [ᐳ]  for the Phone app pattern.
+         nText,         ///< The big Yellow    **`N`** [N]  for the NTP sync pattern. 
          #endif
-         endTAG         ///< The end marker, also equal to the number of patterns defined (7 or 8).
+         endTAG         ///< The end marker, also equal to the number of patterns defined (7 or 10).
          };
    
    #if WIFI    // == true
-   #define MAX_ID_SIZE  (UINT8_MAX - 1)   ///< Maximum value for an ID, 1-255 (0 is 'Not Set' or 'Error').
-
    /// @brief The structure to hold the SSID (Name) and BSSID (MAC address) of an Access Point.
    /// @details This structure is used to hold the SSID and BSSID of a WiFi Access Point (AP).
    ///          It includes equality operators to compare two APNames objects.  
@@ -190,6 +190,8 @@ namespace BinaryClockShield
       virtual ~APCreds() = default;
       }; // struct APCreds
 
+   #define MAX_ID_SIZE  (UINT8_MAX - 1)   ///< Maximum value for an ID, 1-255 (0 is 'Not Set' or 'Error').
+
    /// @brief The structure to hold the WiFi Access Point credentials including an ID.
    /// @details This structure extends the `APCreds` structure to include a unique ID for the Access Point.  
    ///          This structure is used to manage multiple WiFi Access Points and their credentials.
@@ -206,6 +208,12 @@ namespace BinaryClockShield
       virtual ~APCredsPlus() = default;
       }; // struct APCredsPlus
 
+   // External EventGroup handle for FreeRTOS task synchronization
+   // extern EventGroupHandle_t  taskEventGroup;
+   // extern SemaphoreHandle_t   ntpCompleteSemaphore;
+   // #define NTP_COMPLETE_BIT     (1 << 1)
+   // #define SPLASH_COMPLETE_BIT  (1 << NTP_EVENT_SIZE)
+            
    ////////////////////////////////////////////////////////////////////////////////////////////////
    //                          ENUMERATION STRINGS                                               //
    ////////////////////////////////////////////////////////////////////////////////////////////////

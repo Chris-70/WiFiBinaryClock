@@ -203,7 +203,7 @@ The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allo
 
 #### The main components of the [`BinaryClock`][BinaryClock_lib] library include:  
 
-1. **[`BinaryClock`][BinaryClock]**: The primary class, inherits from the interface class [`IBinaryClockBase.h`][IBinaryClock], it manages the overall functionality of the binary clock.   
+1. **[`BinaryClock`][BinaryClock]**: The primary class, inherits from the interface class [`IBinaryClock.h`][IBinaryClock], it manages the overall functionality of the binary clock.   
      It handles timekeeping, alarm management, and user interactions through button presses. It also manages the display of the time and alarm status on the LED matrix.   
      This class is responsible for coordinating the various components of the binary clock and providing a unified interface for users to interact with the clock.   
      This class is defined in the [`BinaryClock.h`][BinaryClock] and [`BinaryClock.cpp`][BinaryClock_cpp] files.
@@ -218,10 +218,15 @@ The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allo
 
 #### The main components of the [`BCGlobalDefines`][BCGlobalDefines] library include:
 
-0. **[`IBinaryClockBase`][IBinaryClock]**: An interface class that defines the core functionality of the binary clock. This class provides a common interface for different implementations of the binary clock, and providing a consistent API for interacting with the clock.   
-     This provides a level of decoupling that makes testing of the components easier.   
+0. **[`IBinaryClockBase`][IBinaryClockBase]**: An interface class that defines the minimum core functionality of the binary clock. This class provides a minimal common interface for different implementations of the binary clock, and providing a consistent API for interacting with the clock.   
+     This provides a level of decoupling that makes testing of the components easier. This is the minimum functionality required for all board including the UNO_R3.   
      The Interface class, by design, allows passing an implementing class to the sub-classes without creating circular dependencies.   
-     This class is defined in the [`IBinaryClockBase.h`][IBinaryClock] file.
+     This class is defined in the [`IBinaryClockBase.h`][IBinaryClockBase] file.
+
+0. **[`IBinaryClock`][IBinaryClock]**: A child class of **IBinaryClockBase** interface that defines the full core interface functionality of the binary clock. This class provides the full common interface for different implementations of the binary clock, and providing a consistent API for interacting with the clock.   
+     This provides a level of decoupling that makes testing of the components easier. This interface class is used for boards that support the C++ STL (**STL_USED** is true). Required for the **BinaryClockWiFi** library.   
+     The Interface class, by design, allows passing an implementing class to the sub-classes without creating circular dependencies.   
+     This class is defined in the [`IBinaryClock.h`][IBinaryClock] file.
 
 1. **[`IBCButtonBase`][BCButton]**: An interface class that abstracts the button functionality, providing a consistent interface for reading button states and managing button presses.   
      This class is responsible for debouncing button presses and translating them into meaningful actions within the binary clock.   
@@ -375,7 +380,8 @@ ___
 [fastled]: https://github.com/FastLED/FastLED
 [fastled]: https://github.com/FastLED/FastLED
 [gpl_3]: https://www.gnu.org/licenses/gpl-3.0.en.html
-[IBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClockBase.h
+[IBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClock.h
+[IBinaryClockBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClockBase.h
 [IBCButtonBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBCButtonsBase.h
 [license]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/LICENSE
 [metro]: https://www.adafruit.com/product/5500

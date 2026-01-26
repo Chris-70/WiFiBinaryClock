@@ -282,9 +282,9 @@
    #pragma message "  ESP32_D1_R32_UNO  - generic Wemos D1 R32 UNO with ESP32"
    #pragma message "  METRO_ESP32_S3    - Adafruit Metro ESP32-S3 board"
    #pragma message "  ESP32_S3_UNO      - generic ESP32-S3 UNO board"
-   #pragma message "  UNO_R3            - Arduino UNO R3 board"
    #pragma message "  UNO_R4_WIFI       - Arduino UNO R4 WiFi board"
    #pragma message "  UNO_R4_MINIMA     - Arduino UNO R4 Minima board"
+   #pragma message "  UNO_R3            - Arduino UNO R3 board"
    #pragma message "  CUSTOM_UNO        - custom board with defined pin numbers in board_select.h"
    #pragma message "Please define one of the above boards or create CUSTOM_UNO to compile the code."
    #error "Undefined board. Please define the pin numbers for your board."
@@ -384,11 +384,6 @@
 /// This determines if the menu and/or time are also displayed on the serial monitor.
 /// - If SERIAL_SETUP_CODE is defined, code to display the serial menu is included in the project.
 /// - If SERIAL_TIME_CODE  is defined, code to display the serial time, every second, is included in the project.
-/// - The DEFAULT_SERIAL_SETUP and DEFAULT_SERIAL_TIME values are used to determine if the serial 
-///                 Setup and/or Time messages are displayed initially or not.
-///                 use the public methods 'set_IsSerialSetup()' and 'set_IsSerialTime()' to
-///                 enable/disable the serial output at runtime. H/W buttons, if defined, 
-///                 can also be used to enable/disable the serial output at runtime.
 #ifndef SERIAL_SETUP_CODE
    #define SERIAL_SETUP_CODE    true   ///< If (true) - serial setup code included, (false) - code removed
 #endif
@@ -398,17 +393,12 @@
 #ifndef SERIAL_OUTPUT
    #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) ///< If (true) - Allow serial output messages.
 #endif
-#define DEFAULT_SERIAL_SETUP    true   ///< Initial serial setup display value (e.g. allow the serial setup to be displayed).
-#define DEFAULT_SERIAL_TIME    false   ///< Initial serial time display value  (e.g. no continious serial time display at startup).
 
 /// Defines for the hardware development board to control software output from the hardware.
 /// This controls the inclusion/removal of the code to support hardware buttons/switches to also control the serial output.
 /// The serial output can always be controlled in software if the SERIAL_xxxx_CODE is defined (true).
 #define HW_DEBUG_SETUP ((DEBUG_SETUP_PIN >= 0) && (SERIAL_SETUP_CODE))  ///< Include code to support H/W to control setup display
 #define HW_DEBUG_TIME  ((DEBUG_TIME_PIN  >= 0) && (SERIAL_TIME_CODE))   ///< Include code to support H/W to control time  display
-/// The delay, in ms, is set to a high value when using a momentary button so the button can be release quickly and the user will
-/// still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
-#define DEFAULT_DEBUG_OFF_DELAY 3000 
 #define HARDWARE_DEBUG (HW_DEBUG_SETUP ||  HW_DEBUG_TIME)
 #define DEVELOPMENT    (DEV_BOARD || DEV_CODE) 
 
@@ -449,33 +439,41 @@
 
 #if FREE_RTOS
    #define BINARYCLOCK_DELAY_MS(ms) vTaskDelay(ms / portTICK_PERIOD_MS)
+   #define SEC_TO_TICKS(seconds) pdMS_TO_TICKS((TickType_t)((seconds)*1000U))
 #else
    #define BINARYCLOCK_DELAY_MS(ms) delay(ms)
 #endif
 
 //#####################################################################################//  
 /// General defines for the Binary Clock Shield display layout.
-// The physical layout of the LEDs on the shield, one row each.
+// The display layout of the LEDs on the shield, one row each.
 #ifndef DISPLAY_LAYOUT
-   #define NUM_HOUR_LEDS     5         ///< The LEDs on the top row of the shield.
-   #define NUM_MINUTE_LEDS   6         ///< The LEDs on the middle row of the shield.
-   #define NUM_SECOND_LEDS   6         ///< The LEDs on the bottom row of the shield.
-   #define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
-   #define HOUR_LED_OFFSET   (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
-   #define MINUTE_LED_OFFSET (NUM_SECOND_LEDS)
-   #define SECOND_LED_OFFSET 0
+   #define DISPLAY_LAYOUT    ///< Define the display layout of the Binary Clock Shield
+   #define NUM_HOUR_LEDS         5         ///< The LEDs on the top row of the shield.
+   #define NUM_MINUTE_LEDS       6         ///< The LEDs on the middle row of the shield.
+   #define NUM_SECOND_LEDS       6         ///< The LEDs on the bottom row of the shield.
 #endif
-#define NUM_ROWS             3         ///< The number of LED time display rows on the shield.
+#ifndef NUM_LEDS
+   #define NUM_LEDS (NUM_HOUR_LEDS + NUM_MINUTE_LEDS + NUM_SECOND_LEDS)
+#endif
+#ifndef DISPLAY_OFFSETS
+   #define HOUR_LEDS_OFFSET      (NUM_SECOND_LEDS + NUM_MINUTE_LEDS)
+   #define MINUTE_LEDS_OFFSET    (NUM_SECOND_LEDS)
+   #define SECOND_LEDS_OFFSET    0
+#endif
+#define NUM_ROWS                 3         ///< The number of LED time display rows on the shield.
 // Define the number of LEDs in each row, can be overridden if needed.
 // This allows for different LED configurations if needed.
 // If the rows have more LEDs than needed, the extra LEDs will be unused (OFF).
 #ifndef PHYSICAL_LAYOUT
-   #define HOUR_ROW_LEDS    NUM_HOUR_LEDS    ///< The number of hour LEDs in the hour row.
-   #define MINUTE_ROW_LEDS  NUM_MINUTE_LEDS  ///< The number of minute LEDs in the minute row.
-   #define SECOND_ROW_LEDS  NUM_SECOND_LEDS  ///< The number of second LEDs in the second row.
-   #define HOUR_ROW_OFFSET   (SECOND_ROW_LEDS + MINUTE_ROW_LEDS)
-   #define MINUTE_ROW_OFFSET (SECOND_ROW_LEDS)
-   #define SECOND_ROW_OFFSET 0
+   #define HOUR_ROW_LEDS         NUM_HOUR_LEDS    ///< The number of hour LEDs in the hour row.
+   #define MINUTE_ROW_LEDS       NUM_MINUTE_LEDS  ///< The number of minute LEDs in the minute row.
+   #define SECOND_ROW_LEDS       NUM_SECOND_LEDS  ///< The number of second LEDs in the second row.
+#endif
+#ifndef PHYSICAL_OFFSETS
+   #define HOUR_ROW_OFFSET       (SECOND_ROW_LEDS + MINUTE_ROW_LEDS)
+   #define MINUTE_ROW_OFFSET     (SECOND_ROW_LEDS)
+   #define SECOND_ROW_OFFSET     0
 #endif
 // This is to account for the physical layout beyond the 3 rows for the time display.
 // This is used in the `FastLED` setup for the total buffer size. For example to
@@ -484,6 +482,7 @@
 #ifndef TOTAL_LEDS
    #define TOTAL_LEDS     (HOUR_ROW_LEDS + MINUTE_ROW_LEDS + SECOND_ROW_LEDS)
 #endif
+// Masks for the binary display of the time components.
 #define HOUR_MASK_24      0x1F         ///< Mask for the 24 hour format (5 bits)
 #define HOUR_MASK_12      0x0F         ///< Mask for the 12 hour format (4 bits)
 #define MINUTE_MASK       0x3F         ///< Mask for the minutes (6 bits)
@@ -492,16 +491,57 @@
 #define LED_TYPE           WS2812B     ///< Datasheet: http://bit.ly/LED-WS2812B
 #define COLOR_ORDER          GRB       ///< For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
-#define DEFAULT_DEBOUNCE_DELAY    75   ///< The default debounce delay in milliseconds for the buttons
-#define DEFAULT_BRIGHTNESS        30   ///< The best tested LEDs brightness range: 20-60
-#define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
 #define ALARM_1                    1   ///< Alarm 1. available on the RTC DS3231, adds seconds.
 #define ALARM_2                    2   ///< Alarm 2, the default alarm used by the shield.
 
+#define AMPM_MODE               true   ///< AM/PM mode flag value
+#define HR24_MODE              false   ///< 24 Hour mode flag value
 #define MAX_BUFFER_SIZE           64   ///< Maximum size of temporary buffers.
 #define MAX_DISPLAY_PAUSE      60000   ///< Maximum display pause time in ms (1 minute).
-#define DEFAULT_TIME_FORMAT   "HH:mm:ss AP"  ///< Default time  format when not defined.
-#define DEFAULT_ALARM_FORMAT  "HH:mm AP"     ///< Default alarm format when not defined.
+
+//#####################################################################################//  
+//              DEFAULT values for the Binary Clock Shield settings.
+// These can be overridden by defining them BEFORE this header file is included,
+//#####################################################################################//  
+
+/// - The DEFAULT_SERIAL_SETUP and DEFAULT_SERIAL_TIME values are used to determine if the serial 
+///                 Setup and/or Time messages are displayed initially or not.
+///                 use the public methods 'set_IsSerialSetup()' and 'set_IsSerialTime()' to
+///                 enable/disable the serial output at runtime. H/W buttons, if defined, 
+///                 can also be used to enable/disable the serial output at runtime.
+#ifndef DEFAULT_SERIAL_SETUP
+   #define DEFAULT_SERIAL_SETUP    true   ///< Initial serial setup display value (e.g. allow the serial setup to be displayed).
+#endif
+#ifndef DEFAULT_SERIAL_TIME
+   #define DEFAULT_SERIAL_TIME    false   ///< Initial serial time display value  (e.g. no continious serial time display at startup).
+#endif
+
+/// The delay, in ms, is set to a high value when using a momentary button so the button can be release quickly and the user will
+/// still see the serial output. When using a switch the delay can be short as the user won't need to keep pressing a button.
+#ifndef DEFAULT_DEBUG_OFF_DELAY
+   #define DEFAULT_DEBUG_OFF_DELAY 3000 
+#endif
+
+#ifndef DEFAULT_DEBOUNCE_DELAY
+   #define DEFAULT_DEBOUNCE_DELAY    75   ///< The default debounce delay in milliseconds for the buttons
+#endif
+#ifndef DEFAULT_BRIGHTNESS
+   #define DEFAULT_BRIGHTNESS        30   ///< The best tested LEDs brightness range: 20-60
+#endif
+#ifndef DEFAULT_ALARM_REPEAT
+   #define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
+#endif
+
+#ifndef DEFAULT_TIME_MODE
+   #define DEFAULT_TIME_MODE  AMPM_MODE  ///< Default time mode when not defined.
+#endif
+#ifndef DEFAULT_TIME_FORMAT
+   #define DEFAULT_TIME_FORMAT   "HH:mm:ss AP"  ///< Default time  format when not defined.
+#endif
+#ifndef DEFAULT_ALARM_FORMAT
+   #define DEFAULT_ALARM_FORMAT  "HH:mm AP"     ///< Default alarm format when not defined.
+#endif
+//#####################################################################################//  
 
 /// @addtogroup DefinesDS3231 Defines for the DS3231 RTC registers and bit masks
 /// @{

@@ -189,17 +189,6 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/08)
       virtual void DisplayLedPattern(LedPattern patternType) = 0;
       
-      #ifndef UNO_R3
-      /// @copydoc DisplayLedPattern(LedPattern patternType)
-      /// @param   displayDuration The maximum duration to display the pattern in milliseconds.
-      /// @remarks The display duration is only used to pause the binary time display.
-      ///          Calling this method before the duration has expired will reset the timer
-      ///          with the new value and will display the selected pattern overwriting the previous.
-      /// @see DisplayLedPattern(LedPattern patternType)
-      /// @author Chris-70 (2025/12)
-      virtual void DisplayLedPattern(LedPattern patternType, unsigned long duration) = 0;
-      #endif
-
       /// @brief The method called to convert the time to binary and update the LEDs.
       /// @details This method converts the current time to binary and updates the LEDs 
       ///          using the color values defined in the arrays 'OnColor' and 'OffColor'
@@ -243,34 +232,6 @@ namespace BinaryClockShield
 
       // Utility
       virtual void PlayAlarm(const AlarmTime& alarm) const = 0;
-
-      #if STL_USED
-      /// @brief Play a specific melody by its registry id.
-      /// @param id The id of the melody in the melodyRegistry to play.
-      /// @return True if the id was valid and melody played, false if id was invalid.
-      /// @see RegisterMelody()
-      /// @author Chris-70 (2025/09)
-      virtual bool PlayMelody(size_t id) const = 0;
-
-      /// @brief Register a melody in the melody registry. 
-      /// @remarks ID 0 is always the default melody stored in ROM (flash memory).  
-      ///          The ID can be used as the alarm melody for a given alarm.
-      /// @param melody A reference to the vector of Note objects to register.
-      /// @return The ID of the registered melody in the registry.
-      /// @see set_Alarm()
-      /// @see set_Melody()
-      /// @see PlayMelody(size_t id)
-      /// @see GetMelodyById()
-      /// @author Chris-70 (2025/09)
-      virtual size_t RegisterMelody(const std::vector<Note>& melody) = 0;
-
-      /// @brief Get a melody from the registry by its ID (returned from `RegisterMelody()`).
-      /// @param id The id of the melody in the registry.
-      /// @return A reference to the melody vector, or the default melody if id is invalid.
-      /// @see RegisterMelody()
-      /// @author Chris-70 (2025/09)
-      virtual const std::vector<Note>& GetMelodyById(size_t id) const = 0;
-      #endif
       }; // class IBinaryClockBase
    }  // namespace BinaryClockShield
 

@@ -151,7 +151,7 @@ void setupWiFi(BinaryClock& binClock, BinaryClockWAN& wifi, bool autoConnect)
       }
    
    bool wifiResult = wifi.Begin(binClock, true);
-   SERIAL_STREAM("setupWiFi()->                                                                                                                        wifi::Begin() result: " << (wifiResult? "Success" : "Failure") << endl)
+   SERIAL_STREAM("[" << millis() << "] setupWiFi()->wifi::Begin() result: " << (wifiResult ? "Success" : "Failure") << endl)
    
    // CRITICAL: Give Core 0 and Core 1 extra time to stabilize after Begin()
    // The async NTP task needs time to complete initialization and the DisplayLedPattern() call
@@ -223,6 +223,7 @@ __attribute__((used)) void setup()
    SERIAL_PRINTLN("")  
    SERIAL_PRINTLN("In setup(): Getting the BinaryClock instance.")
    BinaryClock& binClock = get_BinaryClock();
+   SERIAL_STREAM("BinaryClock: " << binClock.get_IdName() << " Starting Setup." << endl)
 
    #if WIFI
    SERIAL_PRINTLN("In setup(): Getting the BinaryClockWAN instance.")
@@ -257,7 +258,7 @@ __attribute__((used)) void setup()
 
    SERIAL_STREAM("OLED display is: " << (oledValid? "Installed;" : "Missing; ") << "OLED Begin: " << (displayResult? "Success: " : "Failure: ") 
                << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
-   SERIAL_STREAM("Starting the BinaryClock Setup" << endl)
+   SERIAL_STREAM("Starting the BinaryClock Setup, HeartbeatLED pin is: " << HeartbeatLED << endl)
 
    binClock.setup(!oledValid || true);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);

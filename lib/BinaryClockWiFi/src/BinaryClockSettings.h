@@ -314,16 +314,21 @@ namespace BinaryClockShield
    //                                   FIELDS                                        //  
    //#################################################################################//   
 
+   public:
+      const String UtcTimezone = TIMEZONE_UTC;              ///< UTC timezone string.
+
    protected:
 
    private:
       Preferences nvs;                    ///< The `Preferences` instance of the Non-Volatile Storage (NVS).
-
-      uint8_t numAPs = 0;                 ///< The number of saved APs in NVS.
-      uint8_t lastID = 0;                 ///< The ID assigned to the last `APCredsPlus` object created.
       std::vector<ApAllInfo> apCreds;     ///< Vector to hold the AP credentials in RAM.
       std::map<uint8_t, size_t> idList;   ///< Map of the IDs in NVS, and their index in `apCreds`
       String timezone;                    ///< The timezone string stored in NVS.
+
+      bool initialized                 = false;             ///< Flag: The NVS data has been processed to RAM
+      bool modified                    = false;             ///< Flag: A changes was made to the data.
+      uint8_t numAPs                   = 0;                 ///< The number of saved APs in NVS.
+      uint8_t lastID                   = 0;                 ///< The ID assigned to the last `APCredsPlus` object created.
 
       const char* nvsNamespace         = "bc_settings";     ///< The NVS namespace for the AP settings
       const char* nvsKeyAPCreds        = "ap_creds";        ///< Key to store the vector of APCreds as blob
@@ -331,11 +336,9 @@ namespace BinaryClockShield
       const char* nvsKeyLastID         = "last_id";         ///< Key to store the last ID saved (next ID = last_id + 1;)
       const char* nvsKeyTimezone       = "timezone";        ///< Key to store the timezone string
 
-      const size_t maxSSIDLength       = 32;    ///< Maximum SSID length
-      const size_t maxPasswordLength   = 64;    ///< Maximum password length
-      const size_t maxBSSIDLength      = 17;    ///< Maximum BSSID length (e.g. "00:11:22:33:44:55")
-      bool initialized                 = false; ///< Flag: The NVS data has been processed to RAM
-      bool modified                    = false; ///< Flag: A changes was made to the data.
+      const size_t maxSSIDLength       = 32;                ///< Maximum SSID length
+      const size_t maxPasswordLength   = 64;                ///< Maximum password length
+      const size_t maxBSSIDLength      = 17;                ///< Maximum BSSID length (e.g. "00:11:22:33:44:55")
       }; // class BinaryClockSettings
    } // namespace BinaryClockShield
 

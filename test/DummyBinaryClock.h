@@ -10,15 +10,15 @@
 #define __DUMMYBINARYCLOCK_H__
 
 
-#include <IBinaryClockBase.h>
+#include <IBinaryClock.h>
 
 namespace BinaryClockShield
 {
-   /// @brief Dummy implementation of IBinaryClockBase that does nothing
+   /// @brief Dummy implementation of IBinaryClock that does nothing
    /// @details All methods are implemented but perform no actual operations.
    ///          This is useful for testing and development when you need a valid
-   ///          IBinaryClockBase object but don't need actual functionality.
-   class DummyBinaryClock : public IBinaryClockBase
+   ///          IBinaryClock object but don't need actual functionality.
+   class DummyBinaryClock : public IBinaryClock
    {
    private:
       DateTime currentTime;
@@ -83,7 +83,8 @@ namespace BinaryClockShield
       virtual const std::vector<Note>& GetMelodyById(size_t id) const override;
       #endif
 
-      const char* IBinaryClock_IdName = "DummyBinaryClock";
+   private:
+      static constexpr const char* IBinaryClock_IdName = "DummyBinaryClock";
    };
 
 } // namespace BinaryClockShield

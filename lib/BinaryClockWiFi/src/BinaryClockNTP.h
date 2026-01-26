@@ -59,6 +59,181 @@
 
 namespace BinaryClockShield
    {
+   // Forward declarations for friend functions
+   struct NTPTaskParam;
+   void ntpDoInitialize(NTPTaskParam* param);
+   void ntpTaskWrapper(void* pvParameters);
+   /// @brief NTP Events class for managing NTP related event bit masks.
+   /// @details This class provides methods to get bit masks for various NTP events
+   ///          such as completion, synchronization, and failure. It allows setting
+   ///          an offset for the event bits to avoid conflicts with other EventGroup bits.  
+   ///          The static `NtpDefaultOffset` property can be set to define a default offset
+   ///          that will be used to set the `NtpBitOffset` for each instance of this class.
+   ///          The static methods `GetGetResultBit()` and `GetResultMask()` can be used
+   ///          to get the bit and mask values using the default offset without creating
+   ///          an instance of this class.
+   /// @author Chris-70 (2026/01)
+   class NTPEventBits
+      {
+      #define NTP_EVENT_SIZE              4     ///< The size/number of the NTP events, not including END.
+      // The starting bit number for NTP events can be defined at compile time, 0 is the default.
+      // The NTP_RESERVED_BIT value impacts the enum values in `NTPEventBits`.N
+      // Use the `NTPEventBits::set_NtpBitOffset()` property to set the offset at runtime.
+      // This allows user defined EventGroups / bit flags to be used without bit conflicts.
+      // NOTE: The NtpBitOffset is added to NTP_RESERVED_BIT for the final bit mask value.
+      #ifndef NTP_RESERVED_BIT
+      #define NTP_RESERVED_BIT            0     ///< The starting bit number for NTP the events enum.
+      #endif 
+      
+      // The TICK_TYPE_WIDTH_32_BITS should be defined, if not we mighth be missing an include file.
+      // Just define the configTICK_TYPE_WIDTH_IN_BITS to be 32, assume we are using an ESP32.
+      // This is just to validate the NTP Event bits don't exceed the maximum bit position.
+      #ifndef TICK_TYPE_WIDTH_32_BITS
+      #define TICK_TYPE_WIDTH_32_BITS        32
+      #define configTICK_TYPE_WIDTH_IN_BITS  TICK_TYPE_WIDTH_32_BITS
+      #endif 
+      // The maximum offset that can be used based on the current board FreeRTOS implementation.
+      // This accounts for the value of NTP_RESERVED_BIT.
+      #define MAX_OFFSET ((configTICK_TYPE_WIDTH_IN_BITS - 8 - (int)NTPEventEnd))
+
+   public:
+      /// @brief Enumeration of NTP event types used by the NTP class.
+      /// @details This enumeration defines the various NTP event types used for
+      ///          event bit masking. The values are offset by `NTP_RESERVED_BIT` to
+      ///          set the starting value of the enum, this is normally 0.  
+      ///          - The `Completed` event indicates that NTP sync initialization has completed.  
+      ///          - The `Synced` event indicates that an NTP sync has been received. 
+      ///          - The `SyncFailed` event indicates that the NTP sync has failed and 
+      ///                 re-initialization is required.  
+      ///          - The `NTPEventEnd` value indicates the end of the enum and can be used 
+      ///                 to determine the number of events defined by subtracting `Reserved`.  
+      ///          The only advantages of the class instance is when multiple programs/libraries
+      ///          or task groups need to use this with different offset values.
+      ///          The `CompletedMask`; `SyncedMask`; and `FailedMask` properties provide
+      ///          easy access to the respective event masks.
+      /// @author Chris-70 (2026/01)
+      enum ntp_events
+         {
+         Reserved = NTP_RESERVED_BIT,     ///< Reserved bit, not used.
+         Completed = NTP_RESERVED_BIT + 1, ///< NTP sync initialization completed event.
+         Synced = NTP_RESERVED_BIT + 2, ///< NTP sync received event, set everytime we sync.
+         Failed = NTP_RESERVED_BIT + 3, ///< NTP sync failed event, must re-initialize.
+         NTPEventEnd                       ///< Last `NTPEventBits` value; subtract `Reserved` to get the size.
+         };
+
+      /// @brief The number of events in the enum including `Reserved` but excluding the end marker `NTPEventEnd`.
+      static const size_t NTPEventsCount = (size_t)(NTPEventBits::NTPEventEnd)-(size_t)(NTPEventBits::Reserved);
+      // Validate that the enum event size matches the defined size to catch any modification errors.
+      static_assert(NTPEventsCount == NTP_EVENT_SIZE, "NTPEventsCount does not match NTP_EVENT_SIZE");
+      static_assert((MAX_OFFSET >= 0), "NTP_RESERVED_BIT is too large for current configTICK_TYPE_WIDTH_IN_BITS");
+
+      /// @brief Default constructor for NTPEventBits class.
+      /// @details This constructor initializes the NTPEventBits instance
+      ///          with the default NTP bit offset.
+      NTPEventBits() : ntpBitOffset(get_NtpDefaultOffset()) { }
+
+      /// @brief Constructor for NTPEventBits class with custom bit offset.
+      /// @details This constructor initializes the NTPEventBits instance
+      ///          with a specified NTP bit offset.
+      NTPEventBits(size_t bitOffset) : ntpBitOffset(bitOffset) { }
+
+      /// @brief Static property to set/get the default NTP event bit offset.
+      /// @details This static property allows setting a default offset for NTP event bits.
+      ///          The default value is used by the default constructor to set the initial offset value.
+      ///          It is also used by the static methods `GetResultBit()` and `GetResultMask()`.
+      /// Note The enum value of `NTPEventEnd` plus `NtpDefaultOffset` must NOT exceed the value of
+      ///      (`configTICK_TYPE_WIDTH_IN_BITS` - 8). e.g. 8; 24; or 56 for 16; 32; or 64 bit widths.
+      /// @param value The default offset value to set.
+      /// @see get_NtpDefaultOffset()
+      /// @see GetResultBit()
+      /// @see GetResultMask()
+      static void set_NtpDefaultOffset(size_t value)
+         { ntpDefaultOffset = (value > MAX_OFFSET ? MAX_OFFSET : value); }
+      /// @copydoc set_NtpDefaultOffset()
+      /// @return The current default NTP event bit offset.
+      /// @see set_NtpDefaultOffset()
+      static size_t get_NtpDefaultOffset()
+         { return ntpDefaultOffset; }
+
+      /// @brief Static method to get the result bit for a given NTP event using the default offset.
+      /// @param ntpEvent The NTP event type.
+      /// @return The bit number for the specified NTP event with the `NtpDefaultOffset`.
+      /// @see GetResultMask()
+      static size_t GetResultBit(enum ntp_events  ntpEvent)
+         {
+         return (ntpEvent + ntpDefaultOffset);
+         }
+
+      /// @brief Static method to get the result mask for a given NTP event using the default offset.
+      /// @param ntpEvent The NTP event type.
+      /// @return The bit mask for the specified NTP event with the `NtpDefaultOffset`.
+      /// @see GetResultBit()
+      static size_t GetResultMask(enum ntp_events  ntpEvent)
+         {
+         return (1 << GetResultBit(ntpEvent));
+         }
+
+      /// @brief Property to set/get the NTP event bit offset for this instance.
+      /// @details This property allows setting a custom offset for NTP event bits
+      ///          for this instance of the class.
+      /// @param value The offset value to set.
+      /// Note The enum value of `NTPEventEnd` plus `NtpBitOffset` must NOT exceed the value of
+      ///      (`configTICK_TYPE_WIDTH_IN_BITS` - 8). i.e. 8; 24; or 56 for 16; 32; or 64 bit widths.
+      /// @see get_NtpBitOffset()
+      void set_NtpBitOffset(size_t value)
+         {
+         ntpBitOffset = (value > MAX_OFFSET ? MAX_OFFSET : value);
+         }
+      /// @copydoc set_NtpBitOffset()
+      /// @return The current offset of the NTP event bits for this instance.
+      /// @see set_NtpBitOffset()
+      size_t get_NtpBitOffset()
+         {
+         return ntpBitOffset;
+         }
+
+      /// @brief Method to get the bit number for the given `ntpEvent`
+      /// @param ntpEvent The ntp_events enum to get the bit number.
+      /// @returns the bit bumber corresponding to the given `ntpEvent`.
+      /// @see GetMask()
+      size_t GetBit(enum ntp_events  ntpEvent)
+         {
+         return (ntpEvent + ntpBitOffset);
+         }
+
+      /// @brief Method to get the bit mask for the given `ntpEvent`
+      /// @param ntpEvent The ntp_events enum to get the bit mask.
+      /// @returns the bit mask corresponding to the given `ntpEvent`.
+      /// @see GetBit()
+      size_t GetMask(enum ntp_events  ntpEvent)
+         {
+         return (1 << GetBit(ntpEvent));
+         }
+
+      /// @brief Property - Read only: The bit mask for the `Completed` event.
+      /// @returns The bit mask for the `Completed` event.
+      size_t get_CompletedMask()
+         {
+         return (GetMask(Completed));
+         }
+      /// @brief Property - Read only: The bit mask for the `Synced` event.
+      /// @returns The bit mask for the `Synced` event.
+      size_t get_SyncedMask()
+         {
+         return (GetMask(Synced));
+         }
+      /// @brief Property - Read only: The bit mask for the `Failed` event.
+      /// @returns The bit mask for the `Failed` event.
+      size_t get_FailedMask()
+         {
+         return (GetMask(Failed));
+         }
+
+      static size_t ntpDefaultOffset;  ///< Static default NTP event bit offset.
+   private:
+      size_t ntpBitOffset = 0;         ///< Instance NTP event bit offset.
+      }; // class NTPEventBits
+
    /// @brief Fixed-point 64-bit data type (32.32) returned by the NTP server.
    /// @details This structure represents a fixed-point 64-bit data type (32.32).  
    ///          The integer part is represented by a union of signed and unsigned 32-bit integers,
@@ -130,8 +305,27 @@ namespace BinaryClockShield
    ///          Static methods allow syncing the internal time to s specified NTP server
    ///          without having to setup the SNTP client instance. The timezone must be
    ///          set first in order to convert to local time, otherwise `DateTime` is UTC.
+   
+   // Forward declaration of BinaryClockNTP class
+   class BinaryClockNTP;
+   
+   /// @brief Task parameter structure for NTP initialization.
+   /// @details This structure is used to pass parameters to the async NTP initialization task.
+   /// It contains the NTP instance pointer, delay time, and server count (to avoid std::vector in task context).
+   struct NTPTaskParam
+      {
+      BinaryClockNTP* instance;           ///< Pointer to the BinaryClockNTP instance
+      size_t delayMS;                     ///< Delay in milliseconds before initializing
+      // NOTE: servers are stored in the instance, not here, to avoid std::vector thread-safety issues
+      };
+
+   
    class BinaryClockNTP
       {
+   // Friend declarations for static helper functions that need access to private members
+   friend void ntpDoInitialize(NTPTaskParam* param);
+   friend void ntpTaskWrapper(void* pvParameters);
+
    public:
       /// @brief Singleton access method for the `BinaryClockNTP` instance.
       static BinaryClockNTP& get_Instance()
@@ -306,6 +500,16 @@ namespace BinaryClockShield
          { return (syncInterval / SYNC_STALE_FACTOR);  }
       #undef SYNC_STALE_FACTOR
 
+      void set_NtpEventBits(NTPEventBits* value)
+         { ntpEventBits = value; }
+      NTPEventBits* get_NtpEventBits() const
+         { return ntpEventBits; }
+
+      void set_NtpEventGroup(EventGroupHandle_t value)
+         { ntpEventGroup = value; }
+      EventGroupHandle_t get_NtpEventGroup() const
+         { return ntpEventGroup; }
+
       /// @brief Property: Timezone - The timezone string for local time conversion.
       /// @details The timezone string used for local time conversion in Proleptic Format:
       ///          i.e. `std offset dst[offset],[start[/time],end[/time]]` without any spaces: 
@@ -477,12 +681,23 @@ namespace BinaryClockShield
       static uint32_t swapEndian(uint32_t value);
        
    private:
-      std::vector<String> ntpServers = NTP_SERVER_LIST;     ///< Default NTP servers
+      /// @brief Array to store NTP server name C-strings persistently.
+      /// @details The ESP-IDF SNTP library holds onto pointers to server names,
+      ///          so they must persist for the lifetime of the SNTP service.
+      ///          We store them as C-strings in this array, not as String objects.
+      static const size_t MAX_NTP_SERVERS = 3;
+      char ntpServerNames[MAX_NTP_SERVERS][128];  ///< Persistent storage for NTP server names
+      size_t ntpServerCount = 0;                  ///< Number of servers currently configured
+      
+      std::vector<String> ntpServers = NTP_SERVER_LIST;     ///< Default NTP servers (for get_NtpServers() API)
       uint32_t timeout = DEFAULT_NTP_TIMEOUT_MS;            ///< 10 second default timeout
       unsigned long syncInterval = SNTP_SYNC_INTERVAL_MS;   ///< Sync interval in ms (e.g. 15 min).
       bool syncInProgress;             ///< Flag: syncing with NTP server is in progress.
       bool lastSyncStatus;             ///< Flag: Result of the last sync attempt.
       bool initialized;                ///< Flag: the this object and the SNTP service are initialized.
+      NTPEventBits internalNtpBits;    ///< Internal NTPEventBits instance with default offset.
+      NTPEventBits* ntpEventBits = &internalNtpBits;
+      EventGroupHandle_t ntpEventGroup = nullptr; ///< Event group for NTP events.
 
       WiFiUDP udp;                     ///< A `WiFiUDP` object for getting the time from the server.
       unsigned port = NTP_DEFAULT_PORT;   ///< The port to use for the NTP server.
@@ -498,6 +713,11 @@ namespace BinaryClockShield
       /// @see RegisterSyncCallback(std::function<void(const DateTime&)> callback)
       /// @see UnregisterSyncCallback()
       std::function<void(const DateTime&)> syncCallback = nullptr; ///< Callback function for SNTP time sync notifications
+
+      /// @brief Flag to protect callback invocation until initialization is complete
+      /// @details Prevents the SNTP callback from being invoked while the async initialization task
+      ///          is still setting up. The callback should only be invoked after initializeSNTP() completes.
+      volatile bool callbacksEnabled = false; ///< Flag: callbacks are safe to invoke
 
       /// @brief The time delta between NTP and UNIX EPOCs, expressed in seconds.
       ///        There are 70 years between the EPOCs, i.e. 1900-01-01 vs 1970-01-07.

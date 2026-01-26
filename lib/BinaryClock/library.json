@@ -1,6 +1,6 @@
 {
   "name": "BinaryClock",
-  "version": "0.8.0",
+  "version": "0.9.3",
   "description": "The base library for the WiFi Binary Clock project",
   "keywords": [  "binary clock", "time", "clock", "neopixel" ],
   "authors": [
@@ -12,6 +12,10 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/Chris-70/WiFiBinaryClock.git"
+  },
+  "dependencies": {
+    "BCGlobalDefines": "*",
+    "RTClibPlus": "*"
   },
   "frameworks": "arduino",
   "platforms": "*",
