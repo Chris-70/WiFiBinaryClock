@@ -42,7 +42,7 @@ namespace BinaryClockShield
    {
    BinaryClockWAN::BinaryClockWAN()
       {
-      SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClockBase*: ")
+      SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClock*: ")
       SERIAL_PRINTLN(clockPtr? clockPtr->get_IdName() : "NULL")
       WiFi.mode(WIFI_STA);
       zuluOffset = TimeSpan(0, -5, 0, 0); // Default to EST (UTC-5) // *** DEBUG ***
@@ -189,16 +189,16 @@ namespace BinaryClockShield
       return networks;
       }
 
-   bool BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect)
+   bool BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect)
       {
-      clockPtr = &binClock;   // Save the pointer to the implementation of IBinaryClockBase
+      clockPtr = &binClock;   // Save the pointer to the implementation of IBinaryClock
       bool result = !autoConnect;
 
-      SERIAL_STREAM("BinaryClockWAN::Begin(IBinaryClockBase& binClock, bool autoConnect) called with: " << binClock.get_IdName() 
-                  << " Saved as: " << clockPtr->get_IdName() << endl)   // *** DEBUG ***
+      SERIAL_PRINT("BinaryClockWAN::Begin(IBinaryClock& binClock, bool autoConnect) called with: ")
+      SERIAL_PRINTLN(binClock.get_IdName())
       if (clockPtr == nullptr || clockPtr != &binClock)  // Safety check
          {
-         SERIAL_PRINTLN("ERROR: Invalid IBinaryClockBase reference!")
+         SERIAL_PRINTLN("ERROR: Invalid IBinaryClock reference!")
          return false;
          }
          
@@ -321,7 +321,9 @@ namespace BinaryClockShield
          }
       
       ntp.set_NtpEventGroup(get_WanEventGroup());
-      ntp.set_Timezone(settings.get_Timezone().c_str());
+      // Set the timezone from settings unless it is the default "UTC" for unset values.
+      String curTZ = settings.get_Timezone();
+      ntp.set_Timezone(curTZ == settings.UtcTimezone ? DEFAULT_TIMEZONE : curTZ.c_str());
       
       // CRITICAL: Create a non-temporary vector for the NTP server list.
       // NTP_SERVER_LIST macro creates a temporary initializer list that goes out of scope

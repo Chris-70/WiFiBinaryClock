@@ -34,25 +34,30 @@
 
   This library provides the following classes:
 
-  - Interface class:
+  - Interface classes:
     - [**IBinaryClockBase**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/IBinaryClockBase.h):
-                        A pure interface class for the Binary Clock. This is used to define the methods and properties
+                        A pure base interface class for the Binary Clock. This is used to define the methods and properties
                         that the BinaryClock class must implement and that other classes can count on to be available.
+    - [**IBinaryClock**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/IBinaryClock.h):
+                        A pure interface class for the Binary Clock. This is used to define the full methods and properties
+                        that the BinaryClock class must implement on advanced b and that other classes can count on to be available.
+                        Defined: **IBinaryClock : IBinaryClockBase**, this is used when **STL_USED** is defined true.
+                        The **BinaryClockWiFi** library requires this interface class.
   - Main class:
     - [**BinaryClock**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BinaryClock.h):
                         The main class, implements the IBinaryClockBase interface, handles all aspects of the
-                        Binary Clock Shield, from display to settings and callbacks.
+                        Binary Clock Shield, from display to menu and callbacks.
   - Helper classes:
     - [**BCButton**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/BCButton.h):
                         Class to encapsulate the buttons for debounce, state and wiring (CC vs CA).
     - [**BCMenu**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.h):
-                        Class to encapsulate the settings for the Binary Clock, including time format and alarm settings.
+                        Class to encapsulate the menu for the Binary Clock, including time format and alarm menu.
 
    Custom library dependencies:
     - [**RTClibPlus**](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/RTClibPlus) A modified fork of
                       [Adafruit's RTClib](https://github.com/adafruit/RTClib) to expand the functionality and support 12 hour mode.
     - [**BinaryClockWiFi**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWiFi)
-                           WiFi connections, WPS, credentials with settings storage, and time syncing with an NTP server.
+                           WiFi connections, WPS, credentials with menu storage, and time syncing with an NTP server.
     - [**MorseCodeLED**](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED):
                         Display error messages over the _LED_BUILTIN_. A fun communication alternative when there is no screen.
                         
@@ -78,7 +83,7 @@
 /// https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 ///
 /// Binary Clock RTC 24H with Interrupt, Alarm and Buttons Example
-/// This example demonstrates complete Binary Clock with Time and Alarm settings
+/// This example demonstrates complete Binary Clock with Time and Alarm menu
 ///
 /// *It is recommended that the first start should be carried out with the serial terminal, 
 /// for better knowing the setting options. 
@@ -166,13 +171,20 @@
 
 #include <assert.h>                 // Catch code logic errors during development.
 
-// External EventGroup handle for FreeRTOS task synchronization
-extern EventGroupHandle_t taskEventGroup;
-#define SPLASH_COMPLETE_BIT  (1 << 0)
+// // External EventGroup handle for FreeRTOS task synchronization
+// extern EventGroupHandle_t taskEventGroup;
+// #define SPLASH_COMPLETE_BIT  (1 << 0)
 
 namespace BinaryClockShield
    {
    #define NOTE_MS(N) (1000 / N) ///< Convert note duration (1/N fractions, of a second) to milliseconds
+
+   #if FREE_RTOS
+   // Static RTC mutex for protecting I2C access from concurrent tasks across the singleton instance
+   // This is declared as a file-static variable to ensure proper initialization
+   static SemaphoreHandle_t rtcMutexStatic = nullptr;
+   static bool rtcMutexInitialized = false;
+   #endif // FREE_RTOS
 
    /// @brief Combined melody and duration notes for the alarm sound.
    /// @remarks See the links for details on creating your own melody using tone():
@@ -204,6 +216,10 @@ namespace BinaryClockShield
 
    // Calculate the number of elements in the array
    const size_t BinaryClock::AlarmNotesSize = sizeof(BinaryClock::AlarmNotes) / sizeof(BinaryClock::AlarmNotes[0]);
+   
+   // Implementation of get_IdName() - returns instance member
+   const char* BinaryClock::get_IdName() const
+      { return idName.c_str(); }
    
    // Helper function templates to create an `fl::array` from PROGMEM C-style array
    // Used to convert PROGMEM array of: `onColors`; `offColors`; `onHourAm_P`; `onHourPm_P`
@@ -278,21 +294,27 @@ namespace BinaryClockShield
          #if WIFI
          // `LedPattern::wText`:
          // `Wtext` pattern (index 7): A big RoyalBlue 'W' [📶] (for WPS / WiFi)
-         ,{ CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::RoyalBlue, CRGB::Black,
+         ,{ CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::Black,
             CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,
             CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue, CRGB::Black,     CRGB::RoyalBlue }
 
          // `LedPattern::aText`:
          // `Atext` pattern (index 8): A big Indigo 'A' [ᐋ] (for AP Access WEB page)
-         ,{ CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Black,
+         ,{ CRGB::Black,  CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Black,
             CRGB::Indigo, CRGB::Black,  CRGB::Indigo, CRGB::Black,  CRGB::Black,  CRGB::Black,
-            CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo }
+            CRGB::Black,  CRGB::Indigo, CRGB::Indigo, CRGB::Indigo, CRGB::Indigo }
 
          // `LedPattern::pText`:
          // `Ptext` pattern (index 9): A big Orange 'P' [ᐳ] (for Phone app)
          ,{ CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Black,  CRGB::Black,  CRGB::Black,
             CRGB::Orange, CRGB::Black,  CRGB::Orange, CRGB::Black,  CRGB::Black,  CRGB::Black,
             CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Orange, CRGB::Orange }
+
+         // `LedPattern::nText`:
+         // `Ntext` pattern (index 10): A big Yellow 'N' [N] (for NTP sync)
+         ,{ CRGB::Yellow, CRGB::Yellow, CRGB::Black,  CRGB::Black,  CRGB::Yellow, CRGB::Black,
+            CRGB::Yellow, CRGB::Black,  CRGB::Yellow, CRGB::Black,  CRGB::Yellow, CRGB::Black,
+            CRGB::Yellow, CRGB::Black,  CRGB::Black,  CRGB::Yellow, CRGB::Yellow }
          #endif
          };
 
@@ -311,12 +333,12 @@ namespace BinaryClockShield
 
    const CRGB* BinaryClock::onHourAm_P = hourColors_P[0];
    const CRGB* BinaryClock::onHourPm_P = hourColors_P[1];
-   const CRGB* BinaryClock::onHour24_P = &onColor_P[HOUR_LED_OFFSET]; // Pointer to the standard ON colors for Hour.
+   const CRGB* BinaryClock::onHour24_P = &onColor_P[HOUR_LEDS_OFFSET]; // Pointer to the standard ON colors for Hour.
 
    // Initialize fl::arrays using the helper function 
    fl::array<CRGB, NUM_HOUR_LEDS> BinaryClock::OnHourAM = progmem2array<NUM_HOUR_LEDS>(onHourAm_P);
    fl::array<CRGB, NUM_HOUR_LEDS> BinaryClock::OnHourPM = progmem2array<NUM_HOUR_LEDS>(onHourPm_P);
-   fl::array<CRGB, NUM_HOUR_LEDS> BinaryClock::onHour24 = progmem2array<NUM_HOUR_LEDS>(onColor_P + HOUR_LED_OFFSET);
+   fl::array<CRGB, NUM_HOUR_LEDS> BinaryClock::onHour24 = progmem2array<NUM_HOUR_LEDS>(onColor_P + HOUR_LEDS_OFFSET);
    fl::array<CRGB, NUM_LEDS>      BinaryClock::OnColor  = progmem2array<NUM_LEDS>(onColor_P);
    fl::array<CRGB, NUM_LEDS>      BinaryClock::OffColor = progmem2array<NUM_LEDS>(offColor_P);
 
@@ -382,6 +404,63 @@ namespace BinaryClockShield
       return String(byteStr);
       }
    
+   int BinaryClock::ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const CRGB oldColor, const CRGB newColor)
+      {
+      int result = 0;
+      for (fl::size i = 0; i < ledBuffer.size(); i++)
+         {
+         if (ledBuffer[i] == oldColor)
+            { 
+            ledBuffer[i] = newColor; 
+            result++;
+            }
+         }
+
+      return result;
+      }
+
+   int BinaryClock::ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const std::vector<std::pair<CRGB, CRGB>>& colorPairs)
+      { 
+      if (colorPairs.size() == 0) { return -1; }
+
+      int result = 0;
+      std::vector<std::pair<CRGB, std::vector<fl::size>>> colorMap;
+      for (auto& pair : colorPairs)
+         {
+         CRGB colorA = pair.first;
+         CRGB colorB = pair.second;
+
+         std::pair<CRGB, std::vector<fl::size>> changePair;
+         changePair.first = colorB;
+         std::vector<fl::size> indices;
+         for (fl::size i = 0; i < ledBuffer.size(); i++)
+            {
+            if (ledBuffer[i] == colorA)
+               {
+               indices.push_back(i);
+               }
+            }
+
+         if (indices.size() > 0)
+            {
+            changePair.second = indices;
+            colorMap.push_back(changePair);
+            }
+         } // for each color pair
+
+      for (auto& pair : colorMap)
+         {
+         CRGB newColor = pair.first;
+         for (auto& index : pair.second)
+            {
+            ledBuffer[index] = newColor;
+            result++;
+            }
+         }
+      
+      return result;
+      }
+
    void BinaryClock::DisplayAllRegisters()
       {
       char buffer[32];
@@ -468,6 +547,11 @@ namespace BinaryClockShield
              << (s2Pressed? "Pressed" : "OFF") << "; Value: " << buttonS2.get_Value() << " OnValue: is: " 
              << buttonS2.get_OnValue() << endl)   // *** DEBUG ***
 
+      #if FREE_RTOS
+      if (get_ClockEventGroup() == nullptr)
+         { set_ClockEventGroup(xEventGroupCreate()); }
+      #endif
+
       if (SetupRTC())
          {
          testLeds = testLeds || RTC.lostPower();
@@ -476,7 +560,7 @@ namespace BinaryClockShield
 
          // Show the serial output, display the initial info.
          if (get_IsSerialSetup()) 
-            { settings.Begin(); } 
+            { menu.Begin(); } 
          }
       else
          {
@@ -527,7 +611,7 @@ namespace BinaryClockShield
       SERIAL_STREAM("Time: " << time.timestamp(get_Is12HourFormat() ? DateTime::TIMESTAMP_TIME12 : DateTime::TIMESTAMP_TIME)
             << endl << "Date:  " << time.timestamp(DateTime::TIMESTAMP_DATE) << " (" << weekdays[(time.dayOfTheWeek() + time.dayNameOffset()) % 7] 
             << ")" << endl)   // *** DEBUG ***
-      }
+      } // setup()
 
    //################################################################################//
    // MAIN LOOP
@@ -535,7 +619,7 @@ namespace BinaryClockShield
 
    void BinaryClock::loop()
       {
-      SettingsState settingsState = settings.ProcessMenu();
+      SettingsState settingsState = menu.ProcessMenu();
 
       #if FREE_RTOS
       yield();  // Give WiFi time
@@ -551,7 +635,7 @@ namespace BinaryClockShield
       #endif
       if (processTime)
          {
-         // Only display time when not in settings
+         // Only display time when not in menu
          if (settingsState == SettingsState::Inactive)
             {
             DisplayBinaryTime(time.hour(), time.minute(), time.second(), get_Is12HourFormat());
@@ -575,7 +659,7 @@ namespace BinaryClockShield
       #if HARDWARE_DEBUG
       CheckHardwareDebugPin();
       #endif
-      }
+      } // loop()
 
    //################################################################################//
    // CLASS CONSTRUCTOR / DESTRUCTOR
@@ -598,7 +682,8 @@ namespace BinaryClockShield
          #if HW_DEBUG_TIME
          , buttonDebugTime(DEBUG_TIME_PIN, CA_ON)
          #endif
-         , settings(*this)
+         , menu(*this)
+         , idName(IBINARYCLOCK_IDNAME)
       {
       #if STL_USED   // For boards with enough memory to include Standard Template Libraries.
       currentMelody = 0;               // Use the default melody from PROGMEM
@@ -610,9 +695,7 @@ namespace BinaryClockShield
       alarmNotesSize  = 0;
       #endif
 
-      // The compiler doesn't like the initialization of structs/classes at declaration, do it here.
-      // UNO error: "sorry, unimplemented: non-trivial designated initializers not supported"
-      memset(leds, 0, sizeof(leds)); // Clear the LED array
+      memset(leds, 0, sizeof(leds));               // Clear the LED array
       memset(binaryArray, 0, sizeof(binaryArray)); // Clear the binary array
       // Copy the  hour portion of the `OnColor` array to the `onHour24` array to initialize it.
       memmove(onHour24.data(), OnColor.data() + HOUR_ROW_OFFSET, sizeof(onHour24));
@@ -621,7 +704,6 @@ namespace BinaryClockShield
       Alarm1.clear();
       Alarm2.number = ALARM_2;
       Alarm2.clear();
-      // END UNO required
 
       BCButton::set_BounceDelay(DEFAULT_DEBOUNCE_DELAY);
  
@@ -634,26 +716,35 @@ namespace BinaryClockShield
       #endif
       #if HW_DEBUG_TIME
       buttonDebugTime.Initialize();
-      #endif
 
-      #if HW_DEBUG_TIME
-      // Set the 'isSerialTime' to true if the hardware Time button is ON 
+      // Set the `IsSerialTime` flag to true if the hardware Time button is ON 
       // This is necessary if the button is actually a switch or is hardwired
       if (buttonDebugTime.IsPressedRaw())
          {
          // If the software has enabled IsSerialTime, give control to the software,
          // otherwise just turn on the flag. 
-         if (isSerialTime)
-            { set_IsSerialTime(isSerialTime); }
-         else
-            { isSerialTime = true; }
+         if (!get_IsSerialTime())
+            { set_IsSerialTime(true); }
          } 
+      #endif // HW_DEBUG_TIME
+
+      #if FREE_RTOS
+      // Create the static RTC mutex on first instantiation only (singleton pattern)
+      if (!rtcMutexInitialized)
+         {
+         rtcMutexStatic = xSemaphoreCreateMutex();
+         rtcMutexInitialized = true;
+         if (rtcMutexStatic == nullptr)
+            {
+            SERIAL_PRINTLN("ERROR: Failed to create RTC mutex!")
+            }
+         }
       #endif
 
       // Initialize the serial output properties to follow this initial value.
-      // Any changes to these properties will be pushed to settings as well.
-      settings.set_IsSerialTime(isSerialTime); 
-      settings.set_IsSerialSetup(isSerialSetup);
+      // Any changes to these properties will be pushed to menu as well.
+      menu.set_IsSerialTime(isSerialTime); 
+      menu.set_IsSerialSetup(isSerialSetup);
 
       time = DateTime(70, 1, 1, 10, 4, 10);  // An 'X' [❌] if RTC fails.
       // This is an important check as we are using the enum value as an index in the array.
@@ -665,9 +756,9 @@ namespace BinaryClockShield
       // Detach the interrupt from the RTC INT pin
       detachInterrupt(digitalPinToInterrupt(RTC_INT));
 
-      // Note: Not sure if the RTC 1 Hz H/W output should be stopped (C-70 2025/09)
+      // Note: Not sure if the RTC 1 Hz H/W output should be stopped, for now: keep running. (C-70 2025/09)
       // // Disable 1 Hz square wave RTC SQW output
-      // RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_OFF);;
+      // RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_OFF);
 
       // Turn off the LEDs.
       FastLED.setBrightness(0);
@@ -698,6 +789,17 @@ namespace BinaryClockShield
       set_RTCinterruptWasCalled(false);
       set_CallbackTimeTriggered(false);
       set_CallbackAlarmTriggered(false);
+
+      #if FREE_RTOS
+      // Note: Static RTC mutex is NOT deleted here - it's shared across the singleton instance
+      // and is kept for the lifetime of the program
+
+      // Delete the created tasks
+      vTaskDelete(get_TimeDispatchHandle());
+      vTaskDelete(get_CallbackTaskHandle());
+      set_TimeDispatchHandle(nullptr);
+      set_CallbackTaskHandle(nullptr);
+      #endif
       }
 
    //#####################################################################//
@@ -726,7 +828,7 @@ namespace BinaryClockShield
          if (get_Is12HourFormat() != mode12)
             { set_Is12HourFormat(mode12); }
 
-         time = RTC.now();
+         time = ReadTime();
          }
 
       SERIAL_STREAM("Time from RTC: " << time.timestamp(get_Is12HourFormat()? DateTime::TIMESTAMP_TIME12 : DateTime::TIMESTAMP_TIME) 
@@ -806,7 +908,7 @@ namespace BinaryClockShield
          // the alarm happened while the shield was off.
          long alarm1seconds = (Alarm1.time.secondstime() % (DAY_SECONDS));
          long alarm2seconds = (Alarm2.time.secondstime() % (DAY_SECONDS));
-         long timeDaySeconds = RTC.now().secondstime() % (DAY_SECONDS);
+         long timeDaySeconds = ReadTime().secondstime() % (DAY_SECONDS);
          long alarm1delta = timeDaySeconds - alarm1seconds;
          long alarm2delta = timeDaySeconds - alarm2seconds;
          bool alarm1inrange = (alarm1delta > 0L) && (alarm1delta < MAX_ALARM_DELTA);
@@ -848,9 +950,9 @@ namespace BinaryClockShield
    // a duration parameter. Not enough flash memory.
    // Define a MACRO to handle this difference.
    #ifdef UNO_R3
-   #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN);
+      #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN);
    #else
-   #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN, DURATION);
+      #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN, DURATION);
    #endif
    void BinaryClock::splashScreen(bool testLEDs)
       {
@@ -878,6 +980,8 @@ namespace BinaryClockShield
          FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
          DISPLAY_PATTERN(LedPattern::pText, maxDuration) 
          FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
+         DISPLAY_PATTERN(LedPattern::nText, maxDuration) 
+         FlashLed(HeartbeatLED, 4, 50, frequency);          // Acts as a delay(2000/3) and does something.
          #endif
          frequency = 2;
          }
@@ -886,13 +990,13 @@ namespace BinaryClockShield
       DISPLAY_PATTERN(LedPattern::rainbow, maxDuration)   // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 5, 25, frequency); // Acts as a delay(5000/2) and does something.
       
+      #if FREE_RTOS
       // Signal to the main sketch that splash screen is complete (using FreeRTOS EventGroup)
-      if (taskEventGroup != nullptr)
-         {
-         xEventGroupSetBits(taskEventGroup, SPLASH_COMPLETE_BIT);
-         }
-      };
-   #undef DISPLAY_PATTERN  // MACRO no needed anymore
+      if (get_ClockEventGroup() != nullptr)
+         { xEventGroupSetBits(get_ClockEventGroup(), SPLASH_COMPLETE_MASK); }
+      #endif
+      }
+   #undef DISPLAY_PATTERN  // MACRO not needed anymore
 
    void BinaryClock::SetupFastLED(bool testLEDs)
       {
@@ -983,8 +1087,13 @@ namespace BinaryClockShield
 
       #if FREE_RTOS
       BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-      xTaskNotifyFromISR(get_TimeDispatchHandle(), 0, eNoAction, &xHigherPriorityTaskWoken);
-      portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+      // Only notify the TimeTask if it has been created and has a valid handle
+      TaskHandle_t timeTask = get_TimeDispatchHandle();
+      if (timeTask != nullptr)
+         {
+         xTaskNotifyFromISR(timeTask, 0, eNoAction, &xHigherPriorityTaskWoken);
+         portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+         }
       #endif
       // Set the trigger flag IFF the "callback time is enabled" flag is set.
       set_CallbackTimeTriggered(callbackTimeEnabled);
@@ -1008,7 +1117,7 @@ namespace BinaryClockShield
          if (value.year() == 2000) 
             { value = DateTime(2001, value.month(), value.day(), value.hour(), value.minute(), value.second()); }
 
-         time = RTC.now();
+         time = ReadTime();
          if (time != value)
             { 
             RTC.adjust(value, get_Is12HourFormat()); 
@@ -1022,9 +1131,6 @@ namespace BinaryClockShield
          { SERIAL_STREAM("*** Invalid RTC / time. RTC Valid? " << (rtcValid ? "True, " : "False, ") << value.timestamp(timestampFormat) << endl) } // *** DEBUG ***
       }
 
-   // DateTime BinaryClock::get_Time() const
-   //    {  return time; }
-
    void BinaryClock::set_Alarm(AlarmTime value)
       {
       // Exit on bad input or missing RTC hardware.
@@ -1033,13 +1139,6 @@ namespace BinaryClockShield
       // Set the alarm time and status in the RTC
       if (value.status >= 0)
          {
-         // // NOTE: (Chris-70, 2025/07/05)
-         // // The current version of Adafruit's RTCLib (2.1.4) does not allow setting the
-         // // Alarm interrupt registers A1IE and A2IE when the INTCN bit is set to 0.
-         // // This means we must disable the 1Hz SQ Wave, set the bits and then re-enable the SQ Wave.
-         // // This shouldn't impact the LED display but it might generate an additional interrupt.
-         // RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_OFF);
-
          // Set the alarm to sound at the same time, 'hour:minute', each day.
          if (value.number == ALARM_1)
             { 
@@ -1057,7 +1156,6 @@ namespace BinaryClockShield
             }
 
          RTC.clearAlarm(value.number); // Clear the Alarm Trigger flag.
-         // RTC.writeSqwPinMode(Ds3231SqwPinMode::DS3231_SquareWave1Hz);
 
          // We saved the alarm time in the RTC, now turn it off IFF the status is OFF
          if (value.status == 0)
@@ -1114,7 +1212,7 @@ namespace BinaryClockShield
       {
       #if SERIAL_SETUP_CODE
       isSerialSetup = value;
-      settings.set_IsSerialSetup(value);
+      menu.set_IsSerialSetup(value);
       #endif
       }
 
@@ -1135,7 +1233,7 @@ namespace BinaryClockShield
          buttonDebugTime.Reset();
          #endif
       isSerialTime = value;
-      settings.set_IsSerialTime(value);
+      menu.set_IsSerialTime(value);
       #endif
       }
 
@@ -1180,7 +1278,17 @@ namespace BinaryClockShield
       { return AmColor; }
 
    void BinaryClock::set_PmColor(CRGB value)
-      { PmColor = value; }
+      { 
+      if (value != PmColor)
+         {
+         PmColor = value;
+         if (value == CRGB::Black)
+            {
+            isPmBlack = true;
+            switchColors = get_Is12HourFormat();
+            }
+         }
+      }
 
    CRGB BinaryClock::get_PmColor() const
       { return PmColor; }
@@ -1205,7 +1313,7 @@ namespace BinaryClockShield
       RTC.setIs12HourMode(value); // Set the RTC to 12/24 hour mode
       #if DEV_CODE
       SERIAL_STREAM(endl << "Is AM/PM? " << (value? "True" : "False") << "; Formats in use: " << TimeFormat << "; " 
-            << AlarmFormat << "; " << time.toString(buffer, sizeof(buffer), get_TimeFormat()) << endl) // *** DEBUG ***
+            << AlarmFormat << "; e.g.:" << time.toString(buffer, sizeof(buffer), get_TimeFormat()) << endl) // *** DEBUG ***
       #endif
 
       curHourColor = HourColor::Hour24;
@@ -1336,7 +1444,7 @@ namespace BinaryClockShield
          //////////////////////////////////////
 
          uint8_t prevHour = time.hour();
-         time = RTC.now();
+         time = ReadTime();
 
          /// @brief Lambda to check if an alarm was triggered, returns the result.
          /// @details If the alarm has fired, the alarm fired flag on the RTC 
@@ -1662,7 +1770,7 @@ namespace BinaryClockShield
             {
             hourBits = 12;
             }
-       // Display the indicator for AM or PM.
+         // Display the indicator for AM or PM.
          leds[(HOUR_ROW_OFFSET + NUM_HOUR_LEDS) - 1] = (hoursRow >= 12) ? PmColor : AmColor;
          }
       else
@@ -1680,7 +1788,7 @@ namespace BinaryClockShield
       for (uint8_t i = 0; i < (use12HourMode ? NUM_HOUR_LEDS - 1 : NUM_HOUR_LEDS); i++)
          {
          ledIndex = HOUR_ROW_OFFSET + i;
-         displayIndex = HOUR_LED_OFFSET + i;
+         displayIndex = HOUR_LEDS_OFFSET + i;
          SET_LEDS(ledIndex, displayIndex, hourBits, bitMasks_P[i], onColorsHour[i], offColors[displayIndex]);
          }
 
@@ -1688,7 +1796,7 @@ namespace BinaryClockShield
       for (uint8_t i = 0; i < NUM_MINUTE_LEDS; i++)
          {
          ledIndex = MINUTE_ROW_OFFSET + i;
-         displayIndex = MINUTE_LED_OFFSET + i;
+         displayIndex = MINUTE_LEDS_OFFSET + i;
          SET_LEDS(ledIndex, displayIndex, minuteBits, bitMasks_P[i], onColors[displayIndex], offColors[displayIndex]);
          }
 
@@ -1696,7 +1804,7 @@ namespace BinaryClockShield
       for (uint8_t i = 0; i < NUM_SECOND_LEDS; i++)
          {
          ledIndex = SECOND_ROW_OFFSET + i;
-         displayIndex = SECOND_LED_OFFSET + i;
+         displayIndex = SECOND_LEDS_OFFSET + i;
          SET_LEDS(ledIndex, displayIndex, secondBits, bitMasks_P[i], onColors[displayIndex], offColors[displayIndex]);
          }
 
@@ -1884,7 +1992,32 @@ namespace BinaryClockShield
    #endif
 
    DateTime BinaryClock::ReadTime() 
-      { return RTC.now(); }
+      {
+      #if FREE_RTOS
+      // Protect RTC I2C access with a mutex to prevent concurrent access from multiple tasks
+      // BUT: Only use mutex if we're NOT in an interrupt context (ISR)
+      BaseType_t semaphoreResult = pdFAIL;
+      bool inISR = xPortInIsrContext() != 0;  // Check if we're in an ISR
+      
+      // Only try to acquire mutex if NOT in ISR context
+      if (!inISR && rtcMutexStatic != nullptr)
+         {
+         semaphoreResult = xSemaphoreTake(rtcMutexStatic, portMAX_DELAY);  // Wait indefinitely for the mutex
+         }
+      #endif
+
+      DateTime result = RTC.now();
+
+      #if FREE_RTOS
+      // Release the mutex after RTC access is complete (but only if we acquired it)
+      if (!inISR && rtcMutexStatic != nullptr && semaphoreResult == pdTRUE)
+         {
+         xSemaphoreGive(rtcMutexStatic);
+         }
+      #endif
+
+      return result;
+      }
 
    //################################################################################//
    // SERIAL INFO
@@ -1907,7 +2040,7 @@ namespace BinaryClockShield
 
          for (int i = NUM_LEDS - 1; i >= 0; i--)
             {
-            if (i == (HOUR_LED_OFFSET - 1) || i == (MINUTE_LED_OFFSET - 1)) Serial << (" "); // Insert a space between hours - minutes, and minutes - seconds.
+            if (i == (HOUR_LEDS_OFFSET - 1) || i == (MINUTE_LEDS_OFFSET - 1)) Serial << (" "); // Insert a space between hours - minutes, and minutes - seconds.
             Serial << (binaryArray[i] ? "1" : "0"); // Print 1 or 0 for each LED
             }
          Serial << endl;

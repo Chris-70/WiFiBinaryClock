@@ -18,8 +18,12 @@ namespace BinaryClockShield
          , buttonS1(clock.get_S1TimeDec())
          , buttonS2(clock.get_S2SaveStop())
          , buttonS3(clock.get_S3AlarmInc())
+         #if SERIAL_TIME_CODE
          , isSerialTime(clock.get_IsSerialTime())
+         #endif
+         #if SERIAL_SETUP_CODE
          , isSerialSetup(clock.get_IsSerialSetup())
+         #endif
       {
       }
 
@@ -36,27 +40,14 @@ namespace BinaryClockShield
       #if SERIAL_OUTPUT
       Serial.begin(115200);
       delay(10);
-      Serial.println(fillStr('_', 44));
-      Serial.println(F("|      Software from the Chris Team        |"));
-      Serial.println(F("|        (Chris-70 and Chris-80)           |"));
-      Serial.println(F("|      Designed to run the fantastic:      |"));
-      Serial << STR_BARRIER << endl;
-      Serial.println(F("#     'Binary Clock Shield for Arduino'    #"));
-      Serial << STR_BARRIER << endl;
-      Serial.println(F("#      Shield created by Marcin Saj,       #"));
-      Serial.println(F("#        https://nixietester.com/          #"));
-      Serial.println(F("# product/binary-clock-shield-for-arduino/ #"));
-      Serial << STR_BARRIER << endl;
-      Serial.println(F("#  This software is licensed under the GNU #"));
-      Serial.println(F("#     General Public License (GPL) v3.0    #"));
-      Serial << STR_BARRIER << endl;
+      SerialStartInfo();
       Serial.println();
       #endif
 
       }
 
    //################################################################################//
-   // SETTINGS
+   // SETTINGS MENU
    //################################################################################//
    /// The core of the settings menu
    /// @verbatim
@@ -207,18 +198,15 @@ namespace BinaryClockShield
 
    /////////////////////////////////////////////////////////////////////////////////
 
-   #if SERIAL_SETUP_CODE
-      // Define the strings that are used multiple times throughout the serial setup code. 
-      const String BCMenu::STR_SEPARATOR = BCMenu::fillStr('-', 44); // "--------------------------------------------";
-      const String BCMenu::STR_BARRIER   = BCMenu::fillStr('#', 44); // "############################################";
-      const char PROGMEM BCMenu::STR_TIME_SETTINGS[] = "-------------- Time Settings ---------------";
-      const char PROGMEM BCMenu::STR_ALARM_SETTINGS[]= "-------------- Alarm Settings --------------";
-      const char PROGMEM BCMenu::STR_CURRENT_TIME[]  = "-------- Current Time: ";
+   #if SERIAL_OUTPUT
+      // Define the strings that are used multiple times throughout the setup code. 
+      const String BCMenu::strSeparator = BCMenu::fillStr('-', 44); // "--------------------------------------------";
+      const String BCMenu::strBarrier   = BCMenu::fillStr('#', 44); // "############################################";
+      const String BCMenu::strCurrentTime = BCMenu::fillStr('-', 8) + F(" Current Time: ");
    #else
       // When SERIAL_SETUP_CODE is false, code is removed. Redefine the method calls to be whitespace only.
       // This allows the code to compile without the serial setup code, but still allows the methods 
       // to be "called" in the code without causing compilation errors (Must return void to work).
-      #define serialStartInfo()
       #define serialSettings()
       #define serialAlarmInfo()
       #define serialCurrentModifiedValue()
@@ -345,10 +333,10 @@ namespace BinaryClockShield
             #if SERIAL_SETUP_CODE
             if (get_IsSerialSetup())
                {
-               Serial << endl << STR_SEPARATOR << endl;
-               Serial << (const __FlashStringHelper*)STR_CURRENT_TIME;
+               Serial << endl << strSeparator << endl;
+               Serial << strCurrentTime;
                Serial << (clock.get_Time().toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
-               Serial << STR_SEPARATOR << endl;
+               Serial << strSeparator << endl;
                }
             #endif
             }
@@ -642,24 +630,39 @@ namespace BinaryClockShield
    ////////////////////////////////////////////////////////////////////////////////////
    // Show the Shield settings menu and alarm status
 
-   void BCMenu::serialStartInfo()
+   void BCMenu::SerialStartInfo()
       {
-      Serial << STR_SEPARATOR << endl;
+      Serial.println(fillStr('_', 44));
+      Serial.println(F("|      Software from the Chris Team        |"));
+      Serial.println(F("|        (Chris-70 and Chris-80)           |"));
+      Serial.println(F("|      Designed to run the fantastic:      |"));
+      Serial << strBarrier << endl;
+      Serial.println(F("#     'Binary Clock Shield for Arduino'    #"));
+      Serial << strBarrier << endl;
+      Serial.println(F("#      Shield created by Marcin Saj,       #"));
+      Serial.println(F("#        https://nixietester.com/          #"));
+      Serial.println(F("# product/binary-clock-shield-for-arduino/ #"));
+      Serial << strBarrier << endl;
+      Serial.println(F("#  This software is licensed under the GNU #"));
+      Serial.println(F("#     General Public License (GPL) v3.0    #"));
+      Serial << strBarrier << endl;
+
+      Serial << strSeparator << endl;
       Serial << fillStr('-', 11) << F(" BINARY CLOCK SHIELD ") << fillStr('-', 12) << endl;
       Serial << fillStr('-', 15) << F(" FOR ARDUINO ") << fillStr('-', 16) << endl;
-      Serial << STR_SEPARATOR << endl;
+      Serial << strSeparator << endl;
       Serial << fillStr('-', 17) << F(" Options ") << fillStr('-', 18) << endl;
       Serial << F("S1 - Time Settings ") << fillStr('-', 25) << endl;
-      Serial << F("S2 - Disable Alarm Melody ") << fillStr('-', 18) << endl;
+      Serial << F("S2 - Stop Alarm Melody ") << fillStr('-', 21) << endl;
       Serial << F("S3 - Alarm Settings ") << fillStr('-', 24) << endl;
-      Serial << STR_SEPARATOR << endl;
-      Serial << STR_SEPARATOR << endl;
-      Serial << (const __FlashStringHelper*)STR_CURRENT_TIME;
+      Serial << strSeparator << endl;
+      Serial << strSeparator << endl;
+      Serial << strCurrentTime;
       Serial << ((clock.get_Time()).toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
 
       serialAlarmInfo();
 
-      Serial << STR_BARRIER << endl << endl;
+      Serial << strBarrier << endl << endl;
       }
 
    ////////////////////////////////////////////////////////////////////////////////////
@@ -667,13 +670,13 @@ namespace BinaryClockShield
 
    void BCMenu::serialAlarmInfo()
       {
-      Serial << STR_SEPARATOR << endl;
-      Serial << F("------ Alarm Time: ");
+      Serial << strSeparator << endl;
+      Serial << fillStr('-', 10) << F(" Alarm Time: ");
       Serial << ((clock.get_Alarm()).time.toString(buffer, sizeof(buffer), clock.get_AlarmFormat())) << endl;
-      Serial << STR_SEPARATOR << endl;
-      Serial << F("---- Alarm Status: ");
+      Serial << strSeparator << endl;
+      Serial << fillStr('-', 8) << F(" Alarm Status: ");
       Serial << ((clock.get_Alarm()).status == 1 ? "ON" : "OFF") << endl;
-      Serial << STR_SEPARATOR << endl;
+      Serial << strSeparator << endl;
       }
 
       ////////////////////////////////////////////////////////////////////////////////////
@@ -684,20 +687,20 @@ namespace BinaryClockShield
       if (settingsOption == 1)
          {
          Serial << endl << endl;
-         Serial << STR_SEPARATOR << endl;
-         Serial << (const __FlashStringHelper*)STR_TIME_SETTINGS << endl;
-         Serial << STR_SEPARATOR << endl;
-         Serial << (const __FlashStringHelper*)STR_CURRENT_TIME;
+         Serial << strSeparator << endl;
+         Serial << fillStr('-', 14) << F(" Time Settings ") << fillStr('-', 15) << endl;
+         Serial << strSeparator << endl;
+         Serial << strCurrentTime;
          Serial << (tempTime.toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
-         Serial << STR_SEPARATOR << endl;
+         Serial << strSeparator << endl;
          }
 
       if (settingsOption == 3)
          {
          Serial << endl << endl;
-         Serial << STR_SEPARATOR << endl;
-         Serial << (const __FlashStringHelper*)STR_ALARM_SETTINGS << endl;
-         Serial << STR_SEPARATOR << endl;
+         Serial << strSeparator << endl;
+         Serial << fillStr('-', 14) << F(" Alarm Settings ") << fillStr('-', 14) << endl;
+         Serial << strSeparator << endl;
          serialAlarmInfo();
          }
 
@@ -706,7 +709,7 @@ namespace BinaryClockShield
          Serial << F("S1 - Decrement ") << this->fillStr('-', 29) << endl;
          Serial << F("S2 - Save Current Settings Level ") << this->fillStr('-', 11) << endl;
          Serial << F("S3 - Increment ") << this->fillStr('-', 29) << endl;
-         Serial << STR_SEPARATOR << endl;
+         Serial << strSeparator << endl;
          };
 
       char hourStr[6] = { 0 };

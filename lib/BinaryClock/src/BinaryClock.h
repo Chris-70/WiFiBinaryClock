@@ -8,7 +8,7 @@
 /// The original file comments are reproduced below for reference (with some updates).
 /// ----------------------------------------------------------------------------------------------------   
 /// Binary Clock RTC 24H with Interrupt, Alarm and Buttons Example
-/// This example demonstrates complete Binary Clock with Time and Alarm settings
+/// This example demonstrates complete Binary Clock with Time and Alarm menu
 ///   
 /// It is recommended that the first start should be carried out with the serial terminal, 
 /// for better knowing the setting options. 
@@ -80,7 +80,7 @@
 /// on the Binary Clock Shield for Arduino GitHub repository: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 /// The original file was fully refactored to be encapsulated in a group of classes: `IBinaryClockBase` - The interface class;
 /// `BinaryClock` - The implementation and main class; `BCButton` - Class to manage the buttons; `BCMenu` - Class to manage the
-/// alarm and time settings, this class retains much of the original code. These classes encapsulate all the functionality
+/// alarm and time menu, this class retains much of the original code. These classes encapsulate all the functionality
 /// available on "Binary Clock Shield for Arduino UNO" designed and built by Marcin Saj." Modifications were made to support
 /// multiple UNO boards including ESP32 based UNO platforms that would allow for new functionality, such as WiFi time.
 /// For all boards, there is greater flexibility by the user at runtime for color selection and melodies used by the alarm as well 
@@ -97,6 +97,8 @@
 #ifndef __BINARYCLOCK_H__
 #define __BINARYCLOCK_H__
 
+#define IBINARYCLOCK_IDNAME "BinaryClock_v0.9.3"
+
 #ifdef PIO_UNIT_TESTING          /// Check for the `PlatformIO` unit testing environment.
    #define TESTING true          /// Enable the `TESTING` code.
 #endif
@@ -107,7 +109,11 @@
 
 #include <BinaryClock.Defines.h> /// BinaryClock project-wide definitions and MACROs.
 #include <BinaryClock.Structs.h> /// Global structures and enums used by the Binary Clock project.
-#include <IBinaryClockBase.h>    /// The pure interface class that defines the minimum supported features.
+#if STL_USED
+   #include <IBinaryClock.h>     /// The pure interface class that defines the full supported features.
+#else
+   #include <IBinaryClockBase.h> /// The pure interface class that defines the minimum supported features.
+#endif
 
 #include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
 #include "BCButton.h"            /// Binary Clock Button class: handles all button related functionality.
@@ -129,6 +135,8 @@
 #endif
 
 #if FREE_RTOS
+   #define SPLASH_COMPLETE_BIT   5
+   #define SPLASH_COMPLETE_MASK  (1 << SPLASH_COMPLETE_BIT)
    // __has_include is C++17 and beyond, or an extension in some compilers.
    #ifdef __has_include
       // FreeRTOS include files we need, find the location and include them.
@@ -195,9 +203,9 @@ namespace BinaryClockShield
    /// @brief The BinaryClock class encapsulates the functionality of the Binary Clock Shield for Arduino.
    ///        It provides all the methods needed to initialize, set the date/time, set the alarm, and 
    ///        change the brightness and LED colors in addition to handling the LED display. This now
-   ///        supports display in 12 hour mode and the settings UX has been improved.
+   ///        supports display in 12 hour mode and the menu UX has been improved.
    /// @details The class has public methods to get/set the time, alarm, alarm melody, and brightness.
-   ///          It also has methods to handle the settings menu on a serial display. Refactoring the 
+   ///          It also has methods to handle the menu menu on a serial display. Refactoring the 
    ///          original example code into a class was done to pair it with another class that handles
    ///          the WiFi connection and allows the user to change the LED colors and melodies used for
    ///          the alarm at runtime, without needing to recompile the code. The original code and shield design
@@ -220,7 +228,7 @@ namespace BinaryClockShield
    ///          the base functionality of displaying the time in Binary format on the shield. The class 
    ///          follows the `Singleton Pattern` to ensure that only one instance of the class exists.   
    ///          The class implements the `IBinaryClockBase` interface to ensure that all required methods are provided.  
-   ///          The `BCMenu` class handles all the settings and serial output functionality.  
+   ///          The `BCMenu` class handles all the menu and serial output functionality.  
    ///          The `BCButton` class handles all button related functionality.  
    ///          The `BinaryClock.Defines.h` file contains all the project-wide definitions and MACROs required 
    ///          to support multiple different UNO board types including a user defined `CUSTOM_UNO` board.   
@@ -249,14 +257,18 @@ namespace BinaryClockShield
    ///                               local WiFi, a secure WiFi using WPS, or a secure WiFi using credentials 
    ///                               from the user and stored in the ESP32 flash memory. The library also 
    ///                               handles all NTP related functionality including time synchronization and
-   ///                               daylight saving time adjustments based on user settings. 
+   ///                               daylight saving time adjustments based on user menu. 
    ///                               The `BinaryClockWAN` is the main class and uses the other classes for support:  
    ///                               The `BinaryClockWPS` class establishes a connection with an AP using WPS.   
    ///                               The `BinaryClockNTP` class handles all NTP related functionality.   
    ///                               The `BinaryClockSettings` class handles the storing and retrieving of all 
    ///                               settings in NVS.  
    /// @author  Chris-80 (2025/07)
+   #if STL_USED
+   class BinaryClock : public IBinaryClock
+   #else
    class BinaryClock : public IBinaryClockBase
+   #endif
       {
    //#################################################################################//  
    //                            IBinaryClockBase INTERFACE                               //
@@ -351,7 +363,8 @@ namespace BinaryClockShield
       /// @see get_S2SaveStop()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const IBCButtonBase& get_S1TimeDec() const override { return buttonS1; }
+      virtual const IBCButtonBase& get_S1TimeDec() const override 
+         { return buttonS1; }
 
       /// @brief Read only property pattern to get a const reference to the `S2`
       ///        `IBCButtonBase` object used for saving a selection or stopping an alarm.
@@ -359,7 +372,8 @@ namespace BinaryClockShield
       /// @see get_S1TimeDec()
       /// @see get_S3AlarmInc()
       /// @author Chris-70 (2025/09)
-      virtual const IBCButtonBase& get_S2SaveStop() const override { return buttonS2; }
+      virtual const IBCButtonBase& get_S2SaveStop() const override   
+         { return buttonS2; }
 
       /// @brief Read only property pattern to get a const reference to the `S3`
       ///        `IBCButtonBase` object used for setting alarm and incrementing a value.
@@ -367,12 +381,13 @@ namespace BinaryClockShield
       /// @see get_S1TimeDec()
       /// @see get_S2SaveStop()
       /// @author Chris-70 (2025/09)
-      virtual const IBCButtonBase& get_S3AlarmInc() const override { return buttonS3; }
+      virtual const IBCButtonBase& get_S3AlarmInc() const override 
+         { return buttonS3; }
 
       /// @brief Read only property pattern to get the unique Id Name of this Binary Clock instance.
       /// @return A pointer to a constant character string containing the unique identifier name.
       /// @author Chris-70 (2025/10)
-      virtual const char* get_IdName() const override { return IBinaryClock_IdName; }
+      virtual const char* get_IdName() const override;
       /// @}
 
       /// @brief Methods to register/unregister a callback function at every second.
@@ -546,12 +561,12 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       static char* DateTimeToString(DateTime time, char* buffer, size_t size, const char* format = "YYYY/MM/DD hh:mm:ss");
 
-      /// @brief Method to flash the 'ledNum' ON/OFF for ~(1 sec / frequency). with an ON/OFF 'dutyCycle' 0-100
+      /// @brief Method to flash the 'ledNum' ON/OFF for ~(1 sec / frequency) times. with an ON/OFF 'dutyCycle' 0-100 at frequency Hz.
       /// @param ledNum The output pin number to flash ON/OFF (HIGH/LOW).
-      /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).   {1}
-      /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.          {50}
-      /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.          {1}
-      /// @param onValue The value to set the pin to turn the LED ON (e.g. CC_O or CCA_ON). {CC_ON}
+      /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).    {1}
+      /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.           {50}
+      /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.           {1}
+      /// @param onValue The value to set the pin to turn the LED ON (e.g. CC_ON or CCA_ON). {CC_ON}
       /// @note CC_ON - The LED is wired CC, where the LED is on when the pin goes HIGH.  
       ///               The LED is in the OFF (LOW) state when this method returns.  
       ///       CA_ON - The LED is wired CA, where the LED is on when the pin goes LOW.  
@@ -763,6 +778,35 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/08)
       void(*resetBoard) (void) = 0; // Declare reset function at address 0
 
+      #if STL_USED
+      /// @brief This method is called to change a specific color in the given LED buffer.
+      /// @details This method changes a specific color in the given LED buffer.
+      ///          The method iterates through the `ledBuffer` and replaces each occurrence
+      ///          of the `oldColor` with the `newColor`.
+      /// @param ledBuffer The LED buffer to change colors in.
+      /// @param oldColor The color to be replaced.
+      /// @param newColor The color to replace the old color with.
+      /// @return The number of LEDs that were changed.
+      /// @see ChangeColors(fl::array<CRGB, TOTAL_LEDS>&, const std::vector<std::pair<CRGB, CRGB>>&)
+      /// @author Chris-70 (2025/12)
+      int ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const CRGB oldColor, const CRGB newColor);
+
+      /// @brief This method is called to change multiple colors in the given LED buffer.
+      /// @details This method changes multiple colors in the given LED buffer.  
+      ///          Each color pair in the `colorPairs` vector contains an old color and a new color to replace it with.  
+      ///          The method iterates through the `ledBuffer` and replaces each occurrence of the old color with the new color.
+      ///          The method correctly handles the case where each old color is replaced with the corresponding new color and
+      ///          can handle the case where one or more new colors are the same as one or more of the old colors.  
+      ///          This allows for complex color transformations in a single pass through the LED buffer.
+      /// @remarks If multiple `oldColors` are the same, the last `newColor` in the vector will be used for all occurrences.
+      /// @param ledBuffer The LED buffer to change colors in.
+      /// @param colorPairs A vector of pairs, where each pair contains an old color and a new color to replace it with.
+      /// @return The number of LEDs that were changed.
+      /// @see ChangeColors(fl::array<CRGB, TOTAL_LEDS>&, const CRGB, const CRGB)
+      /// @author Chris-70 (2025/12)
+      int ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const std::vector<std::pair<CRGB, CRGB>>& colorPairs);
+      #endif 
+
       #if DEV_CODE
       /// @brief This method is called to display all the registers of the RTC chip.
       ///        The DS3231 registers 0x00 through 0x13 are dumped in: Hex; Binary; and Decimal.
@@ -786,15 +830,15 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void RTCinterrupt();
 
-      /// @brief The method called to read the alarm time status (ON/OFF), for the default alarm, from the RTC.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
-      /// @author Chris-80 (2025/07)
-      void getAlarmTimeAndStatus();
+      // /// @brief The method called to read the alarm time status (ON/OFF), for the default alarm, from the RTC.
+      // /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      // /// @author Chris-80 (2025/07)
+      // void getAlarmTimeAndStatus();
 
-      /// @brief The method called to write the alarm time status (ON/OFF), for the default alarm, from the RTC.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
-      /// @author Chris-80 (2025/07)
-      void setAlarmTimeAndStatus();
+      // /// @brief The method called to write the alarm time status (ON/OFF), for the default alarm, from the RTC.
+      // /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      // /// @author Chris-80 (2025/07)
+      // void setAlarmTimeAndStatus();
 
       /// @brief Helper method to return the pointer to the `patternType` in the `ledPatterns_P` array.
       /// @param patternType The LED pattern type to display.
@@ -1100,6 +1144,13 @@ namespace BinaryClockShield
       size_t get_MelodyCount() const { return melodyRegistry.size(); }
       #endif
 
+      #if FREE_RTOS
+      void set_ClockEventGroup(EventGroupHandle_t value)
+         { clockEventGroup = value; }
+      EventGroupHandle_t get_ClockEventGroup() const
+         { return clockEventGroup; }
+      #endif
+
       #if HW_DEBUG_TIME
       //  ingroup properties
       /// @brief Property pattern for the 'DebugOffDelay' property. This controls how fast 
@@ -1317,7 +1368,6 @@ namespace BinaryClockShield
       fl::array<CRGB, NUM_LEDS>& offColors;        ///< Reference to the current OFF colors.
       fl::array<CRGB, NUM_HOUR_LEDS>& onHourPM;    ///< Reference to the color array for the PM hours.
       fl::array<CRGB, NUM_HOUR_LEDS>& onHourAM;    ///< Reference to the color array for the AM hours.
-      // fl::array<CRGB, NUM_HOUR_LEDS>& onHour24;    ///< Reference to the color array for the standard or 24-hour format.
       fl::array<CRGB, NUM_HOUR_LEDS>& onHour =  onHour24;///< Reference to the color array for the current hour colors in use.
 
       BCButton buttonS1;  ///< S1 button (Time/Decrement)
@@ -1335,10 +1385,10 @@ namespace BinaryClockShield
       unsigned long displayPause = 0UL;      ///< The delay expiry time to pause the display binary time update.
       #endif
 
-      BCMenu settings;       ///< Settings handler instance
+      BCMenu menu;                           ///< Settings handler instance
 
       DateTime time;                         ///< Current time from the RTC, updated every second.
-      bool amPmMode = false;                 ///< Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
+      bool amPmMode = DEFAULT_TIME_MODE;     ///< Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
       bool callbackAlarmEnabled = false;     ///< Flag: The 'Alarm' callback is enabled (i.e. is not nullptr) or not.
       bool callbackTimeEnabled  = false;     ///< Flag: The 'Time'  callback is enabled (i.e. is not nullptr) or not.
       bool rtcValid             = false;     ///< Flag: The RTC was found and initialized.
@@ -1367,7 +1417,7 @@ namespace BinaryClockShield
       /// @var CRGB ledPatterns_P[][]
       /// @brief A 2D array of LED colors and patterns. stored in flash memory, for the shield.
       ///          These are the default ON/OFF colors for displaying the time as well as
-      ///          all the patterns used in the settings menu for time and alarm.
+      ///          all the patterns used in the menu menu for time and alarm.
       /// @details The enum `LedPattern` is the index to the color/pattern for that display.
       /// @par     **`LedPattern::onColors`**:  
       ///          **`OnColors`** The default colors are Hours: Blue; Minutes: Green; and Seconds: Red 
@@ -1386,16 +1436,16 @@ namespace BinaryClockShield
       ///          `OffTxt` The screen shaped in a RED sideways **`F`** for 'oFF' when setting the alarm to OFF in the alarm menu.
       /// @par     `LedPattern::xAbort`:   
       ///          `XAbort` The screen shaped in a big Pink (Fuchsia) **`X`** [❌] for abort/cancel.
-      ///          This is used to cancel the Time and Alarm settings and exit without making any changes.
+      ///          This is used to cancel the Time and Alarm menu and exit without making any changes.
       ///          This is also displayed, after the Rainbow (saving/exit) screen to signal nothing saved.
       /// @par     `LedPattern::okText`:   
       ///          `OkText` The screen shaped in a big Lime **`✓`** [✅] for okay/good.
-      ///          This is used to signal that the settings have been saved successfully.
+      ///          This is used to signal that the menu have been saved successfully.
       /// @par     `LedPattern::rainbow`:   
       ///          `Rainbow` The screen shaped in a big Rainbow of colors across all LEDs.
-      ///          This is displayed after the Time or Alarm settings has ended and the
-      ///          program is saving/restoring the settings. This is followed by either
-      ///          the **`✓`** [✅] for settings saved or the **`X`** [❌] for no changes.
+      ///          This is displayed after the Time or Alarm menu has ended and the
+      ///          program is saving/restoring the menu. This is followed by either
+      ///          the **`✓`** [✅] for menu saved or the **`X`** [❌] for no changes.
       /// @par     `LedPattern::wText`:   
       ///          `WText` The screen shaped in a big Blue **`W`** [📶] for WPS / WiFi
       ///          This is used to signal that the WiFi needs to setup (e.g. WPS) and is only available
@@ -1444,16 +1494,19 @@ namespace BinaryClockShield
       #endif
 
       #if FREE_RTOS
-      TaskHandle_t rtcTaskHandle      = nullptr;   ///< RTC Interrupt Task Handle
-      TaskHandle_t timeDispatchHandle = nullptr;   ///< Time Dispatch Task Handle for processing RTC time events.
-      TaskHandle_t callbackTaskHandle = nullptr;   ///< Callback Task Handle for user callback functions.
+      TaskHandle_t rtcTaskHandle          = nullptr;  ///< RTC Interrupt Task Handle
+      TaskHandle_t timeDispatchHandle     = nullptr;  ///< Time Dispatch Task Handle for processing RTC time events.
+      TaskHandle_t callbackTaskHandle     = nullptr;  ///< Callback Task Handle for user callback functions.
+      EventGroupHandle_t clockEventGroup  = nullptr;  ///< Task event group for clock task notifications.
       #endif
    
-      static const Note AlarmNotes[] PROGMEM;     ///< The default alarm melody, an array of `Notes`
-      static const size_t AlarmNotesSize;         ///< Size of the AlarmNotes array
-
-      const char* IBinaryClock_IdName = "BinaryClock_v0.9.1"; ///< Interface implementation identification name
+      String idName;                                  ///< Instance identifier name
+      static const Note AlarmNotes[] PROGMEM;         ///< The default alarm melody, an array of `Notes`
+      static const size_t AlarmNotesSize;             ///< Size of the AlarmNotes array
       }; // END Class BinaryClock
    }  // END namespace BinaryClockShield
+   
+   #undef TEST_VIRTUAL     // Remove the test virtual specifier define
+   #undef TEST_PROTECTED   // Remove the test protected specifier define 
 
 #endif // END __BINARY_CLOCK_H__

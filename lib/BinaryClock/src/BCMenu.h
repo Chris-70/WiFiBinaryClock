@@ -13,6 +13,14 @@
 
 #include <IBinaryClockBase.h>
 
+#if TESTING    ///< Changes needed for unit testing of this code.
+   #define TEST_VIRTUAL   virtual      ///< Virtul methods for unit testing ony.
+   #define TEST_PROTECTED protected:   ///< Access specifier for unit testing ony.
+#else
+   #define TEST_VIRTUAL                ///< Virtual methods  only for unit testing, removed otherwise.
+   #define TEST_PROTECTED              ///< Access specifier only for unit testing, removed otherwise.
+#endif
+
 namespace BinaryClockShield
    {
    /// @brief Enum class to indicate the current settings state.
@@ -181,14 +189,11 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       void ExitSettingsMode();
 
-      /// @brief Get current settings state enumeration value
-      /// @details This property returns the current state of the settings menu.
-      ///          This is where we are in the settings menu processing.
-      ///          When this property returns `SettingsState::Inactive` then 
-      ///          we are not in the settings menu and the binary time should be displayed.
-      /// @return Current settings state enum value
-      /// @author Chris-70 (2025/09)
-      SettingsState get_CurrentState() const { return currentState; }
+      #if SERIAL_SETUP_CODE
+      /// @brief The method called to display the serial startup information.
+      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Chris-80 (2025/07)
+      void SerialStartInfo();  // ToDo: Make something public to display info (BC.cpp)
 
       /// @brief Property pattern for the 'IsSerialSetup' flag property. 
       ///        This property controls whether the serial setup menu is displayed or not.
@@ -202,7 +207,9 @@ namespace BinaryClockShield
       /// @copydoc set_IsSerialSetup()
       /// @see set_IsSerialSetup()
       bool get_IsSerialSetup() const { return isSerialSetup; }
+      #endif
 
+      #if SERIAL_TIME_CODE
       /// @brief Property pattern for the 'IsSerialTime' flag property.
       ///        This property controls whether the serial time is displayed or not.
       /// @param value The flag to set (true to display the serial time, false to disable it).
@@ -215,6 +222,16 @@ namespace BinaryClockShield
       /// @copydoc set_IsSerialTime()
       /// @see set_IsSerialTime()
       bool get_IsSerialTime() const { return isSerialTime; }
+      #endif
+
+      /// @brief Get current settings state enumeration value
+      /// @details This property returns the current state of the settings menu.
+      ///          This is where we are in the settings menu processing.
+      ///          When this property returns `SettingsState::Inactive` then 
+      ///          we are not in the settings menu and the binary time should be displayed.
+      /// @return Current settings state enum value
+      /// @author Chris-70 (2025/09)
+      SettingsState get_CurrentState() const { return currentState; }
     
    protected:
       /// @brief Enum class to classify the different settings types/levels in the settings menu. Type: uint8_t
@@ -301,9 +318,20 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void displayCurrentModifiedValue();
         
-      // Helper methods
-      // SettingsType getSettingsType(int options, int level) const;
+      ////////////////////
+      // Helper methods //
+      ////////////////////
+
+      /// @brief This method resets the settings state and associated fields to their initial values.
+      /// @details This has the effect of clearing the menu state to start over.
+      /// @see SettingsState
+      /// @author Chris-70 (2025/09)
       void resetSettingsState();
+
+      /// @brief This method determines the current settings state based on the internal variables.
+      /// @return The current `SettingsState` enum value.
+      /// @see SettingsState
+      /// @author Chris-70 (2025/09)
       SettingsState determineCurrentState() const;
 
       #if SERIAL_OUTPUT
@@ -321,11 +349,6 @@ namespace BinaryClockShield
       // These methods are all part of the serial menu display and can be removed at compile time. They can be 
       // can be controlled in both software and hardware. A momentary button is used to toggle the menu on/off.
       #if SERIAL_SETUP_CODE
-      /// @brief The method called to display the serial startup information.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
-      /// @author Chris-80 (2025/07)
-      void serialStartInfo();  // ToDo: Make somethins public to display info (BC.cpp)
-
       /// @brief The method called to display the serial menu for setting the time and alarm.
       /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
       /// @author Chris-80 (2025/07)
@@ -344,6 +367,7 @@ namespace BinaryClockShield
       #endif
 
    private:
+   TEST_PROTECTED
       // Reference to the clock interface
       IBinaryClockBase& clock;
 
@@ -369,21 +393,26 @@ namespace BinaryClockShield
       uint8_t exitStage = 0U;        ///< Stage of exit process
       unsigned long delayTimer = 0UL; ///< Delay timer instead of using delay()
       bool continueS2 = false;       ///< Flag to resume 'buttonS2' processing after delay
+      #if SERIAL_TIME_CODE
       bool isSerialTime;   ///< Flag to indicate if serial time output is enabled, default value to be set in constructor.
+      #endif
+      #if SERIAL_SETUP_CODE
       bool isSerialSetup;  ///< Flag to indicate if serial setup is enabled, default value to be set in constructor.
+      #endif
 
       char buffer[64] = { 0 };       ///< Buffer for the DateTime string conversions
 
-      #if SERIAL_SETUP_CODE
+      #if SERIAL_OUTPUT
       // Setup strings for serial output that are used multiple times. Balance between flash and ram usage.
-      static const String STR_SEPARATOR;              ///< Repeated separator string, generated at runtime.
-      static const String STR_BARRIER;                ///< Repeated barrier string, generated at runtime.
-      static const char PROGMEM STR_TIME_SETTINGS[];  ///< Repeated time settings string, stored in flash memory.
-      static const char PROGMEM STR_ALARM_SETTINGS[]; ///< Repeated alarm settings string, stored in flash memory.
-      static const char PROGMEM STR_CURRENT_TIME[];   ///< Repeated current time string, stored in flash memory.
+      static const String strSeparator;              ///< Repeated separator string, generated at runtime.
+      static const String strBarrier;                ///< Repeated barrier string, generated at runtime.
+      static const String strCurrentTime;           ///< Repeated current time string, generated at runtime. cutt
       #endif
   
       };
    }
+
+   #undef TEST_VIRTUAL     // Remove the test virtual specifier define
+   #undef TEST_PROTECTED   // Remove the test protected specifier define 
 
 #endif // __BC_MENU_H__
