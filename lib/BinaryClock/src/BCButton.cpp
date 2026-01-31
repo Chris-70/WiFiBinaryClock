@@ -52,6 +52,26 @@ namespace BinaryClockShield
 
    bool BCButton::IsPressedNew()
       {
+      #ifdef UNO_R3
+      // Simplified debounce for UNO_R3 (~100 bytes savings)
+      bool result = false;
+      uint8_t currentRead = get_Value();
+      unsigned long currentTime = millis();
+
+      if (currentRead != lastRead) {
+         lastDebounceTime = currentTime;
+         lastRead = currentRead;
+      }
+
+      if ((currentTime - lastDebounceTime) > bounceDelay && currentRead != state) {
+         state = currentRead;
+         lastReadTime = currentTime;
+         result = (state == onValue);
+      }
+
+      return result;
+      #else
+      // Full debounce logic for other boards
       bool result = false;
       int currentRead = get_Value();
       unsigned long currentTime = millis();
@@ -89,6 +109,7 @@ namespace BinaryClockShield
       // Always update lastRead for next iteration
       lastRead = currentRead;
       return result;
+      #endif
       }
 
    uint8_t BCButton::get_Value() const

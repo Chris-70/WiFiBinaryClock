@@ -348,6 +348,14 @@ namespace BinaryClockShield
    ///          alarm repetations so this array provides a way to map a common
    ///          repeat enumeration with the different alarms on the hardware.
    /// note The `Repeat::endTag` must be the last value as it is used to define the array size.
+   #ifdef UNO_R3
+   // UNO_R3: Daily alarm only to save flash (~150 bytes)
+   const uint8_t BinaryClock::repeatModeTable[1][2] =
+         {
+         {static_cast<uint8_t>(Ds3231Alarm1Mode::DS3231_A1_Hour),   static_cast<uint8_t>(Ds3231Alarm2Mode::DS3231_A2_Hour)},
+         };
+   #else
+   // Full repeat mode table for other boards
    const uint8_t BinaryClock::repeatModeTable[static_cast<uint8_t>(AlarmTime::Repeat::endTag)][2] =
          {
          {static_cast<uint8_t>(Ds3231Alarm1Mode::DS3231_A1_Hour),   static_cast<uint8_t>(Ds3231Alarm2Mode::DS3231_A2_Hour)},
@@ -356,6 +364,7 @@ namespace BinaryClockShield
          {static_cast<uint8_t>(Ds3231Alarm1Mode::DS3231_A1_Day),    static_cast<uint8_t>(Ds3231Alarm2Mode::DS3231_A2_Day)},
          {static_cast<uint8_t>(Ds3231Alarm1Mode::DS3231_A1_Date),   static_cast<uint8_t>(Ds3231Alarm2Mode::DS3231_A2_Date)},
          };
+   #endif
 
    // Note: On the Wemos D1-R32 UNO boards, the builtin LED is GPIO 02, this is also the S3 button pin (A0).
    //       Setting this pin HIGH (ON) for more than 'bounceDelay' (e.g. 75) ms will trigger the alarm setup
@@ -700,8 +709,10 @@ namespace BinaryClockShield
       // Copy the  hour portion of the `OnColor` array to the `onHour24` array to initialize it.
       memmove(onHour24.data(), OnColor.data() + HOUR_ROW_OFFSET, sizeof(onHour24));
 
+      #ifndef UNO_R3
       Alarm1.number = ALARM_1;
       Alarm1.clear();
+      #endif
       Alarm2.number = ALARM_2;
       Alarm2.clear();
 
@@ -743,8 +754,12 @@ namespace BinaryClockShield
 
       // Initialize the serial output properties to follow this initial value.
       // Any changes to these properties will be pushed to menu as well.
+      #if SERIAL_TIME_CODE
       menu.set_IsSerialTime(isSerialTime); 
+      #endif
+      #if SERIAL_SETUP_CODE
       menu.set_IsSerialSetup(isSerialSetup);
+      #endif
 
       time = DateTime(70, 1, 1, 10, 4, 10);  // An 'X' [❌] if RTC fails.
       // This is an important check as we are using the enum value as an index in the array.
@@ -849,12 +864,15 @@ namespace BinaryClockShield
       if (rtcValid)
          {
          // Get the alarms stored in the RTC memory.
+         #ifndef UNO_R3
          DateTime alarm1time = RTC.getAlarm1();
-         DateTime alarm2time = RTC.getAlarm2();
          bool alarm1valid = alarm1time.isTimeValid();
+         #endif
+         DateTime alarm2time = RTC.getAlarm2();
          bool alarm2valid = alarm2time.isTimeValid();
 
          // Validate the alarms and clear them if they aren't valid.
+         #ifndef UNO_R3
          if (alarm1valid) 
             { Alarm1.time = alarm1time; }
          else
@@ -862,6 +880,7 @@ namespace BinaryClockShield
             Alarm1.clear(); 
             set_Alarm(Alarm1);
             }
+         #endif
 
          if (alarm2valid)
             { Alarm2.time = alarm2time; }
@@ -873,27 +892,39 @@ namespace BinaryClockShield
 
          // For each of the alarms, get the alarm mode (i.e. repeat frequency) and
          // convert them to the `AlarmTime::Repeat` value, then save them.
+         #ifndef UNO_R3
          Ds3231Alarm1Mode mode1 = RTC.getAlarm1Mode();
-         Ds3231Alarm2Mode mode2 = RTC.getAlarm2Mode();
          int index1 = -1;
+         #endif
+         Ds3231Alarm2Mode mode2 = RTC.getAlarm2Mode();
          int index2 = -1;
          for (uint8_t i= 0; i < REPEAT_MODE_ROW_COUNT; i++)
             {
+            #ifndef UNO_R3
             if (index1 < 0 && repeatModeTable[i][0] == mode1)
                { index1 = i; }
+            #endif
             if (index2 < 0 && repeatModeTable[i][1] == mode2)
                { index2 = i; }
 
+            #ifndef UNO_R3
             if (index1 >= 0 && index2 >= 0)
+            #else
+            if (index2 >= 0)
+            #endif
                { break; }
             }
 
+         #ifndef UNO_R3
          if (index1 >= 0 && index1 < (int)(AlarmTime::Repeat::endTag))
             { Alarm1.freq = (AlarmTime::Repeat)(repeatModeTable[index1][0]); }
+         #endif
          if (index2 >= 0 && index2 < (int)(AlarmTime::Repeat::endTag))
             { Alarm2.freq = (AlarmTime::Repeat)(repeatModeTable[index2][1]); }
 
+         #ifndef UNO_R3
          RTC.disableAlarm(Alarm1.number); // Disable alarm 1, not yet supported.
+         #endif
 
          // Clear the alarm status flags 'A1F' and 'A2F' after reboot
          uint8_t control;
@@ -906,12 +937,18 @@ namespace BinaryClockShield
          // fired flag correctly. The RTC alarm fired flag will always be set if 
          // the shield has been off for over 24 hrs (for daily alarms) or if
          // the alarm happened while the shield was off.
+         #ifndef UNO_R3
          long alarm1seconds = (Alarm1.time.secondstime() % (DAY_SECONDS));
+         #endif
          long alarm2seconds = (Alarm2.time.secondstime() % (DAY_SECONDS));
          long timeDaySeconds = ReadTime().secondstime() % (DAY_SECONDS);
+         #ifndef UNO_R3
          long alarm1delta = timeDaySeconds - alarm1seconds;
+         #endif
          long alarm2delta = timeDaySeconds - alarm2seconds;
+         #ifndef UNO_R3
          bool alarm1inrange = (alarm1delta > 0L) && (alarm1delta < MAX_ALARM_DELTA);
+         #endif
          bool alarm2inrange = (alarm2delta > 0L) && (alarm2delta < MAX_ALARM_DELTA);
 
          // Design: Alarm 1 and Alarm 2 status/control reflect the values in the RTC so
@@ -923,21 +960,29 @@ namespace BinaryClockShield
          //         interrupt. We test the A1F and A2F status bits for an alarm triggered/fired.
          // Future: These alarm values could be kept in the EEPROM to persist across reboots if
          //         we can. Will need a solution to work for all boards. DS3231M has no user storage.
+         #ifndef UNO_R3
          Alarm1.status = (control & DS3231_ALARM1_STATUS_MASK) ? 1 : 0; // Alarm 1 status ON/OFF
+         #endif
          Alarm2.status = (control & DS3231_ALARM2_STATUS_MASK) ? 1 : 0; // Alarm 2 status ON/OFF
+         #ifndef UNO_R3
          Alarm1.fired = (status & DS3231_ALARM1_FLAG_MASK) ? (Alarm1.status == 1) && (alarm1inrange) : false; // Alarm 'ringing'
+         #endif
          Alarm2.fired = (status & DS3231_ALARM2_FLAG_MASK) ? (Alarm2.status == 1) && (alarm2inrange) : false; // Alarm 'ringing'
 
+         #ifndef UNO_R3
          SERIAL_STREAM("Alarm1: " <<  Alarm1.time.timestamp(DateTime::TIMESTAMP_TIME) << " (" << alarm1time.timestamp(DateTime::TIMESTAMP_TIME) << 
                (Alarm1.time.isValid() ? " Valid) " : " Bad Time) ") << (Alarm1.status > 0 ? " ON; " : " OFF; ") << alarm1delta <<
                (alarm1inrange ? " In Range; " : " Continue; ") << (Alarm1.fired ? " Alarm Fired " : " No Alarm ") << endl)   // *** DEBUG ***
+         #endif
 
          SERIAL_STREAM("Alarm2: " << Alarm2.time.timestamp(DateTime::TIMESTAMP_TIME) << " (" << alarm2time.timestamp(DateTime::TIMESTAMP_TIME) <<
                (Alarm2.time.isValid() ? " Valid) " : " Bad Time) ") << (Alarm2.status > 0 ? " ON; " : " OFF; ") << alarm2delta <<
                (alarm2inrange? " In Range; " : " Continue; ") << (Alarm2.fired? " Alarm Fired " : " No Alarm ") << endl)   // *** DEBUG ***
 
          // Clear the alarm 'Fired' flags on the RTC to catch a new alarm.
+         #ifndef UNO_R3
          RTC.clearAlarm(Alarm1.number);
+         #endif
          RTC.clearAlarm(Alarm2.number);
          }
       }
@@ -946,18 +991,18 @@ namespace BinaryClockShield
    //#            Initialize the FastLED library                         #//
    //#####################################################################//
 
-   // For an UNO_R3 board, the FastLED DisplayLedPattern method does not have 
-   // a duration parameter. Not enough flash memory.
-   // Define a MACRO to handle this difference.
-   #ifdef UNO_R3
-      #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN);
-   #else
-      #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN, DURATION);
-   #endif
    void BinaryClock::splashScreen(bool testLEDs)
       {
-      int frequency = 3;
+      // For an UNO_R3 board, the FastLED DisplayLedPattern method does not have 
+      // a duration parameter. Not enough flash memory.
+      // Define a MACRO to handle this difference.
+      #ifdef UNO_R3
+         #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN);
+      #else
+         #define DISPLAY_PATTERN(PATTERN, DURATION) DisplayLedPattern(PATTERN, DURATION);
       const unsigned long maxDuration = 2000;               // Display for up to 2 seconds
+         #endif
+      int frequency = 3;
       DISPLAY_PATTERN(LedPattern::rainbow, maxDuration)     // Turn on all LEDS showing a rainbow of colors.
       FlashLed(HeartbeatLED, 2, 25, frequency);             // Acts as a delay(2000/3) and does something.
       // Display the LED test patterns for the user.
@@ -1018,7 +1063,7 @@ namespace BinaryClockShield
       FastLED.setCorrection(TypicalSMD5050);
       // Limit to 450mA at 5V of power draw total for all LEDs
       FastLED.setMaxPowerInVoltsAndMilliamps(5, 450);
-      FastLED.setBrightness(brightness);
+      FastLED.setBrightness(get_Brightness());
 
 
       #if FREE_RTOS
@@ -1140,20 +1185,24 @@ namespace BinaryClockShield
       if (value.status >= 0)
          {
          // Set the alarm to sound at the same time, 'hour:minute', each day.
-         if (value.number == ALARM_1)
+         if (value.number == ALARM_2)
+            {
+            Ds3231Alarm2Mode mode = (Ds3231Alarm2Mode)(repeatModeTable[1][(uint8_t)(value.freq)]);
+
+            if (RTC.setAlarm2(value.time, mode))
+               {
+               Alarm2 = value;
+               }
+            }
+         #ifndef UNO_R3
+         else if (value.number == ALARM_1)
             { 
             Ds3231Alarm1Mode mode = (Ds3231Alarm1Mode)(repeatModeTable[0][(uint8_t)(value.freq)]);
 
             if (RTC.setAlarm1(value.time, mode))
                { Alarm1 = value; }
             }
-         else if (value.number == ALARM_2)
-            { 
-            Ds3231Alarm2Mode mode = (Ds3231Alarm2Mode)(repeatModeTable[1][(uint8_t)(value.freq)]);
-
-            if (RTC.setAlarm2(value.time, mode))
-               { Alarm2 = value; }
-            }
+         #endif
 
          RTC.clearAlarm(value.number); // Clear the Alarm Trigger flag.
 
@@ -1167,17 +1216,7 @@ namespace BinaryClockShield
    AlarmTime BinaryClock::GetRtcAlarm(int number)
       {
       AlarmTime result;
-      if (number == ALARM_1)
-         {
-         if (rtcValid)
-            {
-            Alarm1.time = RTC.getAlarm1();
-            Alarm1.status = RTC.RawRead(DS3231_CONTROL) & DS3231_ALARM1_STATUS_MASK;
-            }               
-
-            result = Alarm1;
-         }
-      else if (number == ALARM_2) 
+      if (number == ALARM_2) 
          {
          if (rtcValid)
             {
@@ -1187,10 +1226,23 @@ namespace BinaryClockShield
 
          result = Alarm2;
          }
+      #ifndef UNO_R3
+      else if (number == ALARM_1)
+         {
+         if (rtcValid)
+            {
+            Alarm1.time = RTC.getAlarm1();
+            Alarm1.status = RTC.RawRead(DS3231_CONTROL) & DS3231_ALARM1_STATUS_MASK;
+            }               
+
+            result = Alarm1;
+         }
+      #endif
 
       return result;
       }
 
+   #if !UNO_R3
    char* BinaryClock::DateTimeToString(DateTime time, char* buffer, size_t size, const char* format)
       {
       if (buffer == nullptr || size == 0) { return nullptr; } // Return null if buffer is null
@@ -1198,6 +1250,7 @@ namespace BinaryClockShield
       strncpy(buffer, format, size);
       return time.toString(buffer);
       }
+   #endif
 
    bool BinaryClock::get_IsSerialSetup() const
       {
@@ -1295,7 +1348,7 @@ namespace BinaryClockShield
 
    void BinaryClock::set_Brightness(byte value)
       {
-      brightness = value;
+      brightness = (value > MaxBrightness) ? MaxBrightness : value;
       FastLED.setBrightness(brightness); // Set the brightness of the LEDs
       }
 
@@ -1488,7 +1541,11 @@ namespace BinaryClockShield
          // Notify the callback task with the flags.
          xTaskNotify(get_CallbackTaskHandle(), notificationFlags, eSetBits);
          #else
-         set_CallbackAlarmTriggered(checkAlarm(Alarm1) || checkAlarm(Alarm2)); // Set the alarm callback flag
+         bool triggered = checkAlarm(Alarm2);
+            #ifndef UNO_R3
+            triggered ||= checkAlarm(Alarm1);
+            #endif
+         set_CallbackAlarmTriggered(triggered); // Set the alarm callback flag
          set_RTCinterruptWasCalled(false);
          #endif
 
@@ -1947,6 +2004,45 @@ namespace BinaryClockShield
    #else
    void BinaryClock::PlayAlarm(const AlarmTime& alarm) const
       {
+      #ifdef SIMPLE_ALARM
+      // Simple beep pattern for UNO R3 to save flash
+      // 4 beeps, then pause, repeat
+      const uint16_t ALARM_TONE = 2000;  // 2 kHz tone
+      const uint16_t BEEP_DURATION = 200;  // 200ms beep
+      const uint16_t BEEP_PAUSE = 150;     // 150ms between beeps
+      const uint16_t CYCLE_PAUSE = 1000;   // 1 second between cycles
+      
+      for (int cycle = 0; cycle < alarmRepeatMax; cycle++)
+         {
+         for (int beep = 0; beep < 4; beep++)
+            {
+            // Check for button press to stop
+            if (const_cast<BCButton&>(buttonS2).IsPressedNew())
+               {
+               SERIAL_OUT_STREAM("Alarm Stopped by User - Button press." << endl)
+               noTone(PIEZO);
+               return;
+               }
+            
+            tone(PIEZO, ALARM_TONE, BEEP_DURATION);
+            delay(BEEP_DURATION + BEEP_PAUSE);
+            }
+         
+         noTone(PIEZO);
+         
+         // Check for button during pause too
+         for (unsigned i = 0; i < CYCLE_PAUSE / 50; i++)
+            {
+            if (const_cast<BCButton&>(buttonS2).IsPressedNew())
+               {
+               SERIAL_OUT_STREAM("Alarm Stopped by User - Button press." << endl)
+               return;
+               }
+            delay(50);
+            }
+         }
+      #else
+      // Full melody playback for boards with more flash
       // We are on an UNO R3 (or some other RAM/ROM constraind board) without STL.
       // Play the alarm melody directly from flash ROM to avoid making a local copy, 
       // or play the user supplied alarm melody from RAM.
@@ -1968,6 +2064,7 @@ namespace BinaryClockShield
                { return; } // Exit if user stopped the melody
             }
          }
+      #endif
       }
 
    bool BinaryClock::SetAlarmMelody(Note* melodyArray, size_t melodySize)

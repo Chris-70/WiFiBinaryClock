@@ -2,16 +2,35 @@
 /// @brief Header file defining global structures and enums for the Binary Clock WiFi project.
 /// @details This file contains the structures and enums used throughout the Binary Clock WiFi project.
 ///          These elements are referenced in multiple libraries and the main program.
+/// @note    When including this file, ensure that the appropriate WiFi defines are set to `true`
+///          (**`ESP32_WIFI`** or **`WIFIS3`**) to include the relevant structures and header file.   
 /// @author Chris-70 (2025/11)
 
 #pragma once
 #ifndef __BINARYCLOCKSTRUCTS_H__
 #define __BINARYCLOCKSTRUCTS_H__
 
-#if !defined(ESP32_WIFI) && !defined(WIFIS3) /// If `ESP32_WIFI` nor `WIFIS3` are defined, then they aren't set to a `false` value.
-   #define ESP32_WIFI   true                 /// Define `ESPP32_WIFI` as `true` to include all structures.
-   #define WIFIS3      false                 /// Define `WIFIS3` as `false` to exclude Arduino WIFIS3 structures.
-   #define WIFI         true                 /// Define `WIFI` as `true` to include all structures as we have ESP32_WIFI or Arduino WiFiS3.
+// Design:
+// The use of WiFi requires that additional header files are included and that additional structures need to be defined.
+// The `LedPattern` enum changes when using WiFi which changes the enum value of `endTAG` impacting other code.
+// Therefore, the WiFi defines need to be taken in to account to ensure the proper code is included.
+// If `WIFI` is defined as false, the other WiFi related defines are also set to false to avoid any issues.
+// If neither `ESP32_WIFI` nor `WIFIS3` are defined, then `ESP32_WIFI` is assumed true to include all structures.
+// If `WIFI` isn't defined (and one of the other two is), then it is defined based on the other two defines.
+// `ESP32_WIFI` is true when using an ESP32 based board with WiFi capability and using the Espressif libraries.
+// `WIFIS3` is true only when using an Arduino UNO R4 WiFi board and the Arduino UNO R4 WiFi libraries.
+#if defined(WIFI) && !WIFI             /// If `WIFI` is defined but false, undefine the other WiFi related defines.
+   #undef  ESP32_WIFI                  /// Clear any `ESP32_WIFI` definition to define it as `false`.
+   #define ESP32_WIFI  false           /// Define `ESP32_WIFI` as `false` to exclude ESP32 based WiFi structures.
+   #undef  WIFIS3                      /// Clear any `WIFIS3` definition to define it as `false`.
+   #define WIFIS3      false           /// Define `WIFIS3` as `false` to exclude Arduino WIFIS3 structures.
+#elif !defined(ESP32_WIFI) && !defined(WIFIS3) /// If neither `ESP32_WIFI` nor `WIFIS3` are defined, then assume ESP32 based WiFi.
+   #define ESP32_WIFI   true           /// Define `ESPP32_WIFI` as `true` to include all structures.
+   #define WIFIS3      false           /// Define `WIFIS3` as `false` to exclude Arduino WIFIS3 structures.
+   #undef  WWIFI                       /// Clear any `WIFIS3` definition to define it as `true`.
+   #define WIFI         true           /// Define `WIFI` as `true` to include all structures as we have ESP32_WIFI or Arduino WiFiS3.
+#elif !defined(WIFI) 
+   #define WIFI (ESP32_WIFI || WIFIS3) /// Define `WIFI` based on the other two defines.   
 #endif 
 
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.

@@ -545,6 +545,7 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       AlarmTime GetRtcAlarm(int number);
 
+      #if !UNO_R3
       /// @brief Method to convert a DateTime value to a string inline. This method takes the format as a parameter
       ///        and copies it to the buffer before calling DateTime.toString() and returning the result.
       /// @note  The `DateTime::toString(char *buffer)` method reads the buffer parameter to extract the
@@ -560,6 +561,7 @@ namespace BinaryClockShield
       /// @return A pointer to the given `buffer` containing the resulting string, or nullptr if the buffer is null or size is 0.
       /// @author Chris-80 (2025/07)
       static char* DateTimeToString(DateTime time, char* buffer, size_t size, const char* format = "YYYY/MM/DD hh:mm:ss");
+      #endif
 
       /// @brief Method to flash the 'ledNum' ON/OFF for ~(1 sec / frequency) times. with an ON/OFF 'dutyCycle' 0-100 at frequency Hz.
       /// @param ledNum The output pin number to flash ON/OFF (HIGH/LOW).
@@ -1285,6 +1287,8 @@ namespace BinaryClockShield
       /// @note  The LED must be wired CC, the pin will go HIGH to turn it ON.
       static uint8_t HeartbeatLED;
 
+      const uint8_t MaxBrightness = MAX_BRIGHTNESS;  ///< Maximum brightness level for the LEDs (255).
+
    // ################################################################################
    // Protected FIELDS
    // ################################################################################
@@ -1320,7 +1324,9 @@ namespace BinaryClockShield
       static CRGB PmColor;                         ///< Color for the PM indicator LED. Default is Indigo.
       static CRGB AmColor;                         ///< Color for the AM indicator LED. Default is SkyBlue.
 
+      #ifndef UNO_R3
       AlarmTime Alarm1;                            ///< DS3232 alarm 1, includes seconds in alarm.
+      #endif
       AlarmTime Alarm2;                            ///< Default alarm, seconds set at 00.
 
       const char* TimeFormat = timeFormat24;       ///< Pointer to the current format string for the time.
@@ -1334,7 +1340,9 @@ namespace BinaryClockShield
 
       volatile bool rtcInterruptWasCalled;         ///< Flag: The RTC interrupt was triggered.
       volatile bool callbackAlarmTriggered;        ///< Flag: The 'Alarm' callback needs to be called.
+      #ifndef UNO_R3
       volatile bool callbackAlarm1Triggered;       ///< Flag: The 'Alarm1' callback needs to be called.
+      #endif
       volatile bool callbackAlarm2Triggered;       ///< Flag: The 'Alarm2' callback needs to be called.
       volatile bool callbackTimeTriggered;         ///< Flag: The 'Time'  callback needs to be called.
 
@@ -1344,9 +1352,14 @@ namespace BinaryClockShield
       ///          alarm repetations so this array provides a way to map a common
       ///          repeat enumeration with the different alarms on the hardware.
       /// @note The `Repeat::endTag` must be the last value as it is used to define the array size.
+      #ifdef UNO_R3
+      static const uint8_t repeatModeTable[1][2];
+      #define REPEAT_MODE_ROW_COUNT 1
+      #else
       static const uint8_t repeatModeTable[static_cast<uint8_t>(AlarmTime::Repeat::endTag)][2];
       #define REPEAT_MODE_ROW_COUNT (sizeof(repeatModeTable) / sizeof(repeatModeTable[0]))
       static_assert(REPEAT_MODE_ROW_COUNT == (uint8_t)(AlarmTime::Repeat::endTag), "Repeat mode table size mismatch");
+      #endif
 
       /// @brief This is just a copy of the hour portion of the `OnColor` array.
       /// @details This is used for the hour colors in 24 hour mode and when the AM or PM indicators are ON.  
@@ -1397,8 +1410,6 @@ namespace BinaryClockShield
 
       unsigned long debounceDelay = DEFAULT_DEBOUNCE_DELAY; ///< The debounce time for a button press.
       bool pixelsPresent = false;            ///< Flag: Indicates if the shield is attached (or just a dev. board).
-
-      // static const uint8_t repeatModeTable[(uint8_t)(AlarmTime::Repeat::endTag)][2];
 
       int alarmRepeatMax = DEFAULT_ALARM_REPEAT;   ///< Maximum alarm sound repeat count
       int alarmRepeatCount = 0;                    ///< Current alarm sound repeat count
