@@ -208,6 +208,7 @@ __attribute__((used)) void setup()
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
    Wire.begin();
+   BinaryClock& binClock = get_BinaryClock();
 
    #ifndef UNO_R3
    // Scan the I2C bus looking for the devices we use.
@@ -222,18 +223,18 @@ __attribute__((used)) void setup()
 
    SERIAL_PRINTLN("")  
    SERIAL_PRINTLN("In setup(): Getting the BinaryClock instance.")
-   BinaryClock& binClock = get_BinaryClock();
    SERIAL_STREAM("BinaryClock: " << binClock.get_IdName() << " Starting Setup." << endl)
 
    #if WIFI
    SERIAL_PRINTLN("In setup(): Getting the BinaryClockWAN instance.")
    BinaryClockWAN& wifi = get_BinaryClockWAN();
    #endif // WIFI
-   #endif // !UNO_R3
 
    #if (DEVELOPMENT || SERIAL_OUTPUT)
    timeFormat = binClock.get_TimeFormat();
    #endif
+
+   #endif // !UNO_R3
 
    #if DEV_BOARD
    // // by default, we'll generate the high voltage from the 3.3v line internally! (neat!)
@@ -260,7 +261,7 @@ __attribute__((used)) void setup()
                << " Clear Display: " << (oledValid? "YES" : "NO") << endl)
    SERIAL_STREAM("Starting the BinaryClock Setup, HeartbeatLED pin is: " << HeartbeatLED << endl)
 
-   binClock.setup(!oledValid || true);   // If the OLED display is installed, it's likely a dev board, not the shield.
+   binClock.setup(!oledValid);   // If the OLED display is installed, it's likely a dev board, not the shield.
    binClock.set_Brightness(20);
 
    // Register `TimeAlert()` to get called every second.
@@ -424,6 +425,7 @@ bool checkWatchdog()
 ///          time on the OLED display if we have the DEV_BOARD.
 void TimeAlert(const DateTime& time)
    {
+   SERIAL_STREAM("[" << millis() << "] TimeAlert() HeartbeatLED: " << HeartbeatLED << "; called at: " << time.toString(buffer, sizeof(buffer), "HH:mm:ss") << endl)
    timeWatchdog = millis();
    heartbeat = (heartbeat == LOW ? HIGH : LOW);
    // If there was a watchdog fault, clear it and resume, we're getting time again.

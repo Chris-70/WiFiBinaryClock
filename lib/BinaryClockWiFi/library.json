@@ -1,6 +1,6 @@
 {
   "name": "BinaryClockWiFi",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "WiFi, WPS, SNTP and settings for the WiFi Binary Clock project",
   "keywords": ["wifi", "binary clock", "network", "settings"],
   "authors": [

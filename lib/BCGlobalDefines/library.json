@@ -1,6 +1,6 @@
 {
   "name": "BCGlobalDefines",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Shared interfaces, structures and definitions for the WiFi Binary Clock project",
   "keywords": [ "interface", "binary clock", "shared" ],
   "authors": [

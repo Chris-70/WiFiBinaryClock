@@ -1,6 +1,6 @@
 {
   "name": "RTClibPlus",
-  "version": "0.8.0",
+  "version": "0.9.4",
   "description": "A fork of RTClib with enhancements for the WiFi Binary Clock project",
   "keywords": ["rtclib", "binary clock", "rtc", "12hour mode"],
   "authors": [

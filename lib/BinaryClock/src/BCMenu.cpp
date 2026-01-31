@@ -11,6 +11,37 @@
 #include <Streaming.h>           /// Streaming serial output with `operator<<` https://github.com/janelia-arduino/Streaming
 #include <assert.h>              /// Catch code logic errors during development.
 
+#ifdef UNO_R3
+// Lightweight time printing for UNO_R3 - direct Serial output, no buffers
+static void printTimeHMS(const DateTime& dt, bool is12hr) {
+   uint8_t h = dt.hour();
+   uint8_t m = dt.minute();
+   uint8_t s = dt.second();
+   
+   if (is12hr) {
+      uint8_t h12 = (h == 0) ? 12 : (h > 12 ? h - 12 : h);
+      if (h12 < 10) Serial.print('0');
+      Serial.print(h12);
+   } else {
+      if (h < 10) Serial.print('0');
+      Serial.print(h);
+   }
+   
+   Serial.print(':');
+   if (m < 10) Serial.print('0');
+   Serial.print(m);
+   
+   Serial.print(':');
+   if (s < 10) Serial.print('0');
+   Serial.print(s);
+   
+   if (is12hr) {
+      Serial.print(h >= 12 ? " PM" : " AM");
+   }
+   Serial.println();
+}
+#endif
+
 namespace BinaryClockShield
    {
    BCMenu::BCMenu(IBinaryClockBase& clockInterface)
@@ -202,7 +233,7 @@ namespace BinaryClockShield
       // Define the strings that are used multiple times throughout the setup code. 
       const String BCMenu::strSeparator = BCMenu::fillStr('-', 44); // "--------------------------------------------";
       const String BCMenu::strBarrier   = BCMenu::fillStr('#', 44); // "############################################";
-      const String BCMenu::strCurrentTime = BCMenu::fillStr('-', 8) + F(" Current Time: ");
+      const String BCMenu::strCurrentTime = BCMenu::fillStr('-', 8) + " Current Time: ";
    #else
       // When SERIAL_SETUP_CODE is false, code is removed. Redefine the method calls to be whitespace only.
       // This allows the code to compile without the serial setup code, but still allows the methods 
@@ -335,7 +366,11 @@ namespace BinaryClockShield
                {
                Serial << endl << strSeparator << endl;
                Serial << strCurrentTime;
+               #ifdef UNO_R3
+               printTimeHMS(clock.get_Time(), clock.get_Is12HourFormat());
+               #else
                Serial << (clock.get_Time().toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
+               #endif
                Serial << strSeparator << endl;
                }
             #endif
@@ -658,7 +693,11 @@ namespace BinaryClockShield
       Serial << strSeparator << endl;
       Serial << strSeparator << endl;
       Serial << strCurrentTime;
+      #ifdef UNO_R3
+      printTimeHMS(clock.get_Time(), clock.get_Is12HourFormat());
+      #else
       Serial << ((clock.get_Time()).toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
+      #endif
 
       serialAlarmInfo();
 
@@ -672,7 +711,11 @@ namespace BinaryClockShield
       {
       Serial << strSeparator << endl;
       Serial << fillStr('-', 10) << F(" Alarm Time: ");
+      #ifdef UNO_R3
+      printTimeHMS((clock.get_Alarm()).time, clock.get_Is12HourFormat());
+      #else
       Serial << ((clock.get_Alarm()).time.toString(buffer, sizeof(buffer), clock.get_AlarmFormat())) << endl;
+      #endif
       Serial << strSeparator << endl;
       Serial << fillStr('-', 8) << F(" Alarm Status: ");
       Serial << ((clock.get_Alarm()).status == 1 ? "ON" : "OFF") << endl;
@@ -691,7 +734,11 @@ namespace BinaryClockShield
          Serial << fillStr('-', 14) << F(" Time Settings ") << fillStr('-', 15) << endl;
          Serial << strSeparator << endl;
          Serial << strCurrentTime;
+         #ifdef UNO_R3
+         printTimeHMS(tempTime, clock.get_Is12HourFormat());
+         #else
          Serial << (tempTime.toString(buffer, sizeof(buffer), clock.get_TimeFormat())) << endl;
+         #endif
          Serial << strSeparator << endl;
          }
 

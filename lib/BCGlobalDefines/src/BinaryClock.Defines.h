@@ -364,7 +364,7 @@
    #define DEV_CODE false     ///< If DEV_CODE hasn't been defined, don't include the development code
 #endif
 
-#if DEV_CODE
+#if DEV_CODE 
    #ifndef SERIAL_SETUP_CODE
       #define SERIAL_SETUP_CODE     true  ///< If using a development board/code, include the Serial Setup code
    #endif
@@ -482,6 +482,18 @@
 #ifndef TOTAL_LEDS
    #define TOTAL_LEDS     (HOUR_ROW_LEDS + MINUTE_ROW_LEDS + SECOND_ROW_LEDS)
 #endif
+
+/// Define the brightness limits to avoid overloading the power supply.
+/// Each LED can draw up to 60 mA at maximum brightness (255).
+/// The power available to the Binary Clock Shield is 450 mA max current.
+/// Only 7.5 LEDs can be at max brightness, the shield has 17 LEDs.
+/// The maximum brightness value (0 - 255) is therefore reduced: 7.5 / 17 * 255 = 112.5
+/// To allow for some margin, we set the brightness limit as 200 instead of 255
+/// BRIGHTNESS_POWER = ((450 mA / 60 mA per LED) * 200 max brightness value) = 1500
+/// MAX_BRIGHTNESS = BRIGHTNESS_POWER / NUM_LEDS = 1500 / 17 = 88 (approx)
+#define BRIGHTNESS_POWER   1500        
+#define MAX_BRIGHTNESS    (BRIGHTNESS_POWER / NUM_LEDS)  ///< Maximum brightness value to avoid overloading the power supply.
+
 // Masks for the binary display of the time components.
 #define HOUR_MASK_24      0x1F         ///< Mask for the 24 hour format (5 bits)
 #define HOUR_MASK_12      0x0F         ///< Mask for the 12 hour format (4 bits)

@@ -1,6 +1,6 @@
 {
   "name": "MorseCodeLED",
-  "version": "0.9.3",
+  "version": "0.9.4",
   "description": "Display messages in Morse code on a LED for the WiFi Binary Clock project",
   "keywords": ["morse code", "binary clock", "message display"],
   "authors": [
