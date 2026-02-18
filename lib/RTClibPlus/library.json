@@ -1,8 +1,8 @@
 {
   "name": "RTClibPlus",
   "version": "0.9.4",
-  "description": "A fork of RTClib with enhancements for the WiFi Binary Clock project",
-  "keywords": ["rtclib", "binary clock", "rtc", "12hour mode"],
+  "description": "A fork of the Adafruit RTClib library v2.1.4 with general enhancements needed for the WiFi Binary Clock project. New: AM/PM mode, custom start day of week, enhanced string formatting, etc.",
+  "keywords": ["rtclib", "rtclibplus", "binary clock", "rtc", "12hour mode", "am/pm"],
   "authors": [
     {
       "name": "Chris-70",

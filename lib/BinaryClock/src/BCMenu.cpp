@@ -3,6 +3,10 @@
 ///        which manages the settings menu for the Binary Clock Shield.
 /// @author Chris-70 (2025/09)
 
+// Force the tests and functions for time and setup use class instance methods
+#define SERIAL_SETUP_TEST get_IsSerialSetup()
+#define SERIAL_TIME_TEST  get_IsSerialTime()
+
 #include <Arduino.h>             /// Arduino core library. This needs to be the first include file.
 
 #include <BinaryClock.Defines.h> /// BinaryClock project-wide definitions and MACROs.
@@ -13,33 +17,39 @@
 
 #ifdef UNO_R3
 // Lightweight time printing for UNO_R3 - direct Serial output, no buffers
-static void printTimeHMS(const DateTime& dt, bool is12hr) {
+static void printTimeHMS(const DateTime& dt, bool is12hr)
+   {
    uint8_t h = dt.hour();
    uint8_t m = dt.minute();
    uint8_t s = dt.second();
-   
-   if (is12hr) {
+
+   if (is12hr)
+      {
       uint8_t h12 = (h == 0) ? 12 : (h > 12 ? h - 12 : h);
       if (h12 < 10) Serial.print('0');
       Serial.print(h12);
-   } else {
-      if (h < 10) Serial.print('0');
+      }
+   else
+      {
+      if (h < 10) 
+         {Serial.print('0');}
       Serial.print(h);
-   }
-   
+      }
+
    Serial.print(':');
-   if (m < 10) Serial.print('0');
+   if (m < 10) 
+      {Serial.print('0');}
    Serial.print(m);
-   
+
    Serial.print(':');
-   if (s < 10) Serial.print('0');
+   if (s < 10) 
+      {Serial.print('0');}
    Serial.print(s);
-   
-   if (is12hr) {
-      Serial.print(h >= 12 ? " PM" : " AM");
-   }
+
+   if (is12hr)
+      { Serial.print(h >= 12 ? " PM" : " AM"); }
    Serial.println();
-}
+   }
 #endif
 
 namespace BinaryClockShield
@@ -69,7 +79,7 @@ namespace BinaryClockShield
       resetSettingsState();
          
       #if SERIAL_OUTPUT
-      Serial.begin(115200);
+      Serial.begin(DEFAULT_SERIAL_SPEED);
       delay(10);
       SerialStartInfo();
       Serial.println();

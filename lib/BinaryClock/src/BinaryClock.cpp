@@ -138,6 +138,13 @@
 ///
 /// @endverbatim
 
+// Force the tests and functions for time and setup use direct instance methods
+//   of BinaryClock instead of using BinaryClock::get_Instance() singleton accessor.
+//   This is to avoid the overhead of the singleton accessor needed for other classes.
+#define SERIAL_SETUP_TEST get_IsSerialSetup()
+#define SERIAL_TIME_TEST  get_IsSerialTime()
+#define SERIAL_TIME_FTN   serialTime()
+
 // Defines to control the assert macros.
 #ifdef DEBUG
    #define __ASSERT_USE_STDERR
@@ -539,7 +546,7 @@ namespace BinaryClockShield
    void BinaryClock::setup(bool testLeds)
       {
       #if SERIAL_OUTPUT
-      Serial.begin(115200);
+      Serial.begin(DEFAULT_SERIAL_SPEED);
       delay(10);
       #endif
 
@@ -556,6 +563,8 @@ namespace BinaryClockShield
              << (s2Pressed? "Pressed" : "OFF") << "; Value: " << buttonS2.get_Value() << " OnValue: is: " 
              << buttonS2.get_OnValue() << endl)   // *** DEBUG ***
 
+      menu.Begin();
+
       #if FREE_RTOS
       if (get_ClockEventGroup() == nullptr)
          { set_ClockEventGroup(xEventGroupCreate()); }
@@ -566,10 +575,6 @@ namespace BinaryClockShield
          testLeds = testLeds || RTC.lostPower();
          SetupFastLED(testLeds | true);   // *** DEBUG *** " | true"
          SetupAlarm();
-
-         // Show the serial output, display the initial info.
-         if (get_IsSerialSetup()) 
-            { menu.Begin(); } 
          }
       else
          {
@@ -682,9 +687,9 @@ namespace BinaryClockShield
          , offColors(OffColor)
          , onHourPM(OnHourPM)
          , onHourAM(OnHourAM)
-         , buttonS1(S1, CC_ON)
-         , buttonS2(S2, CC_ON)
-         , buttonS3(S3, CC_ON)
+         , buttonS1(S1, S1_ON)
+         , buttonS2(S2, S2_ON)
+         , buttonS3(S3, S3_ON)
          #if HW_DEBUG_SETUP
          , buttonDebugSetup(DEBUG_SETUP_PIN, CC_ON)
          #endif
@@ -846,7 +851,7 @@ namespace BinaryClockShield
          time = ReadTime();
          }
 
-      SERIAL_STREAM("Time from RTC: " << time.timestamp(get_Is12HourFormat()? DateTime::TIMESTAMP_TIME12 : DateTime::TIMESTAMP_TIME) 
+      SERIAL_STREAM((rtcValid? "Time from RTC: " : "RTC not valid, internal time: ") << time.timestamp(get_Is12HourFormat()? DateTime::TIMESTAMP_TIME12 : DateTime::TIMESTAMP_TIME) 
             << " internal date: " << time.timestamp(DateTime::TIMESTAMP_DATE) << endl)   // *** DEBUG ***
 
       return rtcValid;
@@ -1055,7 +1060,7 @@ namespace BinaryClockShield
       
       // Turn off the display, start with a blank display.
       FastLED.setBrightness(0);
-      FastLED.addLeds<LED_TYPE, LED_PIN, COLOR_ORDER>(leds, TOTAL_LEDS);
+      FastLED.addLeds<LED_TYPE, LED_DATA_PIN, COLOR_ORDER>(leds, TOTAL_LEDS);
       FastLED.clearData();
       FastLED.show();
       delay(50);
@@ -1377,8 +1382,6 @@ namespace BinaryClockShield
          else
             { curHourColor = (isPmBlack? HourColor::Pm : HourColor::Hour24); }
          }
-      else
-         {  }
       
       // Only switch colors when the AM or PM Indicator color is Black.
       switchColors = isAmBlack || isPmBlack;
@@ -1697,7 +1700,7 @@ namespace BinaryClockShield
       // 
       // Warning:
       // ========
-      // Never use S.O.S. outside an actual life emergency.
+      // Never use S.O.S. outside of an actual life emergency.
       //
       // I got schooled by SAR, and now so have you.
       // So we can use a 100 year old alternative: 
@@ -1802,11 +1805,11 @@ namespace BinaryClockShield
 
       #if SERIAL_TIME_CODE
          // If SERIAL_TIME_CODE is true, we need to keep track of the binary representation of the time
-      #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
-                  leds[led_num] = (binaryArray[display_num] = ((value) & (bitmask))) ? on_color : off_color;
+         #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
+                     leds[led_num] = (binaryArray[display_num] = ((value) & (bitmask))) ? on_color : off_color;
       #else
-      #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
-                  leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
+         #define SET_LEDS(led_num, display_num, value, bitmask, on_color, off_color) \
+                     leds[led_num] = ((value) & (bitmask)) ? on_color : off_color;
 
          #ifndef UNO_R3
          // Check for expired delay now, we don't need to create `binaryArray` time values.

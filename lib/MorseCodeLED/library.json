@@ -1,7 +1,7 @@
 {
   "name": "MorseCodeLED",
   "version": "0.9.4",
-  "description": "Display messages in Morse code on a LED for the WiFi Binary Clock project",
+  "description": "Display messages in Morse code on a LED. Display real messages without looking like a blinky sketch. Created for the WiFi Binary Clock project",
   "keywords": ["morse code", "binary clock", "message display"],
   "authors": [
     {
@@ -11,7 +11,8 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Chris-70/BinaryClock_ESP32.git"
+    "urls": ["https://github.com/Chris-70/WiFiBinaryClock", 
+             "https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED"]
   },
   "frameworks": "arduino",
   "platforms": "*",

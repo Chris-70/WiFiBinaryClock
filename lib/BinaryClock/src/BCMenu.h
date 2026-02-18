@@ -177,6 +177,7 @@ namespace BinaryClockShield
             `SettingsState::Inactive` - i.e. we are not in the settings menu.
             The settings menu uses the display for setting the time/alarm 
             thus the normal time display is suspended while in the menu.
+      @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       @author Chris-70 (2025/09)
       */
       SettingsState ProcessMenu();
@@ -191,7 +192,7 @@ namespace BinaryClockShield
 
       #if SERIAL_SETUP_CODE
       /// @brief The method called to display the serial startup information.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       /// @author Chris-80 (2025/07)
       void SerialStartInfo();  // ToDo: Make something public to display info (BC.cpp)
 
@@ -273,7 +274,7 @@ namespace BinaryClockShield
       /// @details This method is called from the `ProcessMenu()` method to handle
       ///          the main menu processing. This method handles the button
       ///          presses and updates the settings state accordingly.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       /// @author Chris-70 (2025/09)
       void handleMainMenu();
 
@@ -281,7 +282,7 @@ namespace BinaryClockShield
       /// @details This method is called from the `ProcessMenu()` method to handle
       ///          the settings option processing. This method handles the button
       ///          presses and updates the settings state accordingly.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-70 (2025/09)
       void handleSettingsLevel();
 
@@ -295,26 +296,26 @@ namespace BinaryClockShield
       // Settings state management
       /// @brief This method is called when the user exceeds the current time element limits.
       ///        The value is rolled over to the next valid value, e.g. 59  -> 0, or 0 -> 59.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
       void setCurrentModifiedValue();
 
       /// @brief The method called to check the current modified value format to stay within limits,
       ///        Hours 0 - 2; Minutes 0 - 59; Seconds 0 - 59, while the user is changing them.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
       void checkCurrentModifiedValueFormat();
 
       /// @brief This method is used to save either the new time or alarm time set by the user.
       /// @details This method is called when the user has set a new time or alarm time from
       ///          the buttons on the Binary Clock Shield.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
       void saveCurrentModifiedValue();
 
       /// @brief This method displays the value as the user is changing it. Only one row is
       ///        displayed at a time while the time is being update.: Hours; Minutes; Seconds or Alarm ON/OFF.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino; 
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino; 
       /// @author Chris-80 (2025/07)
       void displayCurrentModifiedValue();
         
@@ -350,18 +351,18 @@ namespace BinaryClockShield
       // can be controlled in both software and hardware. A momentary button is used to toggle the menu on/off.
       #if SERIAL_SETUP_CODE
       /// @brief The method called to display the serial menu for setting the time and alarm.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       /// @author Chris-80 (2025/07)
       void serialSettings();
 
       /// @brief The method called to display the alarm settings over the serial monitor.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       /// @author Chris-80 (2025/07)
       void serialAlarmInfo();
 
       /// @brief The method called to display the current modified value over the serial monitor.
       /// @details This method is called when the user is changing the time or alarm time.
-      /// @author Marcin Saj - From the original Binary Clock Shield for Arduino;
+      /// @author Marcin Saj (2018) - From the original Binary Clock Shield for Arduino;
       /// @author Chris-80 (2025/07)
       void serialCurrentModifiedValue();
       #endif
