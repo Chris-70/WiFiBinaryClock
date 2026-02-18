@@ -1,9 +1,15 @@
-# WiFiBinaryClock
+# WiFiBinaryClock - Software to Supercharge The Binary Clock Shield for Arduino  
+
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Chris-70/WiFiBinaryClock?style=flat-square)]
+[![GitHub license](https://img.shields.io/github/license/Chris-70/WiFiBinaryClock?style=flat-square)]
+[![GitHub issues](https://img.shields.io/github/issues/Chris-70/WiFiBinaryClock?style=flat-square)]
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/Chris-70/WiFiBinaryClock?style=flat-square)]
 
 ## Binary Clock Shield for Arduino
 
-[Binary Clock Shield for Arduino][shield] is a great product that uses a colour [WS2812B NeoPixel LED][neopixel] matrix to display the time in binary format. The shield also includes a [DS3231 RTC][rtc] chip for accurate timekeeping, a [KLJ-1230 Piezo][piezo] buzzer for alarm melodies, and three buttons for setting the time and alarms. The shield is designed to be used with an Arduino UNO R3 board, but it can be used with other boards that have the same pinout headers as the UNO.  
-
+[Binary Clock Shield for Arduino][shield] is a great product that uses a colour [WS2812B NeoPixel LED][neopixel] matrix to display the time in binary format. The shield also includes a [DS3231 RTC][rtc] chip for accurate timekeeping, a [KLJ-1230 Piezo][piezo] buzzer for alarm melodies, and three buttons for setting the time and alarms. The shield is designed to be used with an Arduino UNO R3 board, this software enables it to be used with other boards that have the standard physical header pin rows as the UNO.  
+This project was created to unlock the full potential of this great little Binary Clock. Being an Arduino Shield means that we can substitute the UNO R3 for something much more powerful. Initially I wanted to get my `Wemos D1 R32 ESP32 UNO` board to work with this shield, so it could connect to any NTP server over WiFi and keep the time synced whenever we switch to/from daylight savings time. In addition we could change the colors of the LEDs and upload new alarm melodies, etc. and do it from a phone or computer. The result of this project is the [`WiFiBinaryClock`][WiFiBinaryClock] library which supports many different boards including the original UNO R3 as well as newer boards such as the UNO R4, ESP32 based UNO boards and very capable [`Adafruit Metro ESP32-S3`][metro].
+___
 [![*Binary Clock Shield image*](assets/BinaryClockShield.jpg)][shield]
 ___
 [![*Binary Clock Shield drawing*](assets/Binary-Clock-Shield-For-Arduino-UNO.jpg)][shield]
@@ -35,14 +41,14 @@ The user needs to define the target board being used for this code to compile. T
 1.   **ESP32\_D1\_R32\_UNO** - The generic Wemos D1 R32 UNO clone board with the original ESP32-32-WROOM module.
 2.   **METRO\_ESP32\_S3** - The great [Adafruit Metro ESP32-S3][metro] board.
 3.   **ESP32\_S3\_UNO** - The generic UNO clone board with the new ESP32-S3 module.
-4.   **UNO\_R4\_WIFI** - The new [Arduino UNO R4 WiFi][r4_wifi] board.
+4.   **UNO\_R4\_WIFI** - The new [Arduino UNO R4 WiFi][r4_wifi] board.[^3]
 5.   **UNO\_R4\_MINIMA** - The [R4 Minima][r4_minima] board, no WiFi.
 6.   **UNO\_R3** -  The original [Arduino UNO R3][uno_r3] board, no WiFi.
 7.   **CUSTOM\_UNO** - An UNO board you define in **[`board_select.h`][boardselect]** and enable.
 
-Add one of these defines to the compiler options (e.g. `-D METRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) in the **[`board_select.h`][boardselect]** file. The first 4 boards listed have builtin __WiFi__ [^3] so they will be able to adjust their time using SNTP over WiFi. The UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have an UNO board that isn't listed, modify the **`CUSTOM_UNO`** board definitions in the **[`board_select.h`][boardselect]** file with the custom definitions for your board. You will need to **`#define CUSTOM_UNO true`** before the board definition section to enable the custom board.
+Add one of these defines to the compiler options (e.g. `-DMETRO_ESP32_S3`) or include a preprocessor definition (e.g. `#define METRO_ESP32_S3`) in the **[`board_select.h`][boardselect]** file. The first 4 boards listed have builtin __WiFi__ [^3] so they will be able to adjust their time using SNTP over WiFi. The UNO R3 and R4 Minima do not have WiFi onboard so they are limited to time/alarm setting from the 3 buttons on the shield. If you have an UNO board that isn't listed, modify the **`CUSTOM_UNO`** board definitions in the **[`board_select.h`][boardselect]** file with the custom definitions for your board. You will need to **`#define CUSTOM_UNO true`** before the board definition section to enable the custom board.
 
-[^3]: The UNO R4 WiFi board uses the `WiFiS3.h` library instead of the Espressif ESP32 WiFi Arduino library, some features such as WPS are not yet supported by Arduino. WiFi support for the UNO R4 WiFi board is __NOT__ included in this code. The Arduino implementation of WiFi is very different from the Espressif ESP32 Arduino implementation even though it uses an ESP32-S3 module. Given that the R4 WiFi has an onboard led matrix which a shield would coverup, not to mention the board cost, I don't know how much demand there would be to support it.
+[^3]: The UNO R4 WiFi board uses the `WiFiS3.h` library instead of the Espressif ESP32 WiFi Arduino library, some features such as WPS are not yet supported by Arduino. WiFi support for the UNO R4 WiFi board is __NOT__ included in this code. The Arduino implementation of WiFi is very different from the Espressif ESP32 Arduino implementation even though it uses an ESP32-S3 module. Given that the R4 WiFi has an onboard led matrix which a shield would coverup, not to mention the board cost, I don't know how much demand there would be to support it. For WiFi support, the [Adafruit Metro ESP32-S3][metro] is a much better choice than the R4 WiFi board and it has a battery charging circuit built-in.
 
 The code was developed using the excellent [PlatformIO IDE][platformio] extension for the [VSCode][vscode] editor. The file, **[`platformio.ini`][platformio_ini]**, includes the setup for each of the supported boards so all you need to do is specify which one you're using.
 
@@ -51,7 +57,7 @@ The code was developed using the excellent [PlatformIO IDE][platformio] extensio
 The following is a list of the boards that are directly supported by this code:   
 
 ___
-*   [The Arduino UNO R3 is supported][uno_r3]  This is the original board that the Binary Clock Shield was designed for. It works well with the shield but it doesn't have WiFi so you will need to set the time and alarms using the buttons on the shield. The limited amount of memory and lack of WiFi makes this a less than ideal choice for this project.   
+*   [The Arduino UNO R3 is supported][uno_r3]  This is the original board that the Binary Clock Shield was designed for. It works well with the shield but it doesn't have WiFi so you will need to set the time and alarms using the buttons on the shield. The limited amount of memory and lack of WiFi makes this a less than ideal choice for this project as some other user features had to be excluded.   
    [![*The Arduino UNO R3 image*](assets/Arduino_UNO_R3.webp)][uno_r3]  
 
 ___
@@ -65,7 +71,7 @@ ___
 *   [The Adafruit Metro ESP32-S3 is supported][metro].  This is a great board that has so many capabilities over every other choice. The JTAG port is good for development, the micro SD Card reader is a great addition and QT I2C connector on the side means it can be used with the shield in place. This opens up many additional capabilities that can be added, such as sensors for light and human presence. The greatest feature I like for the Binary Clock Shield is the builtin battery charger circuit. The shield will keep displaying the time while you move it around or when the power goes out. **This is the board I recommend** if you want to get the most out of the Binary Clock Shield especially if you create a case for it and have it work on battery or use the battery as a bachup to the AC power.  
    [![*The Adafruit Metro ESP32-S3 image*](assets/Adafruit_Metro_ESP32-S3.jpg)][metro]  
 ___
-*   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout, these work well with the Binary Clock Shield. They are available from your favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different and the ESP32-S3 doesn't appear to have INPUT only pins. If I had created a case for the Binary Clock Shield and wanted to sell a fully functional Binary Clock powered from a USB or A/C adapter, this is the board I would use. For a version with a battery, I'd stick with the [Adafruit Metro ESP32-S3][metro].  
+*   There are other ESP32-S3 UNO style boards, such as one based on the ESP32-S3-DevKitC-1 pinout, these work well with the Binary Clock Shield. They are available from your favorite Chinese website for under $10. This code fully supports this board, no hardware modifications are needed as the pinouts are different from the `Wemos D1 R32 ESP32 UNO` board. If I had created a case for the Binary Clock Shield and wanted to sell a fully functional Binary Clock powered from a USB or A/C adapter, this is the board I would use for low cost. For a version with a battery, I'd stick with the [Adafruit Metro ESP32-S3][metro].  
    ![*ESP32-S3 UNO image*](./assets/ESP32-S3_UNO_Board.jpg)
 
 ___
@@ -77,9 +83,9 @@ ___
 ## Hardware Modifications  
 ### Wemos D1 R32 UNO
 
-The **Binary Clock Shield for Arduino** was designed to work with the Arduino UNO R3 board, however it can be used with other boards that have the same pinout headers as the UNO. When I got my first ESP32 based UNO board, the Wemos D1 R32, I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3. I made the changes to the pin numbers and I still had errors compiling, this required further investigation. The Wemos D1 R32 ESP32 based UNO type board seemed like the ideal candidate, that was until I read the datasheet. I discovered it had a hardware limitation that required a modification to the board. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin on the CPU which is an __input only__ pin, which means we can't use that pin. The other limitation was the builtin LED which is wired to `GPIO 02` corresponds to the UNO pin `A0`. Pin `A0` is connected to the shield for pushbutton `S3` used to set the alarm and increment values. This means we can't use the `LED_BUILTIN` LED, so we don't use the builtin LED, instead we must remap it to another pin that does nothing.
+The **Binary Clock Shield for Arduino** was designed to work with the `Arduino UNO R3` board, however it can be used with other boards that have the same pinout headers as the UNO. When I got my first ESP32 based UNO board, the `Wemos D1 R32 ESP32`, I tried it with the Binary Clock Shield only to find that it didn't work. I got errors for everything, I figured out that the board used different pin number compared to the UNO R3. I made the changes to the pin numbers and I still had errors compiling, this required further investigation. The `Wemos D1 R32 ESP32` based UNO type board seemed like the ideal candidate, that was until I read the datasheet. I discovered it had a hardware limitation that required a modification to the board. The shield uses UNO pin `A3` for the Neopixel LED data out pin, this pin corresponds to the ESP32 `GPIO 34` pin on the CPU which is an __input only__ pin, which means we can't use that pin. The other limitation was the builtin LED which is wired to `GPIO 02` corresponds to the UNO pin `A0`. Pin `A0` is connected to the shield for pushbutton `S3` used to set the alarm and increment values. This means we can't use the `LED_BUILTIN` LED, so we don't use the builtin LED, instead we must remap it to another pin that does nothing.
 
-In order to get this _Wemos D1 R32_ board to work with the shield, the pin corresponding to `A3` on the shield needs to be connected to an output capable pin such as `GPIO 15`. To do this you need to physically remove the `A3/GPIO34` socket from the ESP32 UNO board (cut the plastic and desolder the pin) in order to make room, as shown in the <span style="color: plum;">__purple box__</span> below. Connect the corresponding shield pin to `GPIO 15` using a jumper wire. If you want a simpler fix, you could cut the plastic spacer on the shield corresponding to the `A3` pin and bend it in, then connect that bent pin to `GPIO 15`.
+In order to get this _Wemos D1 R32_ board to work with the shield, the pin corresponding to `A3` on the shield needs to be connected to an output capable pin such as `GPIO 15`. To do this you need to physically remove the `A3/GPIO34` socket from the ESP32 UNO board (cut the plastic and desolder the socket) in order to make room, as shown highlighted by the <span style="color: plum;">__purple box__</span> below. Connect the corresponding shield pin to `GPIO 15` using a jumper wire. If you want a simpler fix, you could cut the plastic spacer on the shield corresponding to the `A3` pin and bend it in, then connect that bent pin to `GPIO 15`.
 
 Below is the modification needed:
 
@@ -94,7 +100,7 @@ The __alternative__ is to get an Arduino UNO Development Shield and modify the d
 The advantages of a development Shield are that you can add additional components, for example, you could add a LDR circuit to monitor and adjust the brightness based on ambient light and or a potentiometer to adjust the brightness.
 
 ### __Other Boards__   
-### **No other board requires any hardware modification.**
+### **No other supported boards require any hardware modification.**
 
 The other supported boards listed above all work __without__ any hardware modifications. Only the first generation `ESP32-32` based UNO boards had any issues.
 
@@ -105,7 +111,7 @@ ___
 
 ### New Features:
 
-The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities of the original code:   
+The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities of the original example 11 code:   
 
 1. #### Added support for many different UNO boards and allowing for users to define their own board:
    1. The code continues to support the original [Arduino UNO R3][uno_r3] board.
@@ -129,10 +135,10 @@ The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities
          *  If the user selected e**X**it, the time setting menu is aborted and no changes are made.  
          *  If the user selected __12__ hour or __24__ hour mode, the selection is saved, a large green **✓** \[✅\] is shown on the LEDs indicating a the start of the next section, setting the time.   
          *  The user continues as normal to set the hours; minutes; and seconds.
-   2. For the alarm settings, the user first selects: On; oFF; or eXit.  
-      *  The eXit is shown with a large red **X** \[❌\] on the LEDs.  
-      *  The On is shown as a large green **O** on the LEDs.   
-      *  The oFF is shown as a large red sideways **F** on the LEDs.  
+   2. For the alarm settings, the user first selects: **O**n; o**F**F; or e**X**it.  
+      *  The eXit is shown with a large red X \[❌\] on the LEDs.  
+      *  The On is shown as a large green O [<span style="color: green;">**O**</span>] on the LEDs.   
+      *  The oFF is shown as a large red sideways F [<span style="color: red;">**F**</span>] on the LEDs.  
    3. When the user has finished with the settings menu (Alarm or Time) the following occur:  
       *  The screen is filled with the colors of the rainbow signaling the end of the setting menu.  
       *  The result of the settings menu is displayed to the user:
@@ -170,7 +176,7 @@ The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities
    1. The error handling consists of displaying an error code on a LED on the board such as the builtin LED.
    2. Watchdog time is triggered after ~2.1 seconds has elapsed without an update.
    3. Instead of using some custom code of blinking LEDs, I decided to have some fun and use Morse code to display the error code. My first instinct was to flash SOS, but I learned that this is not cool. SOS is reserved for an actual human life threatening distress signal and must __NEVER__ be used for anything else. So I decided to write a Morse Code class to blink the message on the LEDs. I also took the opertunity to see what AI (in this case CoPilot) could come up with and it did a mixed job. The encoding of the Morse code was a good idea from CoPilot but then it couldn't get the codes correct for all letters, numbers and punctuation. It also wrote lots of duplicate code in the methods and the code wasn't at all robust. It was an educational experience, you need to have experience or CoPilot will lead you down the garden path.
-      *  The error code is displayed as a series of Morse code blinks on the LED. The SOS is **NOT** used as this is an actual life critical distress signal. **CQD** is used instead, which stands for "Come Quick Distress" [^4]. This is the original distress signal, from the early 1900s, that was fully replaced by SOS after the sinking of the Titanic. **CQD** is probably a good choice when it isn't an actual life critical distress that needs to be communicated.
+      *  The error code is displayed as a series of Morse code blinks on the LED. The SOS is **NOT** used as this is an actual life critical distress signal. **CQD** is used instead, which stands for "Come Quick Distress" [^4]. This is the original distress signal, from the early 1900s, that was fully replaced by SOS after the sinking of the Titanic. **CQD** is probably a good choice when it isn't an actual life critical distress that needs to be communicated, such as an error in this case.
          *  The default message, when the program enters the `purgatoryTask()` is **CQD NO RTC** in Morse code. This stands for "Come Quick Distress NO Real Time Clock" [^4].
          *  The UNO R3 can only play this message as it doesn't have enough memory to store the codes needed for additional messages. All other boards can blink any message in Morse code on the assigned LED. The default is to use the `LED_BUILTIN` LED on the board, however it can be changed to any other LED pin.   
       *  The Morse code is implemented from the [`MorseCodeLED`][MorseCodeLED_lib] library and class in the [`MorseCodeLED.h`][MorseCodeLED] and [`MorseCodeLED.cpp`][MorseCodeLED_cpp] files.
@@ -192,14 +198,18 @@ The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities
 ___
 ### Background:
 
-The software was initially based on the [example/11-BinaryClockRTCInterruptAlarmButtons][example_11] on the GitHub [marcinsaj/Binary-Clock-Shield-for-Arduino][shield_github]. I refactored everything to create a pure Interface class, [`IBinaryClockBase`][IBinaryClock], to fix the minimum capabilities and decouple the classes. The main [`BinaryClock`][BinaryClock] class implements the interface and handles all the base operations of the Binary Clock Shield. The class would perform everything related to the Binary Clock Shield, such as handling the display of the time, alarm and interface screens on the NeoPixel LED matrix. Additional classes were created to handle the button pressing and debouncing, serial output and settings menu. The [`BCMenu`][BCMenu] class handles all the settings menu operations. This class contains most of the settings logic and methods, modified to work in a class with the new user interface, [`IBCButtonBase`][IBCButtonBase]. The [`BCButtons`][BCButton] class implements the interface that handles all the button pressing and debouncing. The [`SerialOutput.Defines.h`][SerialOutputDefines] file defines all the serial output MACROs, this is useful for debugging and can be disabled with a simple _#define_ to remove the code and save memory. The [`MorseCodeLED`][MorseCodeLED] class handles the Morse code blinking on an LED for error codes. The [`BinaryClockWAN`][BinaryClockWAN] class handles all the WiFi operations, such as connecting to an access point, getting the time from an NTP server and uploading new alarm melodies. The [`BinaryClock`][BinaryClock] class uses the [Adafruit Bus IO][busio] library; a forked version of the [Adafruit RTClib][rtclib] library, [RTClibPlus][rtclibplus]; and the [FastLED][fastled] library.
+The software was initially based on the [example/11-BinaryClockRTCInterruptAlarmButtons][example_11] on the GitHub [marcinsaj/Binary-Clock-Shield-for-Arduino][shield_github]. I refactored everything to create a pure Interface class, [`IBinaryClock`][IBinaryClock], to fix the minimum capabilities and decouple the classes. The main [`BinaryClock`][BinaryClock] class implements the interface and handles all the base operations of the Binary Clock Shield. The class would perform everything related to the Binary Clock Shield, such as handling the display of the time, alarm and interface screens on the NeoPixel LED matrix. Additional classes were created to handle the button pressing and debouncing, serial output and settings menu. The [`BCMenu`][BCMenu] class handles all the settings menu operations. This class contains most of the settings logic and methods, modified to work in a class with the new user interface, [`IBCButtonBase`][IBCButtonBase]. The [`BCButtons`][BCButton] class implements the interface that handles all the button pressing and debouncing. The [`SerialOutput.Defines.h`][SerialOutputDefines] file defines all the serial output MACROs, this is useful for debugging and can be disabled with a simple _#define_ to remove the code and save memory. The [`MorseCodeLED`][MorseCodeLED] class handles the Morse code blinking on an LED for error codes. The [`BinaryClockWAN`][BinaryClockWAN] class handles all the WiFi operations, such as connecting to an access point, getting the time from an NTP server and uploading new alarm melodies. The [`BinaryClock`][BinaryClock] class uses the [Adafruit Bus IO][busio] library; a forked version of the [Adafruit RTClib][rtclib] library, [RTClibPlus][RTClibPlus]; and the [FastLED][fastled] library.
 
-The [`BinaryClock`][BinaryClock] class was designed to be used as part of a library so it could be included in another project. The class uses callback functions to notify the main program when the time is updated or when an alarm goes off. This allows the main program to handle these events as needed. The main program could be altered for the different board capabilities, or lack of capabilities. The Arduino UNO R3 and R4 Minima boards don't have WiFi so they are limited to setting the time and alarms using the buttons on the shield. The ESP32 based boards have WiFi so they can connect to an NTP server to get the time and adjust for daylight savings time automatically. The ESP32 based boards can also be used to change the LED colors and upload new alarm melodies. The WiFi capabilities are not part of the [`BinaryClock`][BinaryClock] library class, they are handled in their own library, [`BinaryClockWiFi`][BinaryClockWiFi_lib]. The [`BinaryClock.Defines.h`][BinaryClockDefines] file contains all the global definitions for the different boards, their capabilities, and other defines used in the code. The main program can use these definitions to enable or disable features based on the board being used. The [`board_select.h`][boardselect] file can be used to define the pin assignments and board capabilities for any UNO style board not currently supported. The [`BinaryClock.Structs.h`][BinaryClockStructs] file contains all the global data structures used in the library. The [`TaskWrapper.h`][TaskWrapper] set of template helper functions to create a task to call any instance (or free/static) method as the task function. The task frees any memory and deletes itself when the method exits. This is a standalone header file that could be used with other projects that run FreeRTOS.
+The [`BinaryClock`][BinaryClock] class was designed to be used as part of a library so it could be included in another project. The class uses callback functions to notify the main program when the time is updated or when an alarm goes off. This allows the main program to handle these events as needed. The main program could be altered for the different board capabilities, or lack of capabilities. The Arduino UNO R3 and R4 Minima boards don't have WiFi so they are limited to setting the time and alarms using the buttons on the shield. The ESP32 based boards have WiFi so they can connect to an NTP server to get the time and adjust for daylight savings time automatically. The ESP32 based boards can also be used to change the LED colors and upload new alarm melodies. The WiFi capabilities are not part of the [`BinaryClock`][BinaryClock] library class, they are handled in their own library, [`BinaryClockWiFi`][BinaryClockWiFi_lib]. The [`BCGlobalDefines`][BCGlobalDefines] library was created to hold the shared defines, structures and interface classes used by multiple libraries. The [`BinaryClock.Defines.h`][BinaryClockDefines] file contains all the global definitions for the different boards, their capabilities, and other defines used in the code. The main program can use these definitions to enable or disable features based on the board being used. The [`board_select.h`][boardselect] file can be used to define the pin assignments and board capabilities for any UNO style board not currently supported. The [`BinaryClock.Structs.h`][BinaryClockStructs] file contains all the global data structures used in the library. The [`TaskWrapper.h`][TaskWrapper] set of template helper functions to create a task to call any instance (or free/static) method as the task function. The task frees any memory and deletes itself when the method exits. This is a standalone header file that could be used with other projects that run FreeRTOS.
 
 ___
 ### Design Overview:
 
 The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allowing it to be easily integrated into different projects and platforms. The main library, [`BinaryClock`][BinaryClock_lib] is structured around a core set of classes that handle the various aspects of the binary clock functionality, including timekeeping, alarm management, and user interactions. The [`BinaryClockWiFi`][BinaryClockWiFi_lib] library is designed to handle all the WiFi related functionality, such as connecting to an access point, getting the time from an NTP server and uploading new alarm melodies. This library also provides a way to manage the WiFi connection, including WPS and credential setting and management through a web page, saving the credentials and user settings to NVS, and handle any related events. The [`RTClibPlus`][RTClibPlus_lib] library is a forked version of the popular [Adafruit RTClib library][rtclib] with expanded functionality. The [`MorseCodeLED`][MorseCodeLED_lib] library handles the Morse code blinking on an LED for error codes and is designed to be used independently of the Binary Clock library.
+
+#### The class diagram below shows the main classes and their relationships in the [**`WiFiBinaryClock`**][CLASS_DIAGRAM] project:
+
+[**WiFi Binary Clock Class Diagram.md**][WiFiBinaryClock_CD]
 
 #### The main components of the [`BinaryClock`][BinaryClock_lib] library include:  
 
@@ -215,6 +225,22 @@ The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allo
 3. **[`BCMenu`][BCMenu]**: A class that manages the settings and configuration of the binary clock. This class is responsible for storing and retrieving user preferences, such as time format and alarm settings.   
      It provides a consistent interface for accessing and modifying the clock's configuration.   
      This class is defined in the [`BCMenu.h`][BCMenu] and [`BCMenu.cpp`][BCMenu_cpp] files.
+
+#### The main components of the [`BinaryClockWiFi`][BinaryClockWiFi_lib] library include:
+
+0. **[`BinaryClockWAN`][BinaryClockWAN]**: A class that handles all the WiFi operations for the binary clock. This class is responsible for connecting to a WiFi access point, getting the time from an NTP server, and uploading new alarm melodies.  
+     The class also provides a way to manage the WiFi connection, including WPS and credential setting and management through a web page, saving the credentials and user settings to NVS, and handle any related events.  
+     This class is defined in the [`BinaryClockWAN.h`][BinaryClockWAN] and [`BinaryClockWAN.cpp`][BinaryClockWAN_cpp] files.
+
+1. **[`BinaryClockWPS`][BinaryClockWPS]**: A class that handles the WPS operations for the binary clock. This class is responsible for initiating the WPS process and managing the connection to the WiFi access point using WPS.  
+     This class is defined in the [`BinaryClockWPS.h`][BinaryClockWPS] and [`BinaryClockWPS.cpp`][BinaryClockWPS_cpp] files.
+
+2. **[`BinaryClockNTP`][BinaryClockNTP]**: A class that handles the NTP operations for the binary clock. This class is responsible for getting the time from an NTP server and updating the binary clock's time accordingly.  
+     This class is defined in the [`BinaryClockNTP.h`][BinaryClockNTP] and [`BinaryClockNTP.cpp`][BinaryClockNTP_cpp] files. 
+
+3. **[`BinaryClockSettings`][settings]**: A class that manages the WiFi settings and configuration of the binary clock. This class is responsible for storing and retrieving user preferences related to WiFi, such as SSID and password.   
+     It provides a consistent interface for accessing and modifying the WiFi configuration.   
+     This class is defined in the [`BinaryClockSettings.h`][settings] and [`BinaryClockSettings.cpp`][settings_cpp] files.
 
 #### The main components of the [`BCGlobalDefines`][BCGlobalDefines] library include:
 
@@ -246,22 +272,6 @@ The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allo
 5. **[`TaskWrapper.h`][TaskWrapper]**: A header file that provides a wrapper for task management, simplifying the creation and handling of `FreeRTOS` tasks. [`TaskWrapper`][TaskWrapper] allows instance methods to be called in their own task in addition to static and free methods. Any instance method that takes one or more parameters and returns void can be called using the templates in [`TaskWrapper`][TaskWrapper]. The parameters along with the class instance pointer are dynamically bundled in to a template parameter structure that serves as the parameter in the `FreeRTOS` call to `xTaskCreate()` which is unpacked before calling the instance method with the required parameters. When the instance method ends, the parameters are deleted freeing the memory and the task is destroyed by calling `vTaskDelete()` on itself.   
      This file is located at ['./lib/BCGlobalDefines/src/TaskWrapper.h'][TaskWrapper].
 
-#### The main components of the [`BinaryClockWiFi`][BinaryClockWiFi_lib] library include:
-
-0. **[`BinaryClockWAN`][BinaryClockWAN]**: A class that handles all the WiFi operations for the binary clock. This class is responsible for connecting to a WiFi access point, getting the time from an NTP server, and uploading new alarm melodies.  
-     The class also provides a way to manage the WiFi connection, including WPS and credential setting and management through a web page, saving the credentials and user settings to NVS, and handle any related events.  
-     This class is defined in the [`BinaryClockWAN.h`][BinaryClockWAN] and [`BinaryClockWAN.cpp`][BinaryClockWAN_cpp] files.
-
-1. **[`BinaryClockWPS`][BinaryClockWPS]**: A class that handles the WPS operations for the binary clock. This class is responsible for initiating the WPS process and managing the connection to the WiFi access point using WPS.  
-     This class is defined in the [`BinaryClockWPS.h`][BinaryClockWPS] and [`BinaryClockWPS.cpp`][BinaryClockWPS_cpp] files.
-
-2. **[`BinaryClockNTP`][BinaryClockNTP]**: A class that handles the NTP operations for the binary clock. This class is responsible for getting the time from an NTP server and updating the binary clock's time accordingly.  
-     This class is defined in the [`BinaryClockNTP.h`][BinaryClockNTP] and [`BinaryClockNTP.cpp`][BinaryClockNTP_cpp] files. 
-
-3. **[`BinaryClockSettings`][settings]**: A class that manages the WiFi settings and configuration of the binary clock. This class is responsible for storing and retrieving user preferences related to WiFi, such as SSID and password.   
-     It provides a consistent interface for accessing and modifying the WiFi configuration.   
-     This class is defined in the [`BinaryClockSettings.h`][settings] and [`BinaryClockSettings.cpp`][settings_cpp] files.
-
 #### The main components of the [`MorseCodeLED`][MorseCodeLED_lib] library include:
 
 0. **[`MorseCodeLED`][MorseCodeLED]**: A class that handles the Morse code blinking on an LED for error codes. This class is responsible for encoding messages into Morse code and controlling the LED to blink the corresponding dots and dashes.  
@@ -273,7 +283,7 @@ The **`WiFiBinaryClock`** Project is designed to be modular and extensible, allo
 
 #### **[`RTClibPlus`][RTCLibPlus_lib]** - The forked version of [Adafruit's RTClib library][rtclib].  
 
-This code uses a forked version of [Adafruit's RTClib library][rtclib] (see the forked [`./lib/RTClibPlus/README.md`][readme_rtc] file for more information).   
+This code uses a forked version of [Adafruit's RTClib library][rtclib] (see the forked [`./lib/RTClibPlus/README.md`][readme_rtc] and [`./lib/RTClibPlus/ForkDifferences.md`][ForkDiff] file for more information).   
 The forked library is called [`RTCLibPlus`][RTCLibPlus_lib] and is also available on GitHub at [`https://github.com/Chris-70/RTClibPlus`][RTClibPlus]. It has been modified to:
 
 *   Make the inherited base class `RTC_I2C` public for the `RTC_DS3231` class (and all other child classes), e.g. `class RTC_DS3231 : public RTC_I2C`.
@@ -325,7 +335,7 @@ A fork of the `RTCLib`, `RTCLibPlus`, is available ([https://github.com/Chris-70
 ___
 ## License
 
-The WiFiBinaryClock software, Copyright (c) 2025 [`Chris-70`][Chris-70] and [`Chris-80`][Chris-80], are licensed under the GNU General Public License v3.0 (GPL-v3.0).  
+The WiFiBinaryClock software, Copyright (c) 2025, 2026 [`Chris-70`][Chris-70] and [`Chris-80`][Chris-80], are licensed under the GNU General Public License v3.0 (GPL-v3.0).  
 You may obtain a copy of the License at: [https://www.gnu.org/licenses/gpl-3.0.en.html][gpl_3] (see [**LICENSE**][license] file).  
 Parts of the [`BCMenu`][BCMenu] class are Copyright (c) 2018 Marcin Saj, also released under the GPL-v3.0 license.
 
@@ -347,6 +357,7 @@ Parts of the [`BCMenu`][BCMenu] class are Copyright (c) 2018 Marcin Saj, also re
 
 ___
 
+<!-- Reference Links -->
 [adafruit]: https://www.adafruit.com/
 [adafruit_github]: https://github.com/adafruit
 [adafruit_learn]: https://learn.adafruit.com/
@@ -354,6 +365,7 @@ ___
 [arduino_ide]: https://www.arduino.cc/en/software
 [BCButton]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCButtons.h
 [BCButton_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCButtons.cpp
+[BCGlobalDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src
 [BCMenu]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.h
 [BCMenu_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.cpp
 [BinaryClock_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src
@@ -366,7 +378,6 @@ ___
 [BinaryClockNTP]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockNTP.h
 [BinaryClockNTP_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockNTP.cpp
 [BinaryClockSettings]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BinaryClockSettings.h
-[BinaryClockSettings_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BinaryClockSettings.cpp
 [BinaryClockWAN]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockWAN.h
 [BinaryClockWAN_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockWAN.cpp
 [BinaryClockWPS]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockWPS.h
@@ -374,11 +385,12 @@ ___
 [boardselect]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h
 [busio]: https://github.com/adafruit/Adafruit_BusIO
 [Chris-70]: https://github.com/Chris-70
-[Chris-80]: https://github.com/Chris-80
+[CLASS_DIAGRAM]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/WiFiBinaryClock_ClassDiagram.md
+[WiFiBinaryClock_CD]: WiFiBinaryClock_ClassDiagram.md
 [datetime_h]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src/DateTime.h
 [example_11]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons
 [fastled]: https://github.com/FastLED/FastLED
-[fastled]: https://github.com/FastLED/FastLED
+[ForkDiff]: https://github.com/Chris-70/RTClibPlus/blob/RTClibPlus/ForkDifferences.md
 [gpl_3]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [IBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClock.h
 [IBinaryClockBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClockBase.h
@@ -399,15 +411,20 @@ ___
 [rtc]: https://www.analog.com/en/products/ds3231.html
 [rtclib]: https://github.com/adafruit/RTClib
 [rtclib_h]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src/RTClib.h
-[RTClibPlus_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src
 [RTClibPlus]: https://github.com/Chris-70/RTClibPlus/tree/RTClibPlus
+[RTClibPlus_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src
 [SerialOutputDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/SerialOutput.Defines.h
 [settings]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockSettings.h
 [settings_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockSettings.cpp
-[shield_github]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 [shield]: https://nixietester.com/product/binary-clock-shield-for-arduino/
+[shield_github]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
 [streaming]: https://github.com/janelia-arduino/Streaming
 [TaskWrapper]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/TaskWrapper.h
 [uno_r3]: https://store.arduino.cc/collections/uno/products/arduino-uno-rev3
 [vscode]: https://code.visualstudio.com/
+[tonetutorial]: https://www.arduino.cc/en/Tutorial/Tone
+[tonemelody]: https://www.arduino.cc/en/Tutorial/ToneMelody
 [WiFiBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock
+
+<!-- Unused Reference Links (retained for potential future use) -->
+[NeoPixels]: https://www.adafruit.com/category/275

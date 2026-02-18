@@ -11,6 +11,11 @@
 
 #include <Arduino.h>
 
+// If BINARY_CLOCK_LIB hasn't been defined set it to false.
+#ifndef BINARY_CLOCK_LIB
+   #define BINARY_CLOCK_LIB false
+#endif
+
 namespace BinaryClockShield
    {
    /// @brief Class to flash an LED in Morse Code. Primary, and original, use is to flash 
@@ -97,8 +102,8 @@ namespace BinaryClockShield
       ///       These common signs and word representations are included for the caller's benefit to make the 
       ///       code readable and/or reduce errors by developers who haven't memorized the prosign codes.
       enum class Prosign : uint8_t
-         {              //  '| Morse code   | Pattern    | Size and Code           | Prosign | Description              |`
-                        //  `| :----------- | :--------: | :---------------------- | :------ | :----------------------- |`
+         {             ///  '| Morse code   | Pattern    | Size and Code           | Prosign | Description              |`
+                       ///  `| :----------- | :--------: | :---------------------- | :------ | :----------------------- |`
          Start     ,   ///< `|  -.-.-       |  {0x5015}  | (len=5, code=10101)     | [KA]    | Start of transmission    |`
          End       ,   ///< `|  .-.-.       |  {0x500A}  | (len=5, code=01010)     | [AR]    | End of message           |`
          EndWork   ,   ///< `|  ...-.-      |  {0x5025}  | (len=6, code=001101)    | [SK]    | End of contact, Out      |`
@@ -126,11 +131,14 @@ namespace BinaryClockShield
          EndMark       ///< || End of command list; value is the size of the list. |||
          };
 
-      /// @brief Structure to hold the Morse code pattern and its length.
+      /// @brief Structure to hold the Morse code pattern (0 - dot; 1 - dash) and its length.
       /// @details The structure holds a 16-bit pattern which is composed of
-      ///          a 12-bit Morse code pattern and a 4-bit length field.
-      ///          The union of a bit structure and a uint16_t allows easy access
-      ///          to the individual components of the Morse code pattern.
+      ///          a 12-bit Morse code pattern and a 4-bit length field.  
+      ///          The Morse code pattern is stored in the lower 12 bits, 
+      ///          where each bit represents a dot (0) or dash (1).  
+      ///          The length field is stored in the upper 4 bits and indicates how many 
+      ///          bits of the pattern are valid (i.e., how many dots and dashes are in 
+      ///          the Morse code sequence).
       /// @remarks This is the main structure used in the class when not limited
       ///           by `UNO_R3`. It allows efficient storage and retrieval of 
       ///           Morse code patterns and is the base structure for the 
@@ -184,11 +192,18 @@ namespace BinaryClockShield
       /// @brief Starting method, needs to be called before any other method.
       void Begin();
 
-      /// @brief Method to flash the predefined message, "CQD NO RTC" in Morse code.
+      #if BINARY_CLOCK_LIB
+      /// @brief Method to flash the predefined error message, "CQD NO RTC" in Morse code.
       /// @details This method flashes the "Come Quick Distress No Real Time Clock" message
       ///          called from the BinaryClock::purgatory() method. This is the only message
       ///          that is available on the UNO R3 board, as it lacks resources for more.
-      void Flash_CQD_NO_RTC();  // Predefined message
+      void Flash_CQD_NO_RTC();  // Predefined error message
+      #else
+      /// @brief Method to flash the predefined error message, "CQD" in Morse code.
+      /// @details This method flashes the "Come Quick Distress" error message.
+      ///          This is a generic error message that doesn't look like a 'Blinky' sketch.
+      void Flash_CQD();  // Predefined error message
+      #endif
 
       /// @brief Method to flash an array of raw Morse code components.
       /// @details This method flashes the LED according to the Morse code pattern for the 
@@ -220,8 +235,10 @@ namespace BinaryClockShield
 
    private:
       int ledPin; ///< The pin number where the LED is connected.
-      // static const MCode PROGMEM mcode_CQD_NO_RTC;
 
+      // If this is part of the BinaryClock library AND the board is an UNO R3, we have to limit the functionality to 
+      // just flashing the "CQD NO RTC" message as there are limited resources on the UNO R3.
+      // The full Morse code functionality is only available when not using the UNO R3 board, or when not part of the BinaryClock library.
       #if !defined(UNO_R3) || !UNO_R3
    public:
       /// @brief Method to flash a single character in Morse code. Characters A-Z, 0-9, many punctuation symbols.
@@ -266,7 +283,7 @@ namespace BinaryClockShield
       ///            - "OUT" for the prosign SK [...-.-]
       ///            - "YES", "CORRECT" or "CONFIRM" for the prosign C [.-.]
       ///            - "NO" or "NEGATIVE" for the prosign N [-..-]
-      ///            - "SOS" for the prosign SOS [...---...]
+      ///            - "SOS" for the life emergency prosign SOS [...---...]
       void FlashProsignWord(String keyword);
 
    protected:

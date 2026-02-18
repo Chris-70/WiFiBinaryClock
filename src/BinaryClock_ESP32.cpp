@@ -197,17 +197,23 @@ void setupWiFi(BinaryClock& binClock, BinaryClockWAN& wifi, bool autoConnect)
 
 __attribute__((used)) void setup()
    {
-   Serial.begin(115200); // Start the serial communication at 115200 baud rate
+   Serial.begin(DEFAULT_SERIAL_SPEED); // Start the serial communication at DEFAULT_SERIAL_SPEED baud rate (e.g. 115,200)
    SERIAL_PRINTLN("================================================================================")
    SERIAL_PRINT("Starting setup(). ")
    SERIAL_PRINTLN(__FILE__)
    
    // Monitor heap at startup
+   #ifdef ESP32_UNO
    SERIAL_STREAM("Initial Free Heap: " << ESP.getFreeHeap() << " bytes" << endl)
+   #endif
    
    pinMode(HeartbeatLED, OUTPUT);
    digitalWrite(HeartbeatLED, LOW);
-   Wire.begin();
+   #if defined(I2C_SDA_PIN) && defined(I2C_SCL_PIN) && false
+      Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+   #else
+      Wire.begin();
+   #endif
    BinaryClock& binClock = get_BinaryClock();
 
    #ifndef UNO_R3
@@ -425,9 +431,9 @@ bool checkWatchdog()
 ///          time on the OLED display if we have the DEV_BOARD.
 void TimeAlert(const DateTime& time)
    {
-   SERIAL_STREAM("[" << millis() << "] TimeAlert() HeartbeatLED: " << HeartbeatLED << "; called at: " << time.toString(buffer, sizeof(buffer), "HH:mm:ss") << endl)
    timeWatchdog = millis();
    heartbeat = (heartbeat == LOW ? HIGH : LOW);
+   SERIAL_TIME_STREAM("[" << millis() << "] TimeAlert() HeartbeatLED: " << HeartbeatLED << "; " << (heartbeat==HIGH? "ON" : "OFF") << " called at: " << time.toString(buffer, sizeof(buffer), "HH:mm:ss") << endl)
    // If there was a watchdog fault, clear it and resume, we're getting time again.
    if (wdtFault)
       {
@@ -525,7 +531,12 @@ int ScanI2C(byte *addrList, size_t listSize)
    byte error, address;
    size_t nDevices = 0;
 
-   Wire.begin();
+   #if defined(I2C_SDA_PIN) && defined(I2C_SCL_PIN) && false
+      Wire.begin(I2C_SDA_PIN, I2C_SCL_PIN);
+   #else
+      Wire.begin();
+   #endif
+   Wire.setTimeout(64); // Set I2C timeout to a fast 64 ms
    delay(500); // vTaskDelay(pdMS_TO_TICKS(500));
 
    SERIAL_PRINTLN(F("Scanning for I2C devices ..."));

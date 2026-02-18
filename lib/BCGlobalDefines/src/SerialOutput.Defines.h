@@ -32,6 +32,24 @@
    #define PRINTF_OK       true        ///< If PRINTF_OK hasn't been defined, assume printf is available.
 #endif
 
+// ##################################################################################### //
+/// These methods/functions can be redefined if the definition is placed BEFORE the 
+/// #include <BinaryClock.Defines.h> statement in the source file where it is used.
+/// Define any of these in the "board_select.h" file as it is included first.
+/// Note: These defines are for developers who are modifying/extending the library and
+///       need to tailor the `SERIAL_TIME()`; `SERIAL_TIME_STREAM()`; and `SERIAL_SETUP_STREAM()`
+///       MACROs for their own code. This can be done by defining them BEFORE this file is included.
+// ##################################################################################### //
+#ifndef SERIAL_SETUP_TEST
+   #define SERIAL_SETUP_TEST BinaryClock::get_Instance().get_IsSerialSetup()
+#endif
+#ifndef SERIAL_TIME_TEST
+   #define SERIAL_TIME_TEST BinaryClock::get_Instance().get_IsSerialTime()
+#endif
+#ifndef SERIAL_TIME_FTN
+   #define SERIAL_TIME_FTN  BinaryClock::get_Instance().serialTime()
+#endif
+
 //#####################################################################################//  
 /// These output statements are defined as MACROs to simplify the code.
 /// This avoids surrounding the code with #if `__defined__` directives. An additional

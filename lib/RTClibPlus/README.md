@@ -1,6 +1,8 @@
 # [RTClibPlus](https://github.com/Chris-70/RTClibPlus) - Modified fork
 
-This is a fork of [Adafruit's RTClib](https://github.com/adafruit/RTClib) library with modifications to: `DS3231`; `DS1307`; and `DateTime` classes. 
+This is a fork of [Adafruit's RTClib](https://github.com/adafruit/RTClib) library v2.1.4 with modifications to: `DS3231`; `DS1307`; and `DateTime` classes. 
+
+The full differences between this library and the original Adafruit RTClib are documented in the file: [**`ForkDifferences.md`**][ForkDifferences].
 
 This is a summary of the modifications made to the original RTClib library:
 
@@ -121,6 +123,9 @@ This is a summary of the modifications made to the original RTClib library:
    ```
 
    This change allows child classes to access the `RTC_I2C` class methods, such as `read_register()` and `write_register()`, directly.
+
+<!-- Reference Links -->
+[ForkDifferences]: ForkDifferences.md
 
 ---
 # Original RTClib __README.md__ file:

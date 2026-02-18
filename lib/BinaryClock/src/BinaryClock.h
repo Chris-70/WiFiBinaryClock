@@ -97,7 +97,7 @@
 #ifndef __BINARYCLOCK_H__
 #define __BINARYCLOCK_H__
 
-#define IBINARYCLOCK_IDNAME "BinaryClock_v0.9.3"
+#define IBINARYCLOCK_IDNAME "BinaryClock_v0.9.4"
 
 #ifdef PIO_UNIT_TESTING          /// Check for the `PlatformIO` unit testing environment.
    #define TESTING true          /// Enable the `TESTING` code.
@@ -315,6 +315,7 @@ namespace BinaryClockShield
       ///        This property returns the current format of the time string used for `format` in 
       ///        the `DateTime::toString(char *buffer, size_t size, const char* format)` method.
       /// @returns A pointer to a constant character string containing the current time format.
+      /// @see set_TimeFormat()
       /// @see get_AlarmFormat()
       /// @author Chris-70 (2025-08)
       virtual char* const get_TimeFormat() const override 
@@ -327,6 +328,7 @@ namespace BinaryClockShield
       ///        This property returns the current format of the alarm string used for `format` in
       ///        the `DateTime::toString(char *buffer, size_t size, const char* format)` method.
       /// @returns A pointer to a constant character string containing the current alarm format.
+      /// @see set_AlarmFormat()
       /// @see get_TimeFormat()
       /// @author Chris-70 (2025-08)
       virtual char* const get_AlarmFormat() const override 

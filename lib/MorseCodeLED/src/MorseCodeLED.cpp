@@ -56,6 +56,7 @@ namespace BinaryClockShield
       delay(WORD_SPACE_MS);
       }
 
+   #if BINARY_CLOCK_LIB
    void MorseCodeLED::Flash_CQD_NO_RTC()
       {
       // Flash "CQD NO RTC" in Morse code - ultra compact implementation
@@ -87,6 +88,34 @@ namespace BinaryClockShield
       const MC* ptr = morse_CQD_NO_RTC;
       FlashMorseCode(ptr);
       }
+   #else
+   void MorseCodeLED::Flash_CQD()
+      {
+      // Flash "CQD" in Morse code - ultra compact implementation
+      // This was designed for the UNO_R3 as RAM and ROM were almost out.
+      // Calling FlashMCode() and a fixed array spelling out: CQD
+      // cost an extra 132 bytes of ROM, so this format is used for all.
+      // Keeping this for all other boads costs 72 bytes of ROM but it
+      // doesn't add visual / maintenance complexity by having this code
+      // littered with conditional compilation statements. We have just
+      // one conditional compilation statement to truncate this class to
+      // the minimum needed to display "CQD" in Morse code on a LED.
+      // ======================================================================
+      // CQD = "-.-.  --.-  -.."
+      // Using a compressed format: 0=dot, 1=dash, 2=letter space
+
+      // Store Morse patterns in PROGMEM to save RAM
+      static const MC PROGMEM morse_CQD[] = {
+         MC::Dash, MC::Dot,  MC::Dash, MC::Dot,  MC::Space,    // C: -.-. (1010)
+         MC::Dash, MC::Dash, MC::Dot,  MC::Dash, MC::Space,    // Q: --.- (1101)
+         MC::Dash, MC::Dot,  MC::Dot,                          // D: -..  (100)
+         MC::EndMarker
+         };
+
+      const MC* ptr = morse_CQD;
+      FlashMorseCode(ptr);
+      }
+   #endif // BINARY_CLOCK_LIB
 
    void MorseCodeLED::FlashMorseCode(const MC* morseData)
       {
@@ -322,13 +351,25 @@ namespace BinaryClockShield
       if (sign >= Prosign::EndMark) { return; }
 
       // Control codes for prosigns and special commands
+      // Note: The `prosignTable` must be in the same order as the `Prosign` enum values, and 
+      //       the `sign` field must match the enum value for correct lookup.
+      //       The duplicates in the table are intentional and represent different names for
+      //       the prosigns with the same Morse code.
+      // Examples:
+      // Prosigns:
+      //    `KA`; `Start`; `Attention`;   are all the same prosign meaning with Morse code `-.-.-`    (len=5, pattern=10101)
+      //    `AR`; `End`;                  are all the same prosign meaning with Morse code `.-.-.`    (len=5, pattern=01010)
+      //    `SK`; `Out`; `EndWork`;       are all the same prosign meaning with Morse code `...-.-`   (len=6, pattern=001101)
+      //    `K`; `Over`; `Invite`;        are all the same prosign meaning with Morse code `-.-`      (len=3, pattern=101)
+      //    `VE`; `Understood`;           are all the same prosign meaning with Morse code `...-.`    (len=5, pattern=00010)
+      //    `HH`; `Error`; `Correction`;  are all the same prosign meaning with Morse code `........` (len=8, pattern=00000000)
       static const ProsignLookup PROGMEM prosignTable[] = 
             {
             // Prosign codes
             {Prosign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
             {Prosign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
-            {Prosign::EndWork   , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
-            {Prosign::Out       , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
+            {Prosign::EndWork   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
+            {Prosign::Out       , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
             {Prosign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
             {Prosign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
             {Prosign::Invite    , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, Invitation to transmit 
@@ -345,7 +386,7 @@ namespace BinaryClockShield
             {Prosign::HH        , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction
             {Prosign::BT        , 0x5011}, ///< [` -...-     `] (len=5, pattern=10001)      [BT]  New paragraph, separator
             {Prosign::KA        , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
-            {Prosign::SK        , 0x5025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
+            {Prosign::SK        , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
             {Prosign::C         , 0x4005}, ///< [` -.-.      `] (len=4, pattern=1010)       [C]   Correct, Confirm, Yes
             {Prosign::N         , 0x2002}, ///< [` -.        `] (len=2, pattern=10)         [N]   Negative, No
             {Prosign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International distress signal

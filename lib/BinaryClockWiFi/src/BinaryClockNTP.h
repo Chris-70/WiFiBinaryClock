@@ -10,6 +10,19 @@
 #ifndef __BINARYCLOCKNTPSNTP_H__
 #define __BINARYCLOCKNTPSNTP_H__
 
+// __has_include is C++17 and beyond, or an extension in some compilers.
+#ifdef __has_include
+   // Include the `board_select.h` file for any user overrides of `#define` values used here.
+   #if __has_include("board_select.h")
+      #include "board_select.h"  // Include the user defined board selection file if it exists
+   #else
+      #pragma message "board_select.h - file not found. No user overrides in BinaryClockNTP.h."
+   #endif
+#else
+   #warning "BinaryClockNTP.h - Cannot check for board_select.h file, including by default."
+   #include "board_select.h"     // Include the user defined board selection file, assume it exists   
+#endif // __has_include
+
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.
 #include <stddef.h>                    /// Macros & defines: size_t, NULL, etc.
 #include <time.h>                      /// For time_t & struct tm types

@@ -21,10 +21,18 @@
 // Constants for Common Anode (CA) and Common Cathode (CC) button wiring
 // A CA wired button is connected HIGH and pulled LOW when pressed.
 // A CC wired button is connected LOW and pulled HIGH when pressed.
-#define CA_ON                    LOW   ///< The value when ON  for CA connections
-#define CC_ON                   HIGH   ///< The value when ON  for CC connections
-#define CA_OFF                  HIGH   ///< The value when OFF for CA connections
-#define CC_OFF                   LOW   ///< The value when OFF for CC connections
+#ifndef CA_ON
+   #define CA_ON                 LOW   ///< The value when ON  for CA connections
+#endif
+#ifndef CC_ON
+   #define CC_ON                HIGH   ///< The value when ON  for CC connections
+#endif
+#ifndef CA_OFF
+   #define CA_OFF               HIGH   ///< The value when OFF for CA connections
+#endif
+#ifndef CC_OFF
+   #define CC_OFF                LOW   ///< The value when OFF for CC connections
+#endif
 
 namespace BinaryClockShield
 {
