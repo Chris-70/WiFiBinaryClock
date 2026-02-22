@@ -2,53 +2,6 @@
 #ifndef __BINARYCLOCK_DEFINES_H__
 #define __BINARYCLOCK_DEFINES_H__
 
-#include <stdint.h>                    /// Integer types: size_t; uint8_t; uint16_t; etc.
-#include <pins_arduino.h>              /// Standard Arduino Pin definitions (e.g. A1, A2, etc.).
-
-#ifndef LOW
-   #define LOW                    0u   ///< Digital LOW value if not already defined, remove after use to avoid redefinition warnings
-   #define UNDEF_LOW            true   ///< Flag to indicate LOW was undefined and is now defined, used to undefine later to avoid conflicts with other libraries.
-#endif
-#ifndef HIGH
-   #define HIGH                   1u   ///< Digital HIGH value if not already defined, remove after use to avoid redefinition warnings
-   #define UNDEF_HIGH           true   ///< Flag to indicate HIGH was undefined and is now defined, used to undefine later to avoid conflicts with other libraries.  
-#endif
-
-// Constants for Common Anode (CA) and Common Cathode (CC) button wiring
-//    A CA wired button is connected HIGH and pulled LOW when pressed.
-//    A CC wired button is connected LOW and pulled HIGH when pressed.
-#ifndef CA_ON
-   #define CA_ON                 LOW   ///< The value when ON  for CA connections
-#endif
-#ifndef CC_ON
-   #define CC_ON                HIGH   ///< The value when ON  for CC connections
-#endif
-#ifndef CA_OFF
-   #define CA_OFF               HIGH   ///< The value when OFF for CA connections
-#endif
-#ifndef CC_OFF
-   #define CC_OFF                LOW   ///< The value when OFF for CC connections
-#endif
-
-// __has_include is C++17 and beyond, or an extension in some compilers.
-#ifdef __has_include
-   #if __has_include("board_select.h")
-      #include "board_select.h"        // Include the user defined board selection file if it exists
-   #endif
-#else
-   #warning "BinaryClock.Defines.h - Cannot check for board_select.h file, including by default."
-   #include "board_select.h"           // Include the user defined board selection file, assume it exists   
-#endif // __has_include
-
-#if UNDEF_LOW                          // We defined LOW just above for C?_*; undefine it to avoid redefinitions
-   #undef LOW
-   #undef UNDEF_LOW
-#endif
-#if UNDEF_HIGH                         // We defined HIGH just above for C?_*; undefine it to avoid redefinitions
-   #undef HIGH
-   #undef UNDEF_HIGH
-#endif
-
 ///###############################################################################################
 /// @file BinaryClock.Defines.h  
 ///###############################################################################################
@@ -134,12 +87,51 @@
 /// This can be helpful to users who are just learning how to set the Binary Clock Shield
 /// time and/or alarm.
 
+/// @par Required by `board_select.h` file
+/// The `board_select.h` file requires the following include and defines to be set for
+/// the file to compile on its own. The `board_select.h` file needs the most basic 
+/// defines to be able to define the pin numbers using the pin names (e.g. A1, A2, etc.) 
+/// and the basic definitions of ON and OFF for the buttons depending on how they are wired.
+/// The shield has all 3 buttons wired as Common Cathode (CC), so they are all ON when 
+/// the pin reads HIGH. If you are using a different shield where the buttons are wired 
+/// differently, you can change the S1_ON, S2_ON, and S3_ON defines, in `board_select.h`
+/// to match your wiring.
+#include <stdint.h>                    /// Integer types: size_t; uint8_t; uint16_t; etc.
+#include <pins_arduino.h>              /// Standard Arduino Pin definitions (e.g. A1, A2, etc.).
+
+#ifndef LOW
+   #define LOW                    0u   ///< Digital LOW value if not already defined, remove after use to avoid redefinition warnings
+   #define UNDEF_LOW            true   ///< Flag to indicate LOW was undefined and is now defined, used to undefine later to avoid conflicts with other libraries.
+#endif
+#ifndef HIGH
+   #define HIGH                   1u   ///< Digital HIGH value if not already defined, remove after use to avoid redefinition warnings
+   #define UNDEF_HIGH           true   ///< Flag to indicate HIGH was undefined and is now defined, used to undefine later to avoid conflicts with other libraries.  
+#endif
+
+// Constants for Common Anode (CA) and Common Cathode (CC) button wiring
+//    A CA wired button is connected HIGH and pulled LOW when pressed.
+//    A CC wired button is connected LOW and pulled HIGH when pressed.
+#ifndef CA_ON
+   #define CA_ON                 LOW   ///< The value when ON  for CA connections
+#endif
+#ifndef CC_ON
+   #define CC_ON                HIGH   ///< The value when ON  for CC connections
+#endif
+#ifndef CA_OFF
+   #define CA_OFF               HIGH   ///< The value when OFF for CA connections
+#endif
+#ifndef CC_OFF
+   #define CC_OFF                LOW   ///< The value when OFF for CC connections
+#endif
+
+/// @par Overridable Defines
 /// @verbatim
 /// ##################################################################################### //
 /// These defines can be overridden by defining them BEFORE this header file is included, //
 /// usually in the `board_select.h` file which is included at the start of this file.     //
 /// The supported boards are defined with the values are set UNLESS they are overridden.  //
 /// ##################################################################################### //
+/// -----------------------------------------------------------------------------------------------
 /// #define NTP_SERVERS_LIST { "time.nrc.ca", "pool.ntp.org", "time.nist.gov" }  // The list of NTP servers example, 
 /// #define DEFAULT_TIMEZONE "EST+5EDT,M3.2.0/2,M11.1.0/2"  // Example timezone string (Canada Eastern Time with DST)
 /// #define NTP_DEFAULT_PORT 123                            // Standard NTP port number.
@@ -167,7 +159,31 @@
 /// #define DEFAULT_SERIAL_TIME    false   ///< Initial serial time display value  (e.g. no continuous serial time display at startup).
 /// @endverbatim
 
-/// @addtogroup BoardDefines UNO Board Definitions
+// __has_include is C++17 and beyond, or an extension in some compilers.
+#ifdef __has_include
+   #if __has_include("board_select.h")
+      #include "board_select.h"        // Include the user defined board selection file if it exists
+   #endif
+#else
+   #warning "BinaryClock.Defines.h - Cannot check for board_select.h file, including by default."
+   #include "board_select.h"           // Include the user defined board selection file, assume it exists   
+#endif // __has_include
+
+/// @name Undefine_Temporary_Defines
+/// The LOW and HIGH defines are needed for the `board_select.h` file, but they may cause redefinition warnings in 
+/// other libraries that also define them. They are undefined to avoid redefinition warnings in other libraries 
+/// that also define LOW and HIGH and don't expect them to be redefined earlier.
+#if UNDEF_LOW                          // We defined LOW just above for C?_*; undefine it to avoid redefinitions
+   #undef LOW
+   #undef UNDEF_LOW
+#endif
+#if UNDEF_HIGH                         // We defined HIGH just above for C?_*; undefine it to avoid redefinitions
+   #undef HIGH
+   #undef UNDEF_HIGH
+#endif
+
+/// @name Board_Definitions
+/// @addtogroup BoardDefines UNO Form Factor Board Definitions
 /// @{
 ///################################################################################//  
 ///             Defines for the different UNO sized boards                         //  
@@ -307,6 +323,7 @@
    #define ESP32_INPUT_PULLDOWN  INPUT ///< Define for INPUT without an internal pull-down resistor
 
    #define ESP32_WIFI false            ///< No ESP32 WiFi on any Arduino boards, only WIFIS3 for UNO R4 WIFI.
+   #define PRINTF_OK  false            ///< No printf style code on UNO R3, R4, just ESP32 and ESP8266.
    #if defined(UNO_R4_WIFI)
       // The Arduino library for the ESP32-S3 chip on the R4-WiFi board uses the WIFIS3 library, not the ESP32 library, this isn't supported yet.
       #define WIFIS3    false // true     ///< The UNO R4 WiFi board uses WIFIS3.h; similar to ESP32 WiFi but different, no WPS. 
@@ -336,9 +353,9 @@
    #pragma message "  UNO_R4_WIFI       - Arduino UNO R4 WiFi board"
    #pragma message "  UNO_R4_MINIMA     - Arduino UNO R4 Minima board"
    #pragma message "  UNO_R3            - Arduino UNO R3 board"
-   #pragma message "  CUSTOM_UNO        - custom board with defined pin numbers in board_select.h"
+   #pragma message "  CUSTOM_UNO        - Custom board with defined pin numbers in board_select.h"
    #pragma message "Please define one of the above boards or create CUSTOM_UNO to compile the code."
-   #error "Undefined board. Please define the pin numbers for your board in 'board_select.h'."
+   #error "Undefined board type. Please define the pin numbers for your board in 'board_select.h'."
    #include <NoBoardDefinition_StopCompilationNow> // Include a dummy header file to stop compilation
 #endif
 /// @}
@@ -375,7 +392,6 @@
    #undef DEV_BOARD
    #undef DEV_CODE
    #define SERIAL_TIME_CODE   false
-   #define PRINTF_OK          false
    #define FREE_RTOS          false
    #define STL_USED           false
 #else
@@ -413,13 +429,13 @@
 /// Physical wiring of the 3 buttons on the shield: 
 ///   Common Cathode (CC) - Pin is pulled down to ground - Button pressed pin goes HIGH
 #ifndef S1_ON
-   #define S1_ON        CC_ON           ///< The button S1 is active when the pin reads CC_ON (HIGH or LOW)
+   #define S1_ON        CC_ON           ///< The button S1 is active when the pin reads CC_ON 
 #endif
 #ifndef S2_ON
-   #define S2_ON        CC_ON           ///< The button S2 is active when the pin reads CC_ON (HIGH or LOW)
+   #define S2_ON        CC_ON           ///< The button S2 is active when the pin reads CC_ON 
 #endif
 #ifndef S3_ON
-   #define S3_ON        CC_ON           ///< The button S3 is active when the pin reads CC_ON (HIGH or LOW)
+   #define S3_ON        CC_ON           ///< The button S3 is active when the pin reads CC_ON 
 #endif
 
 //################################################################################//  
@@ -429,6 +445,7 @@
 #elif DEV_BOARD
    #define DEV_CODE  true     ///< If using a development board, include the development code
 #endif
+/// The DEV_CODE can be defined independently of DEV_BOARD. Define as false if not already defined.
 #ifndef DEV_CODE
    #define DEV_CODE false     ///< If DEV_CODE hasn't been defined, don't include the development code
 #endif
@@ -438,8 +455,8 @@
 #if !DEV_BOARD
    #undef DEBUG_SETUP_PIN
    #undef DEBUG_TIME_PIN
-   #define DEBUG_SETUP_PIN   -1   ///< No development board, so no H/W debug setup
-   #define DEBUG_TIME_PIN    -1   ///< No development board, so no H/W debug time
+   #define DEBUG_SETUP_PIN   -1   ///< No development board, so no H/W debug setup button
+   #define DEBUG_TIME_PIN    -1   ///< No development board, so no H/W debug time  button
 #endif
 
 /// This determines if the menu and/or time are also displayed on the serial monitor.
@@ -451,8 +468,16 @@
 #ifndef SERIAL_TIME_CODE
    #define SERIAL_TIME_CODE     true   ///< If (true) - serial time  code included, (false) - code removed
 #endif
+// The SERIAL_OUTPUT flag is used to control the inclusion of serial output code. 
+// If either the setup or time serial code is included, then the SERIAL_OUTPUT flag must be set to true.
 #ifndef SERIAL_OUTPUT
    #define SERIAL_OUTPUT (SERIAL_SETUP_CODE || SERIAL_TIME_CODE) ///< If (true) - Allow serial output messages.
+#elif !SERIAL_OUTPUT && (SERIAL_SETUP_CODE || SERIAL_TIME_CODE)
+   // SERIAL_OUTPUT was defined as false for this compilation, remove all serial output code.
+   #undef  SERIAL_SETUP_CODE
+   #undef  SERIAL_TIME_CODE
+   #define SERIAL_SETUP_CODE false  ///< SERIAL_OUTPUT is false, so remove the serial setup
+   #define SERIAL_TIME_CODE  false  ///< SERIAL_OUTPUT is false, so remove the serial time
 #endif
 
 /// Defines for the hardware development board to control software output from the hardware.
@@ -509,7 +534,7 @@
 #endif
 
 //#####################################################################################//  
-/// General defines for the Binary Clock Shield display layout.
+// General defines for the Binary Clock Shield display layout.
 // The display layout of the LEDs on the shield, one row each.
 // The Binary Clock Shield has 3 rows of LEDs for displaying the time:
 //   - Top row:    Hours   (5 LEDs)
@@ -517,7 +542,7 @@
 //   - Bottom row: Seconds (6 LEDs)
 // These are the LEDs that are used to display the time. The physical layout of a custom
 // shield may have more LEDs in each row, these are defined separately below.
-// The LED color values are set from LSB seconds to MSB hours in the display array [0-16].
+// The LED color values are set from LSB seconds to MSB hours in the display array (e.g. [0-16]).
 // The array reserved for the FastLED library is defined by TOTAL_LEDS below.
 // The array size for the display array is defined by NUM_LEDS below.
 #ifndef DISPLAY_LAYOUT
@@ -537,9 +562,9 @@
    #define SECOND_LEDS_OFFSET    0
 #endif
 #define NUM_ROWS                 3         ///< The number of LED time display rows on the shield.
-// Define the number of LEDs in each row, can be overridden if needed.
+// Define the number of physical LEDs in each row, can be overridden if needed.
 // This allows for different LED configurations if needed.
-// If the rows have more LEDs than needed, the extra LEDs will be unused (OFF).
+// If the rows have more LEDs than needed, the extra LEDs will be unused (OFF, CRGB::Black).
 // This is useful for custom shields with different layouts.
 // Displaying the time on an 8x8 matrix would use 8 LEDs per row, even though only
 // 5, 6, and 6 LEDs are needed for hours, minutes, and seconds respectively.
@@ -583,6 +608,10 @@
 #define MINUTE_MASK       0x3F         ///< Mask for the minutes (6 bits)
 #define SECOND_MASK       0x3F         ///< Mask for the seconds (6 bits)
 
+// The LED type and color order for the FastLED library. 
+// This is based on the WS2812B LEDs used on the Binary Clock Shield.
+// See:  https://cdn-learn.adafruit.com/downloads/pdf/adafruit-neopixel-uberguide.pdf
+//       https://github.com/FastLED/FastLED/tree/master/examples/RGBCalibrate 
 #define LED_TYPE           WS2812B     ///< Datasheet: http://bit.ly/LED-WS2812B
 #define COLOR_ORDER          GRB       ///< For color ordering use this sketch: http://bit.ly/RGBCalibrate   
 
@@ -590,7 +619,7 @@
 #define ALARM_2                    2   ///< Alarm 2, the default alarm used by the shield.
 
 #define AMPM_MODE               true   ///< AM/PM mode flag value
-#define HR24_MODE              false   ///< 24 Hour mode flag value
+#define HR24_MODE              false   ///< 24 Hour mode flag value, i.e. !AMPM_MODE
 #define MAX_BUFFER_SIZE           64   ///< Maximum size of temporary buffers.
 #define MAX_DISPLAY_PAUSE      60000   ///< Maximum display pause time in ms (1 minute).
 
@@ -672,7 +701,7 @@
 // bit values set to 0 on the DS3231 chip. The OSF bit on the DS3231 is a status bit
 // to signal the oscillator has stopped and can only be cleared, while on the DS3232 
 // it is a control bit to enable/disable the oscillator. The DS3232 has a selectable
-// temperature conversion rate, while the DS3231 has a fixed 10 seconds conversion rate.
+// temperature conversion rate, while the DS3231 has a fixed 10 seconds conversion rate
 // on battery. On VCC, both chips have a 1 second conversion rate.
 // From: (https://www.analog.com/media/en/technical-documentation/data-sheets/DS3231.pdf)
 //       (https://www.analog.com/media/en/technical-documentation/data-sheets/DS1307.pdf)

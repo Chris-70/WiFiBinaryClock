@@ -1,6 +1,15 @@
 # MorseCodeLED Library
 
+[![GitHub release](https://img.shields.io/github/release/Chris-70/MorseCodeLED.svg?style=flat-square)]
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)]
+
 A simple yet powerful Arduino library for flashing Morse code messages on an LED. Perfect for error signaling, status messages, or just having fun with Morse code!
+___
+
+## Additional Documents
+- [**`ClassDiagram.md`**][ClassDiagram] (GitHub: [`ClassDiagram.md`][ClassDiagram_Git]) - Class diagram and structure of the **MorseCodeLED library**.
+- [**`InstallUsage.md`**][INSTALL] (GitHub: [`InstallUsage.md`][INSTALL_Git]) - Installation and usage instructions for the **MorseCodeLED library**.
+---
 
 ## Overview
 
@@ -372,9 +381,15 @@ Part of the WiFi Binary Clock project. See project repository for license detail
 
 - **WiFi Binary Clock Project**: https://github.com/Chris-70/WiFiBinaryClock
 - **MorseCodeLED Library**: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED
-- **Class Diagram**: [MorseCodeLED_LibClassDiagram.md](MorseCodeLED_LibClassDiagram.md)
+- **Class Diagram**: [ClassDiagram.md](ClassDiagram.md)
 - **Binary Clock Shield**: https://nixietester.com/product/binary-clock-shield-for-arduino/
 
 ---
 
 **Flash responsibly. Use SOS only for actual emergencies! 🚨📡**
+
+<!-- Reference Links -->
+[ClassDiagram]: ClassDiagram.md
+[ClassDiagram_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/ClassDiagram.md
+[INSTALL]: InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/InstallUsage.md

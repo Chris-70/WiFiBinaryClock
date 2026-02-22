@@ -31,7 +31,7 @@
    #define SCREEN_HEIGHT 32 // OLED display height, in pixels
    #define OLED_RESET    -1 // / QT-PY  XIAO
    #define I2C_ADDRESS 0x3c //initialize with the I2C addr 0x3C Typically eBay OLED's
-                        // e.g. the one with GM12864-77 written on it
+                            // e.g. the one with GM12864-77 written on it
    Adafruit_SSD1306 display = Adafruit_SSD1306(SCREEN_WIDTH, SCREEN_HEIGHT, &Wire, OLED_RESET, 100000UL, 100000UL);
    // Wrap the display initialization in a MACRO to allow for the display being optional.
    #define BEGIN(ADDR,RESET) display.begin(SSD1306_SWITCHCAPVCC, (ADDR), (RESET), true)
@@ -40,6 +40,8 @@
    // Wrap this method in a MACRO definition only used with a dev. board that has an OLED display.
    #define TIME_OLED(DATE_N_TIME) TimeOLED(DATE_N_TIME);
    void TimeOLED(const DateTime & time);
+   #undef LED_HEART
+   #define LED_HEART  18
 #else
    // Removes the code from compilation, replaced with whitespace.
    #define BEGIN(ADDR, RESET)
@@ -348,27 +350,13 @@ __attribute__((used)) void loop()
    #endif
    //////////////////////////////////////
 
-   //////////////////////////////////////
-   // // Monitor heap health every 10 seconds to catch memory issues early
-   // if (millis() - heapCheckTimer > 10000)
-   //    {
-   //    uint32_t freeHeap = ESP.getFreeHeap();
-   //    SERIAL_STREAM("[" << millis() << "] Loop #" << loopCounter << " - Free Heap: " << freeHeap << " bytes" << endl)
-      
-   //    // Alert if heap is getting dangerously low
-   //    if (freeHeap < 50000)  // Less than 50KB
-   //       {
-   //       SERIAL_STREAM("WARNING: Free heap is low: " << freeHeap << " bytes. Memory pressure detected!" << endl)
-   //       }
-      
-   //    heapCheckTimer = millis();
-   //    }
-   // loopCounter++;
-   //////////////////////////////////////
-
    binClock.loop();
    yield();  // Give WiFi time to process
-   // checkWatchdog();
+
+   // Happy path, checkWatchDog() returns true and wdtError is cleared. If checkWatchdog() returns false, 
+   // we we cheak if wdtError isclear meaning we just got a fault and we set wdtError to true preventing 
+   // us from entering this block again until we get a successful checkWatchdog() call. This allows us to 
+   // only print the WDT fault message once per fault, instead of every loop while we're in a fault state.
    if (checkWatchdog())
       {
       wdtError = false;
@@ -380,10 +368,6 @@ __attribute__((used)) void loop()
       }
 
    yield();  // Give WiFi time to process
-   //////////////////////////////////////
-   // Serial << "[" << millis() << "] Loop end" << endl;
-   // delay(100);  // Small delay to see timing
-   //////////////////////////////////////
    }
 
 /// @brief Check the Watchdog Timer and alert it if necessary.
@@ -433,7 +417,7 @@ void TimeAlert(const DateTime& time)
    {
    timeWatchdog = millis();
    heartbeat = (heartbeat == LOW ? HIGH : LOW);
-   SERIAL_TIME_STREAM("[" << millis() << "] TimeAlert() HeartbeatLED: " << HeartbeatLED << "; " << (heartbeat==HIGH? "ON" : "OFF") << " called at: " << time.toString(buffer, sizeof(buffer), "HH:mm:ss") << endl)
+   // SERIAL_TIME_STREAM("[" << millis() << "] TimeAlert() HeartbeatLED: " << HeartbeatLED << "; " << (heartbeat==HIGH? "ON" : "OFF") << " called at: " << time.toString(buffer, sizeof(buffer), "HH:mm:ss") << endl)
    // If there was a watchdog fault, clear it and resume, we're getting time again.
    if (wdtFault)
       {

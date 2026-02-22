@@ -677,7 +677,12 @@ namespace BinaryClockShield
 
    void BCMenu::SerialStartInfo()
       {
+      String versionStr(clock.get_IdName());
+      int len = versionStr.length();
+      int preFill =  ((44 - len) / 2) - 1;
+      int  postFill = 44 - preFill - len - 2; // -2 for the spaces around the version string - 
       Serial.println(fillStr('_', 44));
+      
       Serial.println(F("|      Software from the Chris Team        |"));
       Serial.println(F("|        (Chris-70 and Chris-80)           |"));
       Serial.println(F("|      Designed to run the fantastic:      |"));
@@ -692,6 +697,7 @@ namespace BinaryClockShield
       Serial.println(F("#     General Public License (GPL) v3.0    #"));
       Serial << strBarrier << endl;
 
+      Serial << fillStr('-', preFill) << ' ' << versionStr << ' ' << fillStr('-', postFill) << endl;
       Serial << strSeparator << endl;
       Serial << fillStr('-', 11) << F(" BINARY CLOCK SHIELD ") << fillStr('-', 12) << endl;
       Serial << fillStr('-', 15) << F(" FOR ARDUINO ") << fillStr('-', 16) << endl;

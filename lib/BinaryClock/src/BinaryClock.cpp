@@ -409,7 +409,7 @@ namespace BinaryClockShield
          [12] = "1100", [13] = "1101", [14] = "1110", [15] = "1111",
          };
 
-   String ToBinary(uint8_t byte)   // *** DEBUG ***
+   String ToBinary(uint8_t byte)
       {
       char byteStr[10];
       memmove(byteStr, nibbles[byte >> 4], 4);
@@ -563,8 +563,6 @@ namespace BinaryClockShield
              << (s2Pressed? "Pressed" : "OFF") << "; Value: " << buttonS2.get_Value() << " OnValue: is: " 
              << buttonS2.get_OnValue() << endl)   // *** DEBUG ***
 
-      menu.Begin();
-
       #if FREE_RTOS
       if (get_ClockEventGroup() == nullptr)
          { set_ClockEventGroup(xEventGroupCreate()); }
@@ -572,12 +570,15 @@ namespace BinaryClockShield
 
       if (SetupRTC())
          {
+         menu.Begin();
+
          testLeds = testLeds || RTC.lostPower();
          SetupFastLED(testLeds | true);   // *** DEBUG *** " | true"
          SetupAlarm();
          }
       else
          {
+         menu.SerialStartInfo();
          // Send this to Purgatory, we're dead.
          PurgatoryTask("No RTC found.");
          }

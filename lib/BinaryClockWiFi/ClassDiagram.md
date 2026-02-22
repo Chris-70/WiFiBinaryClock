@@ -2,6 +2,11 @@
 
 This document contains the comprehensive class diagram for the BinaryClockWiFi library, showing all classes, their relationships, members, and methods based on the actual source code.
 
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClockWiFi library**.
+- [**`InstallUsage.md`**][INSTALL] (GitHub: [`InstallUsage.md`][INSTALL_Git]) - Installation and usage instructions for the **BinaryClockWiFi library**.
+---
+
 ## Class Diagram
 
 ```mermaid
@@ -622,9 +627,8 @@ All four main classes implement the Singleton pattern:
 
 ---
 
-**Documentation Generated:** Based on actual source code analysis of BinaryClockWiFi library  
-**Files Analyzed:**
-- [BinaryClockWAN.h](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/src/BinaryClockWAN.h)
-- [BinaryClockNTP.h](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/src/BinaryClockNTP.h)
-- [BinaryClockWPS.h](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/src/BinaryClockWPS.h)
-- [BinaryClockSettings.h](https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/src/BinaryClockSettings.h)
+<!-- Reference Links -->
+[INSTALL]: InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/InstallUsage.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/README.md
