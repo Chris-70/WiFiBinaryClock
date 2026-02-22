@@ -2,6 +2,11 @@
 
 This library provides global type definitions, interfaces, template classes, structures, and macros used throughout the Binary Clock project.
 
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and description of the **BCGlobalDefines library**.
+- [**`InstallUsage.md`**][InstallUsage] (GitHub: [`InstallUsage.md`][InstallUsage_Git]) - Installation and usage instructions for the **BCGlobalDefines library**.
+---
+
 ```mermaid
 classDiagram
     %% ========================================
@@ -284,3 +289,9 @@ The **BCGlobalDefines** library provides the foundational building blocks for th
 
 ## Repository
 [BCGlobalDefines on GitHub](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines)
+
+<!-- Reference Links -->
+[InstallUsage]: InstallUsage.md
+[InstallUsage_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/InstallUsage.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/README.md

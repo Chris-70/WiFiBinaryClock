@@ -2,6 +2,11 @@
 
 This library provides Morse code LED flashing functionality for the Binary Clock, primarily used for error signaling when the RTC is unavailable.
 
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and documentation for the **MorseCodeLED library**.
+- [**`InstallUsage.md`**][INSTALL] (GitHub: [`InstallUsage.md`][INSTALL_Git]) - Installation and usage instructions for the **MorseCodeLED library**.
+---
+
 ```mermaid
 classDiagram
     %% ========================================
@@ -231,3 +236,9 @@ From the header documentation:
 
 ## Repository
 [MorseCodeLED on GitHub](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED)
+
+<!-- Reference Links -->
+[INSTALL]: InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/InstallUsage.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/README.md

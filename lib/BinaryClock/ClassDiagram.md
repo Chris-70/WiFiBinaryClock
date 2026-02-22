@@ -1,5 +1,10 @@
 # BinaryClock Library - Class Diagram
 
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and description of the **BinaryClock library**.
+- [**`InstallUsage.md`**][INSTALL] (GitHub: [`InstallUsage.md`][INSTALL_Git]) - Installation and usage instructions for the **BinaryClock library**.
+---
+
 This library provides the core Binary Clock functionality including time display, alarm management, button handling, and settings menu.
 
 ```mermaid
@@ -469,3 +474,8 @@ while (true) {
 
 ## Repository
 [BinaryClock on GitHub](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock)
+
+[INSTALL]: InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/InstallUsage.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/README.md

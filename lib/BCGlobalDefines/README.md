@@ -7,6 +7,11 @@
 
 This library serves as the foundation for the [WiFiBinaryClock project][WiFiBinaryClock], providing common interfaces, data structures, compile-time definitions, and utility templates used across all other project libraries. It ensures consistent architecture, type safety, and code reusability throughout the entire system.
 
+## Additional Documents
+- [**`ClassDiagram.md`**][ClassDiagram] (GitHub: [`ClassDiagram.md`][ClassDiagram_Git]) - Class diagram and structure of the **BCGlobalDefines library**.
+- [**`InstallUsage.md`**][InstallUsage] (GitHub: [`InstallUsage.md`][InstallUsage_Git]) - Installation and usage instructions for the **BCGlobalDefines library**.
+---
+
 ## Overview
 
 **`BCGlobalDefines`** is a header-only library that acts as the central repository for shared components in the Binary Clock ecosystem. It defines the contracts (interfaces) that other libraries implement, establishes common data structures for inter-library communication, configures board-specific settings through compile-time definitions, and provides utility templates for advanced features like FreeRTOS task management.
@@ -177,7 +182,9 @@ This library is part of the WiFiBinaryClock project and is licensed under the **
 [BinaryClockWiFi]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWiFi
 [boardselect]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h
 [ClassDiagram]: ClassDiagram.md
+[ClassDiagram_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/ClassDiagram.md
 [InstallUsage]: InstallUsage.md
+[InstallUsage_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/InstallUsage.md
 [license]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/LICENSE
 [MorseCodeLED]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED
 [RTClibPlus]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus

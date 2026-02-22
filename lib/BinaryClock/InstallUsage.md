@@ -1,5 +1,12 @@
 # BinaryClock Library - Installation and Usage Guide
 
+This document provides detailed instructions on how to install and use the BinaryClock library, which is the core component of the WiFi Binary Clock project. It covers installation steps for both PlatformIO and Arduino IDE, as well as examples of how to utilize the library's features for time management, alarm configuration, LED display control, button handling, and melody playback.
+
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClock library**.
+- [**`ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClock library**.
+---
+
 ## Installation
 
 ### PlatformIO
@@ -1091,10 +1098,14 @@ See [LICENSE][license] file for details.
 [BCGlobalDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src
 [BCMenu]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BCMenu.h
 [boardselect]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h
+[CLASS_DIAGRAM]: ClassDiagram.md
+[CLASS_DIAGRAM_GIT]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/ClassDiagram.md
 [Example_11]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons
 [gpl_3]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [license]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/LICENSE
 [metro]: https://www.adafruit.com/product/5500
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/README.md
 [shield]: https://nixietester.com/product/binary-clock-shield-for-arduino/
 [ShieldExamples]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example
 [WiFiBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock

@@ -1,5 +1,12 @@
 # BCGlobalDefines - Installation and Usage Guide
 
+This document provides detailed instructions on how to install and use the BCGlobalDefines library, which is a shared dependency for all libraries in the WiFi Binary Clock project. It covers installation steps for both PlatformIO and Arduino IDE, as well as examples of how to utilize the library's interfaces, structures, and compile-time definitions in your projects.
+
+## Additional Documents
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and description of the **BCGlobalDefines library**.
+- [**`ClassDiagram.md`**][ClassDiagram] (GitHub: [`ClassDiagram.md`][ClassDiagram_Git]) - Class diagram and structure of the **BCGlobalDefines library**.
+---
+
 **Comprehensive guide for installing and using the BCGlobalDefines shared library**
 
 ## Table of Contents
@@ -946,13 +953,19 @@ Serial.println("Initializing...");
 
 ## Additional Resources
 
-- [BCGlobalDefines Class Diagram](BCGlobalDefines_LibClassDiagram.md)
+- [BCGlobalDefines Class Diagram](ClassDiagram.md)
 - [WiFiBinaryClock Project Documentation](https://github.com/Chris-70/WiFiBinaryClock)
-- [BinaryClock Library Usage Guide](../BinaryClock/BinaryClock_LibInstallUseage.md)
-- [BinaryClockWiFi Library Usage Guide](../BinaryClockWiFi/BinaryClockWiFi_LibInstallUsage.md)
+- [BinaryClock Library Usage Guide](../BinaryClock/InstallUseage.md)
+- [BinaryClockWiFi Library Usage Guide](../BinaryClockWiFi/InstallUsage.md)
 - [FreeRTOS Documentation](https://www.freertos.org/Documentation/RTOS_book.html)
 - [Arduino Reference](https://www.arduino.cc/reference/en/)
 
 ---
 
 *For questions, issues, or contributions, please visit the [WiFiBinaryClock repository](https://github.com/Chris-70/WiFiBinaryClock).*
+
+<!-- Reference Links -->
+[ClassDiagram]: ClassDiagram.md
+[ClassDiagram_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/ClassDiagram.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BCGlobalDefines/README.md

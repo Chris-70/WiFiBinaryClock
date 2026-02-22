@@ -1,5 +1,12 @@
 # BinaryClockWiFi Library - Installation and Usage Guide
 
+This document provides detailed instructions on how to install and use the BinaryClockWiFi library, which is part of the WiFi Binary Clock project. It covers installation steps for both PlatformIO and Arduino IDE, as well as examples of how to utilize the library's features for WiFi connectivity, SNTP time synchronization, WPS setup, and persistent settings management.
+
+## Additional Documents
+- [**`ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClockWiFi library**.
+- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClockWiFi library**.
+---
+
 ## Installation
 
 ### PlatformIO
@@ -857,3 +864,9 @@ Part of the WiFi Binary Clock project. See project repository for license detail
 ---
 
 **Stay connected. Stay synchronized. ⏰📡**
+
+<!-- Reference Links -->
+[CLASS_DIAGRAM]: ClassDiagram.md
+[CLASS_DIAGRAM_GIT]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/ClassDiagram.md
+[README]: README.md
+[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClockWiFi/README.md

@@ -3,8 +3,14 @@
 [![GitHub release](https://img.shields.io/github/release/Chris-70/WiFiBinaryClock.svg?style=flat-square)]
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)]
 
-The main software that interfaces with the Binary Clock Shield hardware, managing time display, alarms, button handling, and menu navigation.  
+The main software library that interfaces with the Binary Clock Shield hardware, managing time display, alarms, button handling, and menu navigation.  
 ___
+
+## Additional Documents
+- [**`ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClock library**.
+- [**`InstallUsage.md`**][INSTALL] (GitHub: [`InstallUsage.md`][INSTALL_Git]) - Installation and usage instructions for the **BinaryClock library**.
+---
+
 [![*Binary Clock Shield image*](../../assets/BinaryClockShield.jpg)][shield]   
 The `BinaryClock` library provides functionality to display time on a binary clock shield using various microcontroller boards such as Arduino UNO, ESP32, and others. It supports features like time display in binary format, alarm settings, button handling, and more.  
 This library is part of the larger [WiFiBinaryClock project][WiFiBinaryClock], which integrates Wi-Fi connectivity and NTP time synchronization. This library specifically focuses on the core functionalities of the binary clock itself.  
@@ -33,6 +39,8 @@ This library is designed to be modular and extensible, allowing for easy integra
 The WiFi functionality and NTP synchronization are handled in a separate library, namely [BinaryClockWiFi][BinaryClockWiFi_lib]. This separation allows for a clear distinction between the core binary clock functionalities and the network-related features, making it easier to maintain and extend each component independently. Boards that do not have WiFi capabilities can still use the `BinaryClock` library without any dependencies on WiFi features.
 
 The library was written to support multiple boards making use of their capablilities. The Arduino UNO R3 board is the most restrictive board that is supported, as a result not all features are available on this board. The other supported boards are assumed to be capable of including the C++ RTL and supporting the FreeRTOS operating system features. Conditional compilation is used to include or exclude features based on the target board capabilities. Boards that are not specifically supported can be used by defining `CUSTOM_UNO` as `true` and defining the required pin numbers and capabilities in the [`board_select.h`][boardselect] file. Default values, parameters and definitions can all be overridden in the `board_select.h` file as required.
+
+To help understand this library, consult the [BinaryClock library class diagram][BCClassDiagram] (or on GitHub: [Class Diagram][CLASS_DIAGRAM]) which shows the relationships between the classes and interfaces in the library. The diagram illustrates how the `BinaryClock` class implements the `IBinaryClock` interface, and how the `BCMenu` and `BCButtons` classes interact with the `BinaryClock` class through the defined interfaces.
 
 The only fundamental restrictions that the library has to display binary time are:
 - The [NeoPixels][NeoPixels] data pins are arranged where the __LSB__ of the seconds is on the first display LED and the __MSB__ of the hours is on the last display LED. The LED rows are arranged in the order: Seconds, Minutes, Hours (with __AM/PM__ indicator as the last Hour LED), data flows from __LSB__ to __MSB__ on each row. Additional LEDs are permitted on each row as long as the physical offsets are adjusted accordingly. 
@@ -175,8 +183,8 @@ See [LICENSE][license] file for details.
 
 - **WiFi Binary Clock Project**: [https://github.com/Chris-70/WiFiBinaryClock][WiFiBinaryClock]
 - **BinaryClock Library**: [https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock][BinaryClock_lib]
-- **Installation & Usage Guide**: [InstallUseage.md](InstallUseage.md)
-- **Class Diagram**: [ClassDiagram.md](ClassDiagram.md)
+- **Installation & Usage Guide**: [InstallUseage.md](InstallUseage.md) (GitHub: [InstallUsage.md][INSTALL_Git])
+- **Class Diagram**: [ClassDiagram.md](ClassDiagram.md) (GitHub: [ClassDiagram.md][CLASS_DIAGRAM_GIT])
 - **Binary Clock Shield**: [https://nixietester.com/product/binary-clock-shield-for-arduino/][shield]
 - **Shield GitHub**: [https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino][shield_github]
 - **Dependencies**:
@@ -201,6 +209,7 @@ See [LICENSE][license] file for details.
 [BinaryClock_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/BinaryClock.cpp
 [BinaryClockDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/BinaryClock.Defines.h
 [BinaryClockStructs]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/BinaryClock.Structs.h
+[BCClassDiagram]: ClassDiagram.md
 [BCGlobalDefines]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src
 [BinaryClockWiFi_lib]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWiFi/src
 [BinaryClockNTP]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockNTP.h
@@ -215,7 +224,8 @@ See [LICENSE][license] file for details.
 [busio]: https://github.com/adafruit/Adafruit_BusIO
 [Chris-70]: https://github.com/Chris-70
 [Chris-80]: https://github.com/Chris-80
-[CLASS_DIAGRAM]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/CLASS_DIAGRAM.md
+[CLASS_DIAGRAM]: ClassDiagram.md
+[CLASS_DIAGRAM_GIT]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/ClassDiagram.md
 [datetime_h]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src/DateTime.h
 [example_11]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons
 [fastled]: https://github.com/FastLED/FastLED
@@ -224,6 +234,8 @@ See [LICENSE][license] file for details.
 [IBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClock.h
 [IBinaryClockBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClockBase.h
 [IBCButtonBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBCButtonsBase.h
+[INSTALL]: InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/InstallUsage.md
 [LibInstallUseage]: BinaryClock_LibInstallUseage.md
 [license]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/src/LICENSE
 [metro]: https://www.adafruit.com/product/5500
