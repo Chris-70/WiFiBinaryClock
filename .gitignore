@@ -5,6 +5,8 @@ BinaryClock_ESP32.code-workspace
 compile_commands.json
 Notes/
 .backup/
-docs/
+docs/html/
+docs/latex/
 .VSCodeCounter/
 build_output.txt
+commits.txt
