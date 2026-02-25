@@ -60,7 +60,12 @@ board = ...
 framework = arduino
 
 lib_deps = 
-    https://github.com/Chris-70/WiFiBinaryClock.git#lib/MorseCodeLED
+    https://github.com/Chris-70/MorseCodeLED
+```
+
+Then run:
+```bash
+pio lib install
 ```
 
 **Method 2: Local Library**
@@ -80,13 +85,13 @@ For version control integration:
 
 ```bash
 cd your_project
-git submodule add https://github.com/Chris-70/WiFiBinaryClock.git lib/WiFiBinaryClock
+git submodule add https://github.com/Chris-70/MorseCodeLED.git lib/MorseCodeLED 
 ```
 
 Reference in `platformio.ini`:
 ```ini
 lib_deps = 
-    ${PROJECT_DIR}/lib/WiFiBinaryClock/lib/MorseCodeLED
+    ${PROJECT_DIR}/lib/MorseCodeLED
 ```
 
 ---
@@ -95,8 +100,8 @@ lib_deps =
 
 **Method 1: Manual Installation**
 
-1. Download or clone the [WiFi Binary Clock repository](https://github.com/Chris-70/WiFiBinaryClock)
-2. Navigate to `lib/MorseCodeLED` folder
+1. Download or clone the [MorseCodeLED repository](https://github.com/Chris-70/MorseCodeLED)
+2. Navigate to `root` folder
 3. Copy the entire `MorseCodeLED` folder to your Arduino libraries directory:
    - **Windows**: `C:\Users\<username>\Documents\Arduino\libraries\`
    - **macOS**: `~/Documents/Arduino/libraries/`
@@ -160,18 +165,18 @@ void setup() {
 
 **Simple Text:**
 ```cpp
-morse.FlashString("SOS");
+morse.FlashString("QCD");
 morse.FlashString("HELLO WORLD");
 ```
 
 **Single Character:**
 ```cpp
-morse.FlashCharacter('A');  // Flash letter A (·−)
+morse.FlashCharacter('A');  // Flash letter A (.-)
 ```
 
 **Prosigns (Procedural Signals):**
 ```cpp
-morse.FlashProsign(Prosign::SOS);      // Distress signal
+morse.FlashProsign(Prosign::Over);     // Invitation to transmit (K)
 morse.FlashProsign(Prosign::Start);    // KA - Start transmission
 morse.FlashProsign(Prosign::End);      // AR - End of message
 ```
@@ -179,7 +184,7 @@ morse.FlashProsign(Prosign::End);      // AR - End of message
 **Prosigns by Keyword:**
 ```cpp
 morse.FlashProsignWord("START");   // KA
-morse.FlashProsignWord("SOS");     // SOS
+morse.FlashProsignWord("END");     // AR
 morse.FlashProsignWord("OVER");    // K
 ```
 
@@ -231,7 +236,8 @@ Flash a complete text string in Morse code.
 
 **Example:**
 ```cpp
-morse.FlashString("HELLO");
+morse.FlashString("HELLO WORLD");
+morse.FlashString("Error 404");
 morse.FlashString("SOS 911");
 morse.FlashString("42");
 ```
@@ -247,11 +253,11 @@ Flash a single character in Morse code.
 **Parameters:**
 - `c` - Character to flash (A-Z, 0-9, punctuation)
 
-**Example:**
+**Example:** (`A = .-, 5 = ....., ? = ..--..`)
 ```cpp
-morse.FlashCharacter('A');  // ·−
-morse.FlashCharacter('5');  // ·····
-morse.FlashCharacter('?');  // ··−−··
+morse.FlashCharacter('A');  // .-
+morse.FlashCharacter('5');  // .....
+morse.FlashCharacter('?');  // ..--..
 ```
 
 **Availability:** Full-featured boards only (not UNO R3)
@@ -269,19 +275,20 @@ Flash a Morse prosign (procedural signal).
 
 | Prosign | Morse Code | Meaning | Example |
 |---------|------------|---------|---------|
-| `Prosign::SOS` | `···−−−···` | Emergency distress | `morse.FlashProsign(Prosign::SOS);` |
-| `Prosign::Start` | `−·−·−` | Start transmission (KA) | `morse.FlashProsign(Prosign::Start);` |
-| `Prosign::End` | `·−·−·` | End of message (AR) | `morse.FlashProsign(Prosign::End);` |
-| `Prosign::Over` | `−·−` | Invitation to transmit (K) | `morse.FlashProsign(Prosign::Over);` |
-| `Prosign::Error` | `········` | Error/Correction (HH) | `morse.FlashProsign(Prosign::Error);` |
-| `Prosign::R` | `·−·` | Received OK (Roger) | `morse.FlashProsign(Prosign::R);` |
+| `Prosign::Start` | `-.-.-` | Start transmission (KA) | `morse.FlashProsign(Prosign::Start);` |
+| `Prosign::End` | `.-.-.` | End of message (AR) | `morse.FlashProsign(Prosign::End);` |
+| `Prosign::Over` | `-.-` | Invitation to transmit (K) | `morse.FlashProsign(Prosign::Over);` |
+| `Prosign::Error` | `........` | Error/Correction (HH) | `morse.FlashProsign(Prosign::Error);` |
+| `Prosign::R` | `.-.` | Received OK (Roger) | `morse.FlashProsign(Prosign::R);` |
+| `Prosign::SOS` | `...---...` | Life Emergency distress signal | `morse.FlashProsign(Prosign::SOS);` |
+| *...and 18 more* |  | [See Prosign enum](src/MorseCodeLED.h) | |
 
 **Full list:** See [MorseCodeLED.h](src/MorseCodeLED.h) for all 24 prosigns.
 
 **Example:**
 ```cpp
 morse.FlashProsign(Prosign::Start);     // Begin transmission
-morse.FlashString("HELLO");             // Message
+morse.FlashString("HELLO WORLD");       // Message
 morse.FlashProsign(Prosign::End);       // End transmission
 ```
 
@@ -300,16 +307,16 @@ Flash a prosign using a keyword string.
 
 | Keyword | Prosign | Morse | Meaning |
 |---------|---------|-------|---------|
-| `"START"`, `"STARTING"` | KA | `−·−·−` | Start transmission |
-| `"END"`, `"OK"` | AR | `·−·−·` | End of message |
-| `"OUT"`, `"ENDWORK"` | SK | `···−·−` | End of contact |
-| `"OVER"`, `"INVITE"` | K | `−·−` | Over to you |
-| `"ROGER"` | R | `·−·` | Received |
-| `"UNDERSTOOD"` | VE | `···−·` | Understood |
-| `"ERROR"`, `"CORRECTION"` | HH | `········` | Error |
-| `"YES"`, `"CORRECT"`, `"CONFIRM"` | C | `−·−·` | Affirmative |
-| `"NO"`, `"NEGATIVE"` | N | `−·` | Negative |
-| `"SOS"` | SOS | `···−−−···` | Distress |
+| `"START"`, `"STARTING"` | KA | `-.-.-` | Start transmission |
+| `"END"`, `"OK"` | AR | `.-.-.` | End of message |
+| `"OUT"`, `"ENDWORK"` | SK | `...-.-` | End of contact |
+| `"OVER"`, `"INVITE"` | K | `-.-` | Over to you |
+| `"ROGER"` | R | `.-.` | Received |
+| `"UNDERSTOOD"` | VE | `...-.` | Understood |
+| `"ERROR"`, `"CORRECTION"` | HH | `........` | Error |
+| `"YES"`, `"CORRECT"`, `"CONFIRM"` | C | `-.-.` | Affirmative |
+| `"NO"`, `"NEGATIVE"` | N | `-.` | Negative |
+| `"SOS"` | SOS | `...---...` | Life Emergency distress signal |
 
 **Example:**
 ```cpp
@@ -330,15 +337,15 @@ Flash raw Morse code using component array (dots, dashes, spaces).
 - `morseData` - Array of `MC` enum values terminated with `MC::EndMarker`
 
 **MC Enum Values:**
-- `MC::Dot` - Dot (dit) `·`
-- `MC::Dash` - Dash (dah) `−`
+- `MC::Dot` - Dot (dit) `.`
+- `MC::Dash` - Dash (dah) `-`
 - `MC::Space` - Letter space
 - `MC::Word` - Word space
 - `MC::EndMarker` - End of sequence (required)
 
 **Example:**
 ```cpp
-// Custom message: "NO" (N=−·, O=−−−)
+// Custom message: "NO" (N=-., O=---)
 const MC customMessage[] = {
     MC::Dash, MC::Dot, MC::Space,           // N
     MC::Dash, MC::Dash, MC::Dash, MC::Space,// O
@@ -352,18 +359,18 @@ morse.FlashMorseCode(customMessage);
 
 ---
 
-#### `void Flash_CQD_NO_RTC()`
+#### `void Flash_CQD()`
 
-Flash the predefined "CQD NO RTC" emergency message.
+Flash the predefined "CQD" error message.
 
 **Example:**
 ```cpp
 if (!rtc.begin()) {
-    morse.Flash_CQD_NO_RTC();  // Signal RTC failure
+    morse.Flash_CQD();  // Signal an error
 }
 ```
 
-**Note:** This method is only available when `BINARY_CLOCK_LIB` is defined (Binary Clock project specific).
+**Note:** This method is not available when `BINARY_CLOCK_LIB` is defined (Binary Clock project specific), it is replaced with `Flash_CQD_NO_RTC()`, a project-specific implementation.
 
 **Availability:** All boards (including UNO R3)
 
@@ -403,7 +410,7 @@ The library automatically adapts to your board's capabilities:
 - Arduino UNO R3 (ATmega328P)
 
 **Available Features:**
-✅ Emergency message (`Flash_CQD_NO_RTC`)  
+✅ Error message (`Flash_CQD`)  
 ✅ Raw Morse code arrays (`FlashMorseCode`)  
 ❌ Text strings (memory limited)  
 ❌ Extended character set  
@@ -422,17 +429,17 @@ MorseCodeLED morse(13);
 void setup() {
     morse.Begin();
     
-    // Option 1: Emergency message
-    morse.Flash_CQD_NO_RTC();
+    // Option 1: Error message
+    morse.Flash_CQD();
     
     // Option 2: Custom raw Morse
-    const MC sos[] = {
-        MC::Dot, MC::Dot, MC::Dot, MC::Space,      // S
-        MC::Dash, MC::Dash, MC::Dash, MC::Space,   // O
-        MC::Dot, MC::Dot, MC::Dot,                 // S
-        MC::EndMarker
-    };
-    morse.FlashMorseCode(sos);
+   static const MC PROGMEM morse_CQD[] = {
+      MC::Dash, MC::Dot,  MC::Dash, MC::Dot,  MC::Space,    // C: -.-. (1010)
+      MC::Dash, MC::Dash, MC::Dot,  MC::Dash, MC::Space,    // Q: --.- (1101)
+      MC::Dash, MC::Dot,  MC::Dot,                          // D: -..  (100)
+      MC::EndMarker
+      };
+    morse.FlashMorseCode(morse_CQD);
 }
 
 void loop() {}
@@ -528,16 +535,19 @@ MorseCodeLED morse(LED_BUILTIN);
 void setup() {
     morse.Begin();
     
+    morse.FlashProsignWord("START");
     if (!rtc.begin()) {
         // RTC not found - enter error state
         while (true) {
-            morse.Flash_CQD_NO_RTC();  // "CQD NO RTC"
-            delay(5000);                // Wait 5 seconds
+            morse.Flash_CQD();  // "CQD"
+            delay(5000);        // Wait 5 seconds
         }
     }
     
     // RTC OK
-    morse.FlashProsignWord("START");
+    morse.FlashString("OK");
+    delay(500);
+    morse.FlashProsignWord("END");
 }
 
 void loop() {
@@ -592,23 +602,23 @@ Create custom patterns for UNO R3:
 
 MorseCodeLED morse(13);
 
-// Define "SOS" manually
-const MC sosPattern[] = {
-    MC::Dot, MC::Dot, MC::Dot, MC::Space,      // S
-    MC::Dash, MC::Dash, MC::Dash, MC::Space,   // O
-    MC::Dot, MC::Dot, MC::Dot,                 // S
+// Define "QCD" manually
+const MC qcdPattern[] = {
+    MC::Dash, MC::Dot,  MC::Dash, MC::Dot,  MC::Space,    // C: -.-. (1010)
+    MC::Dash, MC::Dash, MC::Dot,  MC::Dash, MC::Space,    // Q: --.- (1101)
+    MC::Dash, MC::Dot,  MC::Dot,                          // D: -..  (100)
     MC::EndMarker
 };
 
 // Define "HELP" manually
 const MC helpPattern[] = {
-    // H = ····
+    // H = ....
     MC::Dot, MC::Dot, MC::Dot, MC::Dot, MC::Space,
-    // E = ·
+    // E = .
     MC::Dot, MC::Space,
-    // L = ·−··
+    // L = .-..
     MC::Dot, MC::Dash, MC::Dot, MC::Dot, MC::Space,
-    // P = ·−−·
+    // P = .--.
     MC::Dot, MC::Dash, MC::Dash, MC::Dot,
     MC::EndMarker
 };
@@ -616,7 +626,7 @@ const MC helpPattern[] = {
 void setup() {
     morse.Begin();
     
-    morse.FlashMorseCode(sosPattern);
+    morse.FlashMorseCode(qcdPattern);
     delay(2000);
     morse.FlashMorseCode(helpPattern);
 }
@@ -643,26 +653,26 @@ The library follows international Morse code timing:
 ### Character Set
 
 **Letters (A-Z):**
-```
-A ·−    B −···  C −·−·  D −··   E ·     F ··−·  G −−·   H ····
-I ··    J ·−−−  K −·−   L ·−··  M −−    N −·    O −−−   P ·−−·
-Q −−·−  R ·−·   S ···   T −     U ··−   V ···−  W ·−−   X −··−
-Y −·−−  Z −−··
+```text
+A .-    B -...  C -.-.  D -..   E .     F ..-.  G --.   H ....
+I ..    J .---  K -.-   L .-..  M --    N -.    O ---   P .--.
+Q --.-  R .-.   S ...   T -     U ..-   V ...-  W .--   X -..-
+Y -.--  Z --..
 ```
 
 **Numbers (0-9):**
-```
-0 −−−−−    1 ·−−−−    2 ··−−−    3 ···−−    4 ····−
-5 ·····    6 −····    7 −−···    8 −−−··    9 −−−−·
+```text
+0 -----    1 .----    2 ..---    3 ...--    4 ....-
+5 .....    6 -....    7 --...    8 ---..    9 ----.
 ```
 
 **Punctuation (Full-featured boards):**
-```
-. ·−·−·−    , −−··−−    ? ··−−··    ' ·−−−−·
-! −·−·−−    / −··−·     ( −·−−·     ) −·−−·−
-: −−−···    ; −·−·−·    = −···−     + ·−·−·
-- −····−    _ ··−−·−    " ·−··−·    $ ···−··−
-@ ·−−·−·
+```text
+. .-.-.-    , --..--    ? ..--..    ' .----.
+! -.-.--    / -..-.     ( -.--.     ) -.--.-
+: ---...    ; -.-.-.    = -...-     + .-.-.
+- -....-    _ ..--.-    " .-..-.    $ ...-..-
+@ .--.-.
 ```
 
 ---
@@ -705,16 +715,16 @@ Y −·−−  Z −−··
 **Solution:** Use raw Morse arrays instead:
 ```cpp
 // Instead of:
-morse.FlashString("SOS");  // ❌ Not available on UNO R3
+morse.FlashString("CQD");  // ❌ FlashString() is not available with UNO_R3
 
 // Use:
-const MC sos[] = {
-    MC::Dot, MC::Dot, MC::Dot, MC::Space,
-    MC::Dash, MC::Dash, MC::Dash, MC::Space,
-    MC::Dot, MC::Dot, MC::Dot,
+const MC qcd[] = {
+    MC::Dash, MC::Dot, MC::Dash, MC::Dot, MC::Space,     // C: -.-. (1010)
+    MC::Dash, MC::Dash, MC::Dot, MC::Dash, MC::Space,    // Q: --.- (1101)
+    MC::Dash, MC::Dot, MC::Dot,                          // D: -..  (100)
     MC::EndMarker
 };
-morse.FlashMorseCode(sos);  // ✅ Available on all boards
+morse.FlashMorseCode(qcd);  // ✅ Available on all boards
 ```
 
 ---
@@ -778,11 +788,11 @@ void loop() {
 
 **Solution 1:** Use minimal features only
 ```cpp
-// ❌ Avoid on UNO R3:
+// ❌ Not available on UNO R3:
 morse.FlashString("LONG MESSAGE HERE");
 
 // ✅ Use on UNO R3:
-morse.Flash_CQD_NO_RTC();  // Predefined
+morse.Flash_CQD();  // Predefined
 ```
 
 **Solution 2:** Use PROGMEM for patterns
@@ -813,34 +823,15 @@ union MCode {
 
 **Example:**
 ```cpp
-// Letter 'A' = ·− = dot-dash
+// Letter 'A' = .- = dot-dash
 // Pattern: 01 (right to left: dash=1, dot=0)
 // Length: 2
 MCode letterA(2, 0b01);
 
-// Letter 'S' = ··· = dot-dot-dot
+// Letter 'S' = ... = dot-dot-dot
 // Pattern: 000
 // Length: 3
 MCode letterS(3, 0b000);
-```
-
----
-
-### Creating Custom Lookup Tables
-
-For advanced users wanting to extend the character set:
-
-```cpp
-struct XcLookup {
-    char character;
-    MCode mc;
-};
-
-// Add custom character
-const XcLookup customChars[] = {
-    {'@', MCode(6, 0b101001)},  // @ = ·−−·−·
-    {'\0', MCode(0, 0)}          // Terminator
-};
 ```
 
 ---
@@ -853,7 +844,7 @@ const XcLookup customChars[] = {
 4. **Use prosigns** for standardized communication
 5. **Test on target hardware** - memory usage varies by board
 6. **Add delays between messages** for readability
-7. **Use `Flash_CQD_NO_RTC()`** on UNO R3 when possible
+7. **Use `Flash_CQD()`** on UNO R3 when possible
 8. **Document custom patterns** with comments
 
 ---
@@ -865,7 +856,7 @@ const XcLookup customChars[] = {
 | Message | Approximate Duration |
 |---------|---------------------|
 | Single letter 'A' | ~1 second |
-| "SOS" | ~4 seconds |
+| "QCD" | ~4 seconds |
 | "HELLO" | ~8 seconds |
 | "HELLO WORLD" | ~18 seconds |
 
@@ -903,7 +894,7 @@ A: Currently designed for active-high. Modification needed for active-low.
 A: Not currently. Uses `delay()` for timing.
 
 **Q: Can I flash to Serial instead of LED?**  
-A: Library is LED-specific, but concept can be adapted.
+A: Library is Pin/LED-specific, but concept can be adapted.
 
 ---
 
@@ -922,7 +913,7 @@ A: Library is LED-specific, but concept can be adapted.
 This library is part of the WiFi Binary Clock project.
 
 **Report Issues:**
-- GitHub: https://github.com/Chris-70/WiFiBinaryClock/issues
+- GitHub: https://github.com/Chris-70/MorseCodeLED/issues
 
 **Contributions Welcome:**
 - Non-blocking operation
@@ -941,6 +932,6 @@ Part of the WiFi Binary Clock project. See project repository for license detail
 
 <!-- Reference Links -->
 [ClassDiagram]: ClassDiagram.md
-[ClassDiagram_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/ClassDiagram.md
+[ClassDiagram_Git]: https://github.com/Chris-70/MorseCodeLED/blob/main/ClassDiagram.md
 [README]: README.md
-[README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/README.md
+[README_Git]: https://github.com/Chris-70/MorseCodeLED/blob/main/README.md

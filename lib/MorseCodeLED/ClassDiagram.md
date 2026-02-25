@@ -166,7 +166,7 @@ The **MorseCodeLED** library provides Morse code signaling capabilities using an
 The `MCode` union efficiently packs Morse patterns into 16 bits:
 - **Bits 0-11**: Pattern: 0 - dot; 1 - dash (max 12 elements)
 - **Bits 12-15**: Length (0-12)
-- **Example**: Letter 'A' (·−) = `{len=2, code=0b01}` = `0x2001`
+- **Example**: Letter 'A' (.-) = `{len=2, code=0b01}` = `0x2001`
 
 #### Lookup Tables
 1. **morseTable[36]**: Static lookup for A-Z (0-25) and 0-9 (26-35)
@@ -187,19 +187,24 @@ Only the essential emergency signaling:
 - `FlashMorseCode(MC*)` - Flash raw Morse component array
 
 ### Supported Prosigns
-| Prosign | Morse Code | Meaning |
-|---------|------------|---------|
-| SOS | `···−−−···` | Life Emergency distress signal |
-| CQD | `−·−· −−·− −··` | Come Quick - Distress (old/non-life-emergency) |
-| AR | `·−·−·` | End of message |
-| SK | `···−·−` | End of contact |
-| KA | `−·−·−` | Start of transmission |
-| VE | `···−·` | Understood |
-| K | `−·−` | Invitation to transmit |
-| R | `·−·` | Received OK |
-| HH | `········` | Error/Correction |
-| BT | `−···−` | New paragraph/separator |
-| *...and 14 more* |  | See Prosign enum |
+
+| Prosign | Morse Code | Meaning | Alternate Names |
+|---------|------------|---------|-----------------|
+| **AR** | `.-.-.` | End of message | End |
+| **AS** | `.-...` | Wait | Wait |
+| **BT** | `-...-` | New paragraph separator | Break |
+| **C** | `-.-.` | Confirm, Correct | Yes, Confirm |
+| **HH** | `........` | Error/Correction | Error |
+| **K** | `-.-` | Invitation to transmit | Over, Invite |
+| **KA** | `-.-.-` | Start of transmission | Start |
+| **N** | `-.` | Negative | No |
+| **R** | `.-.` | Received OK | Roger |
+| **SK** | `...-.-` | End of contact | Out, EndWork |
+| **SOS** | `...---...` | Life Emergency distress signal | |
+| **VE** | `...-.` | Understood | Verified |
+| **?** | `..--..` | Repeat last | SayAgain |
+
+See [MorseCodeLED.h](src/MorseCodeLED.h) for complete prosign list (24 total).
 
 ### Usage Example
 ```cpp
@@ -211,9 +216,9 @@ morse.Flash_CQD_NO_RTC();
 
 // Full-featured boards only:
 #ifndef UNO_R3
-    morse.FlashString("HELLO WORLD");
-    morse.FlashProsign(Prosign::CQD);
     morse.FlashProsignWord("START");
+    morse.FlashString("HELLO WORLD");
+    morse.FlashProsign(Prosign::Over);
 #endif
 ```
 
@@ -232,7 +237,7 @@ From the header documentation:
 - **Board Configuration**: Conditional compilation based on `UNO_R3` define
 
 ### Historical Context
-**CQD** was the original international distress signal before **SOS**. The library uses CQD instead of SOS for non-life-threatening equipment failures (`CQD NO RTC`), reserving SOS for actual emergencies per international convention.
+**CQD** was the original international distress signal before **SOS**. The library uses CQD instead of SOS for non-life-threatening equipment failures (`CQD`), reserving SOS for actual life emergencies per international convention.
 
 ## Repository
 [MorseCodeLED on GitHub](https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED)

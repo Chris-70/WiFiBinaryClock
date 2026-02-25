@@ -18,11 +18,11 @@ ___
 ### Key Features
 
 - ✅ **Standard Morse Code**: Flash letters (A-Z), numbers (0-9), and punctuation
-- ✅ **Prosign Support**: 24 Morse prosigns (SOS, CQD, AR, SK, etc.)
-- ✅ **Text Messages**: Flash complete strings of text
+- ✅ **Prosign Support**: 24 Morse prosigns (Start, End, AR, SK, Over, etc.)
+- ✅ **Text Messages**: Flash complete strings of text with proper word spacing
 - ✅ **Custom Messages**: Flash raw Morse code patterns
 - ✅ **Efficient Encoding**: 16-bit packed pattern storage
-- ✅ **Resource Adaptive**: Scaled-down version for memory-constrained boards (Arduino UNO R3)
+- ✅ **Resource Adaptive**: Scaled-down version for memory-constrained boards (e.g. Arduino UNO R3)
 - ✅ **Arduino Compatible**: Works with any Arduino-compatible board
 
 ## Installation
@@ -32,7 +32,7 @@ ___
 Add to your `platformio.ini`:
 ```ini
 lib_deps = 
-    https://github.com/Chris-70/WiFiBinaryClock.git#lib/MorseCodeLED
+    https://github.com/Chris-70/MorseCodeLED
 ```
 
 ### Arduino IDE
@@ -96,10 +96,10 @@ This predefined message works even on memory-constrained boards like the Arduino
 ### Raw Morse Code Arrays (All Boards)
 
 ```cpp
-// Define custom pattern using MC enum
+// Define custom pattern (NO) using MC enum
 const MC customMessage[] = {
-    MC::Dash, MC::Dot, MC::Space,      // N
-    MC::Dash, MC::Dash, MC::Dash, MC::Space,  // O
+    MC::Dash, MC::Dot, MC::Space,            // N
+    MC::Dash, MC::Dash, MC::Dash, MC::Space, // O
     MC::EndMarker
 };
 
@@ -114,8 +114,8 @@ The library uses standard Morse code timing:
 
 | Element | Duration | Description |
 |---------|----------|-------------|
-| **Dot (dit)** | 200 ms | Base unit: **·** |
-| **Dash (dah)** | 600 ms | 3× dot duration: **−** |
+| **Dot (dit)** | 200 ms | Base unit: `.` |
+| **Dash (dah)** | 600 ms | 3× dot duration: `-` |
 | **Intra-character gap** | 200 ms | Between dots/dashes in same letter |
 | **Inter-character gap** | 600 ms | Between letters (3× dot) |
 | **Word space** | 1400 ms | Between words (7× dot) |
@@ -123,17 +123,17 @@ The library uses standard Morse code timing:
 ### Supported Characters
 
 #### Letters
-```
-A ·−    B −···  C −·−·  D −··   E ·     F ··−·  G −−·   H ····
-I ··    J ·−−−  K −·−   L ·−··  M −−    N −·    O −−−   P ·−−·
-Q −−·−  R ·−·   S ···   T −     U ··−   V ···−  W ·−−   X −··−
-Y −·−−  Z −−··
+```text
+A .-    B -...  C -.-.  D -..   E .     F ..-.  G --.   H ....
+I ..    J .---  K -.-   L .-..  M --    N -.    O ---   P .--.
+Q --.-  R .-.   S ...   T -     U ..-   V ...-  W .--   X -..-
+Y -.--  Z --..
 ```
 
 #### Numbers
-```
-0 −−−−−    1 ·−−−−    2 ··−−−    3 ···−−    4 ····−
-5 ·····    6 −····    7 −−···    8 −−−··    9 −−−−·
+```text
+0 -----    1 .----    2 ..---    3 ...--    4 ....-
+5 .....    6 -....    7 --...    8 ---..    9 ----.
 ```
 
 #### Punctuation (Full-featured boards only)
@@ -143,17 +143,19 @@ Period, comma, question mark, apostrophe, exclamation, slash, parentheses, colon
 
 | Prosign | Morse Code | Meaning | Alternate Names |
 |---------|------------|---------|-----------------|
-| **SOS** | `···−−−···` | Life Emergency distress signal | |
-| **CQD** | `−·−· −−·− −··` | Come Quick - Distress (old/non-life-emergency) | |
-| **AR** | `·−·−·` | End of message | End |
-| **SK** | `···−·−` | End of contact | Out, EndWork |
-| **KA** | `−·−·−` | Start of transmission | Start |
-| **K** | `−·−` | Invitation to transmit | Over, Invite |
-| **R** | `·−·` | Received OK | Roger |
-| **VE** | `···−·` | Understood | Verified |
-| **HH** | `········` | Error/Correction | |
-| **BT** | `−···−` | New paragraph separator | Break |
-| **AS** | `·−···` | Wait | |
+| **AR** | `.-.-.` | End of message | End |
+| **AS** | `.-...` | Wait | Wait |
+| **BT** | `-...-` | New paragraph separator | Break |
+| **C** | `-.-.` | Confirm, Correct | Yes, Confirm |
+| **HH** | `........` | Error/Correction | Error |
+| **K** | `-.-` | Invitation to transmit | Over, Invite |
+| **KA** | `-.-.-` | Start of transmission | Start |
+| **N** | `-.` | Negative | No |
+| **R** | `.-.` | Received OK | Roger |
+| **SK** | `...-.-` | End of contact | Out, EndWork |
+| **SOS** | `...---...` | Life Emergency distress signal | |
+| **VE** | `...-.` | Understood | Verified |
+| **?** | `..--..` | Repeat last | SayAgain |
 
 See [MorseCodeLED.h](src/MorseCodeLED.h) for complete prosign list (24 total).
 
@@ -178,9 +180,9 @@ void Begin()
 Initialize the LED pin. Call in `setup()` before using.
 
 ```cpp
-void Flash_CQD_NO_RTC()
+void Flash_CQD()
 ```
-Flash the predefined "CQD NO RTC" emergency message.
+Flash the predefined "CQD" error message.
 
 ```cpp
 void FlashMorseCode(const MC* morseData)
@@ -209,7 +211,7 @@ Flash a Morse prosign by enum value.
 ```cpp
 void FlashProsignWord(String keyword)
 ```
-Flash a prosign by keyword (e.g., "START", "SOS", "OVER").
+Flash a prosign by keyword (e.g., "START", "END", "OVER").
 
 Supported keywords:
 - "START" / "STARTING" → KA
@@ -233,28 +235,29 @@ Supported keywords:
 union MCode {
     uint16_t pattern;        // Full 16-bit value
     struct {
-        uint16_t code : 12;  // Pattern bits (0-11)
-        uint16_t len  :  4;  // Length (12-15)
+        uint16_t code : 12;  // Pattern bits (0-11) [0 -> dot; 1 -> dash]
+        uint16_t len  :  4;  // Length (12-15); Valid values: 1-12 
     };
 };
 ```
 
 Efficiently stores Morse patterns in 16 bits:
 - **12 bits** for pattern (max 12 elements)
-- **4 bits** for length (0-12)
+- **4 bits** for length (1-12)
 
 **Example:**
 ```cpp
-MCode letterA(2, 0b01);  // A = ·− = length 2, pattern 01
-// Bit 0 (rightmost) = first element: 1 = dash, 0 = dot
+// Pattern starts at bit number: [length - 1]; ends at bit[0]. 
+// values: 1 = dash, 0 = dot
+MCode letterA(2, 0b01);  // A = .- = length 2, pattern 01
 ```
 
 #### MC Enum - Morse Components
 
 ```cpp
 enum class MC : uint8_t {
-    Dot = 0,        // · (dit)
-    Dash = 1,       // − (dah)
+    Dot = 0,        // . (dit)
+    Dash = 1,       // - (dah)
     Space = 2,      // Letter separation
     Word = 3,       // Word separation
     EndMarker = 255 // End of sequence
@@ -274,25 +277,30 @@ enum class MC : uint8_t {
 #### Resource-Constrained Boards
 **Arduino UNO R3 (ATmega328P)**
 
-- Emergency message only: `Flash_CQD_NO_RTC()`
+- One error message only: `Flash_CQD()`
+   - For the [WiFiBinaryClock project][BinaryClock] the method is: `Flash_CQD_NO_RTC()`
 - Raw Morse code arrays: `FlashMorseCode()`
 - Reduced memory footprint
 
 The library automatically adapts based on `UNO_R3` board definition.
+```cpp
+#define UNO_R3 // Define for UNO R3 to enable resource-constrained mode
+#include <MorseCodeLED.h> // Library adapts to UNO R3 limitations
+```
 
 ## Historical Note: CQD vs SOS
 
 This library uses **CQD** ("Come Quick - Distress") for equipment failures rather than **SOS**.
 
 **Why?**
-- **CQD** was the original maritime distress signal (pre-1908)
+- **CQD** was the original maritime distress signal (pre-1912)
 - **SOS** replaced CQD and is reserved for life-threatening emergencies
 - Using CQD for equipment failures follows international convention
 - Morse operators will recognize no life threatening emergency
 
 The library includes both:
 - Use `CQD` for equipment issues (e.g., "CQD NO RTC")
-- Use `SOS` prosign only for actual emergencies
+- Use `SOS` prosign only for actual life-threatening emergencies
 
 ## Integration Example
 
@@ -309,7 +317,7 @@ void setup() {
     if (!rtc.begin()) {
         // RTC not found - signal distress
         while (true) {
-            morse.Flash_CQD_NO_RTC();
+            morse.Flash_CQD();
             delay(3000);  // Pause between messages
         }
     }
@@ -346,7 +354,7 @@ No other dependencies required.
 
 ## Contributing
 
-Contributions welcome! This library is part of the [WiFi Binary Clock](https://github.com/Chris-70/WiFiBinaryClock) project.
+Contributions welcome! This library is part of the [WiFi Binary Clock][BinaryClock] project.
 
 Areas for enhancement:
 - Non-blocking operation
@@ -365,7 +373,7 @@ Areas for enhancement:
 
 ## Author
 
-**Chris-70** (2025)
+**Chris-80** (2025)
 
 Created for the WiFi Binary Clock Shield project.
 
@@ -380,16 +388,18 @@ Part of the WiFi Binary Clock project. See project repository for license detail
 ## Links
 
 - **WiFi Binary Clock Project**: https://github.com/Chris-70/WiFiBinaryClock
-- **MorseCodeLED Library**: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/MorseCodeLED
+- **MorseCodeLED Library**: https://github.com/Chris-70/MorseCodeLED
 - **Class Diagram**: [ClassDiagram.md](ClassDiagram.md)
+- **Installation Instructions**: [InstallUsage.md](InstallUsage.md)
 - **Binary Clock Shield**: https://nixietester.com/product/binary-clock-shield-for-arduino/
 
 ---
 
-**Flash responsibly. Use SOS only for actual emergencies! 🚨📡**
+**Flash CQD ( `-.-. --.- -..` ) for errors. SOS is reserved for actual life-threatening emergencies! 🚨📡**
 
 <!-- Reference Links -->
+[BinaryClock]: https://github.com/Chris-70/WiFiBinaryClock
 [ClassDiagram]: ClassDiagram.md
-[ClassDiagram_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/ClassDiagram.md
+[ClassDiagram_Git]: https://github.com/Chris-70/MorseCodeLED/blob/main/ClassDiagram.md
 [INSTALL]: InstallUsage.md
-[INSTALL_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/MorseCodeLED/InstallUsage.md
+[INSTALL_Git]: https://github.com/Chris-70/MorseCodeLED/blob/main/InstallUsage.md

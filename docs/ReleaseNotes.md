@@ -120,8 +120,8 @@ All non-WiFi functionality has been implemented. The Arduino UNO R3 and R4 Minim
 
 <!-- Reference Links -->
 [Release_0_7_1]: History/Release_V0.7.1.md
-[Release_0_7_1_Git]: https://github.com/Chris-70/BinaryClock_ESP32/releases/tag/v0.7.1
+[Release_0_7_1_Git]: https://github.com/Chris-70/WiFiBinaryClock/releases/tag/v0.7.1
 [Release_0_8_5]: History/Release_V0.8.5.md
-[Release_0_8_5_Git]: https://github.com/Chris-70/BinaryClock_ESP32/releases/tag/v0.8.5
+[Release_0_8_5_Git]: https://github.com/Chris-70/WiFiBinaryClock/releases/tag/v0.8.5
 [Release_0_9_4]: History/Release_V0.9.4.md
-[Release_0_9_4_Git]: https://github.com/Chris-70/BinaryClock_ESP32/releases/tag/v0.9.4
+[Release_0_9_4_Git]: https://github.com/Chris-70/WiFiBinaryClock/releases/tag/v0.9.4
