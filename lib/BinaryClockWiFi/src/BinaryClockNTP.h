@@ -98,16 +98,17 @@ namespace BinaryClockShield
       #define NTP_RESERVED_BIT            0     ///< The starting bit number for NTP the events enum.
       #endif 
       
-      // The TICK_TYPE_WIDTH_32_BITS should be defined, if not we mighth be missing an include file.
+      // The TICK_TYPE_WIDTH_32_BITS should be defined, if not we might be missing an include file.
       // Just define the configTICK_TYPE_WIDTH_IN_BITS to be 32, assume we are using an ESP32.
       // This is just to validate the NTP Event bits don't exceed the maximum bit position.
       #ifndef TICK_TYPE_WIDTH_32_BITS
-      #define TICK_TYPE_WIDTH_32_BITS        32
+      #define TICK_TYPE_WIDTH_32_BITS     32
       #define configTICK_TYPE_WIDTH_IN_BITS  TICK_TYPE_WIDTH_32_BITS
       #endif 
       // The maximum offset that can be used based on the current board FreeRTOS implementation.
       // This accounts for the value of NTP_RESERVED_BIT.
-      #define MAX_OFFSET ((configTICK_TYPE_WIDTH_IN_BITS - 8 - (int)NTPEventEnd))
+      #define FREERTOS_RESERVED_BITS      8     ///< The number of bits reserved by FreeRTOS for its own use (e.g. 8 bits for event groups).
+      #define MAX_OFFSET ((configTICK_TYPE_WIDTH_IN_BITS - FREERTOS_RESERVED_BITS - (int)NTPEventEnd))
 
    public:
       /// @brief Enumeration of NTP event types used by the NTP class.
@@ -127,11 +128,11 @@ namespace BinaryClockShield
       /// @author Chris-70 (2026/01)
       enum ntp_events
          {
-         Reserved = NTP_RESERVED_BIT,     ///< Reserved bit, not used.
-         Completed = NTP_RESERVED_BIT + 1, ///< NTP sync initialization completed event.
-         Synced = NTP_RESERVED_BIT + 2, ///< NTP sync received event, set everytime we sync.
-         Failed = NTP_RESERVED_BIT + 3, ///< NTP sync failed event, must re-initialize.
-         NTPEventEnd                       ///< Last `NTPEventBits` value; subtract `Reserved` to get the size.
+         Reserved  = NTP_RESERVED_BIT,       ///< Reserved bit, not used.
+         Completed = NTP_RESERVED_BIT + 1,   ///< NTP sync initialization completed event.
+         Synced    = NTP_RESERVED_BIT + 2,   ///< NTP sync received event, set everytime we sync.
+         Failed    = NTP_RESERVED_BIT + 3,   ///< NTP sync failed event, must re-initialize.
+         NTPEventEnd                         ///< Last `NTPEventBits` value; subtract `Reserved` to get the size.
          };
 
       /// @brief The number of events in the enum including `Reserved` but excluding the end marker `NTPEventEnd`.
@@ -173,18 +174,14 @@ namespace BinaryClockShield
       /// @return The bit number for the specified NTP event with the `NtpDefaultOffset`.
       /// @see GetResultMask()
       static size_t GetResultBit(enum ntp_events  ntpEvent)
-         {
-         return (ntpEvent + ntpDefaultOffset);
-         }
+         { return (ntpEvent + ntpDefaultOffset); }
 
       /// @brief Static method to get the result mask for a given NTP event using the default offset.
       /// @param ntpEvent The NTP event type.
       /// @return The bit mask for the specified NTP event with the `NtpDefaultOffset`.
       /// @see GetResultBit()
       static size_t GetResultMask(enum ntp_events  ntpEvent)
-         {
-         return (1 << GetResultBit(ntpEvent));
-         }
+         { return (1 << GetResultBit(ntpEvent)); }
 
       /// @brief Property to set/get the NTP event bit offset for this instance.
       /// @details This property allows setting a custom offset for NTP event bits
@@ -194,55 +191,45 @@ namespace BinaryClockShield
       ///      (`configTICK_TYPE_WIDTH_IN_BITS` - 8). i.e. 8; 24; or 56 for 16; 32; or 64 bit widths.
       /// @see get_NtpBitOffset()
       void set_NtpBitOffset(size_t value)
-         {
-         ntpBitOffset = (value > MAX_OFFSET ? MAX_OFFSET : value);
-         }
+         { ntpBitOffset = (value > MAX_OFFSET ? MAX_OFFSET : value); }
+
       /// @copydoc set_NtpBitOffset()
       /// @return The current offset of the NTP event bits for this instance.
       /// @see set_NtpBitOffset()
       size_t get_NtpBitOffset()
-         {
-         return ntpBitOffset;
-         }
+         { return ntpBitOffset; }
 
       /// @brief Method to get the bit number for the given `ntpEvent`
       /// @param ntpEvent The ntp_events enum to get the bit number.
       /// @returns the bit bumber corresponding to the given `ntpEvent`.
       /// @see GetMask()
       size_t GetBit(enum ntp_events  ntpEvent)
-         {
-         return (ntpEvent + ntpBitOffset);
-         }
+         { return (ntpEvent + ntpBitOffset); }
 
       /// @brief Method to get the bit mask for the given `ntpEvent`
       /// @param ntpEvent The ntp_events enum to get the bit mask.
       /// @returns the bit mask corresponding to the given `ntpEvent`.
       /// @see GetBit()
       size_t GetMask(enum ntp_events  ntpEvent)
-         {
-         return (1 << GetBit(ntpEvent));
-         }
+         { return (1 << GetBit(ntpEvent)); }
 
       /// @brief Property - Read only: The bit mask for the `Completed` event.
       /// @returns The bit mask for the `Completed` event.
       size_t get_CompletedMask()
-         {
-         return (GetMask(Completed));
-         }
+         { return (GetMask(Completed)); }
+
       /// @brief Property - Read only: The bit mask for the `Synced` event.
       /// @returns The bit mask for the `Synced` event.
       size_t get_SyncedMask()
-         {
-         return (GetMask(Synced));
-         }
+         { return (GetMask(Synced)); }
+
       /// @brief Property - Read only: The bit mask for the `Failed` event.
       /// @returns The bit mask for the `Failed` event.
       size_t get_FailedMask()
-         {
-         return (GetMask(Failed));
-         }
+         { return (GetMask(Failed)); }
 
       static size_t ntpDefaultOffset;  ///< Static default NTP event bit offset.
+      
    private:
       size_t ntpBitOffset = 0;         ///< Instance NTP event bit offset.
       }; // class NTPEventBits

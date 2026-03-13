@@ -8,7 +8,7 @@
 namespace BinaryClockShield
    {
    // Initialize static member
-   unsigned long BCButton::bounceDelay = DEFAULT_DEBOUNCE_DELAY;
+   unsigned long BCButton::globalDebounceDelay = DEFAULT_DEBOUNCE_DELAY;
 
    BCButton::BCButton(uint8_t pin, uint8_t onValue) 
          : pin(pin)
@@ -17,7 +17,9 @@ namespace BinaryClockShield
          , lastRead(onValue == CC_ON ? CC_OFF : CA_OFF)
          , lastReadTime(0)
          , lastDebounceTime(0)
-      { }
+      {
+      debounceDelay = get_GlobalDebounceDelay();
+      }
 
    void BCButton::Initialize()
       {
@@ -63,7 +65,7 @@ namespace BinaryClockShield
          lastRead = currentRead;
       }
 
-      if ((currentTime - lastDebounceTime) > bounceDelay && currentRead != state) {
+      if ((currentTime - lastDebounceTime) > get_DebounceDelay() && currentRead != state) {
          state = currentRead;
          lastReadTime = currentTime;
          result = (state == onValue);
@@ -90,7 +92,7 @@ namespace BinaryClockShield
          }
 
       // Check if debounce period has passed and we have a stable reading
-      if ((currentTime - lastDebounceTime) > bounceDelay)
+      if ((currentTime - lastDebounceTime) > get_DebounceDelay())
          {
          // Check if the stable reading represents a state change
          if (currentRead != state)

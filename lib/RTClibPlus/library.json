@@ -1,8 +1,8 @@
 {
   "name": "RTClibPlus",
-  "version": "0.9.4",
+  "version": "0.9.5",
   "description": "A fork of the Adafruit RTClib library v2.1.4 with general enhancements needed for the WiFi Binary Clock project. New: AM/PM mode, custom start day of week, enhanced string formatting, etc.",
-  "keywords": ["rtclib", "rtclibplus", "binary clock", "rtc", "12hour mode", "am/pm"],
+  "keywords": ["rtclib", "rtclibplus", "time", "rtc", "12hour mode", "am/pm", "am", "pm", "day of week", "weekday", "binary clock"],
   "authors": [
     {
       "name": "Chris-70",
@@ -11,7 +11,7 @@
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/Chris-70/BinaryClock_ESP32.git"
+    "url": "https://github.com/Chris-70/RTClibPlus.git"
   },
   "frameworks": "arduino",
   "platforms": "*",

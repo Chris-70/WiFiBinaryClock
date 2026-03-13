@@ -1,9 +1,11 @@
-# MorseCodeLED Library
+# MorseCodeLED Library - Flash Real Messages on a LED using Morse Code
 
-[![GitHub release](https://img.shields.io/github/release/Chris-70/MorseCodeLED.svg?style=flat-square)]
-[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)]
+[![GitHub release](https://img.shields.io/github/release/Chris-70/MorseCodeLED.svg?style=flat-square)](https://github.com/Chris-70/MorseCodeLED/releases)
+[![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)](https://www.gnu.org/licenses/gpl-3.0)
+[![GitHub issues](https://img.shields.io/github/issues/Chris-70/MorseCodeLED.svg?style=flat-square)](https://github.com/Chris-70/MorseCodeLED/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/Chris-70/MorseCodeLED.svg?style=flat-square)](https://github.com/Chris-70/MorseCodeLED/pulls)
 
-A simple yet powerful Arduino library for flashing Morse code messages on an LED. Perfect for error signaling, status messages, or just having fun with Morse code!
+A simple yet powerful Arduino library for flashing Morse code messages on a LED. Perfect for error signaling, status messages, or just having fun with Morse code! One thing for sure, your project won't look like a blinky sketch when trying to communicate an error/message to the user.
 ___
 
 ## Additional Documents
@@ -13,7 +15,7 @@ ___
 
 ## Overview
 
-**MorseCodeLED** provides an easy way to communicate messages through an LED using international Morse code. Originally created for the [WiFi Binary Clock](https://github.com/Chris-70/WiFiBinaryClock) project to signal "CQD NO RTC" errors, it has grown into a full-featured Morse code library supporting text, prosigns, and custom messages.
+**MorseCodeLED** provides an easy way to communicate messages through a LED using international Morse code. Originally created for the [WiFi Binary Clock](https://github.com/Chris-70/WiFiBinaryClock) project to signal the "CQD NO RTC" error. The library has grown into a full-featured Morse code library supporting text, prosigns, and custom messages. This library is designed to be resource-efficient, with a packed 16-bit representation for Morse patterns, and can adapt its functionality based on the capabilities of the target board (e.g., Arduino UNO R3 vs ESP32) or the memory constraints of the project, `LIMITED_MEMORY` is `true`. When limited, the library is under 400 bytes ROM (~375  when last tested) and ~10 bytes of RAM.
 
 ### Key Features
 
@@ -157,7 +159,7 @@ Period, comma, question mark, apostrophe, exclamation, slash, parentheses, colon
 | **VE** | `...-.` | Understood | Verified |
 | **?** | `..--..` | Repeat last | SayAgain |
 
-See [MorseCodeLED.h](src/MorseCodeLED.h) for complete prosign list (24 total).
+See the [MorseCodeLED.h](https://github.com/Chris-70/MorseCodeLED/src/MorseCodeLED.h) header file for the complete `Prosign` list.
 
 ## API Reference
 
@@ -172,54 +174,55 @@ Creates Morse code controller for specified LED pin.
 
 ### Methods
 
-#### Core Methods (All Boards)
+#### __Core Methods__ (_All Boards_)
 
 ```cpp
 void Begin()
 ```
-Initialize the LED pin. Call in `setup()` before using.
+- Initialize the LED pin. Call in `setup()` before using.
 
 ```cpp
 void Flash_CQD()
 ```
-Flash the predefined "CQD" error message.
+- Flash the predefined "CQD" error message.
 
 ```cpp
 void FlashMorseCode(const MC* morseData)
 ```
-Flash raw Morse code component array (dots, dashes, spaces).
+- Flash raw Morse code component array (dots, dashes, spaces).
 
-#### Extended Methods (Full-featured Boards)
+---
+#### __Extended Methods__ (_Full-featured Boards_)
 
-Not available on UNO R3 due to memory constraints.
+Not available when `LIMITED_MEMORY` is `true` due to memory constraints.
 
 ```cpp
 void FlashCharacter(char c)
 ```
-Flash a single character (A-Z, 0-9, punctuation).
+- Flash a single character (A-Z, 0-9, punctuation).
 
 ```cpp
 void FlashString(const String& text)
 ```
-Flash complete text string. Handles spaces between words automatically.
+- Flash complete text string. Handles spaces between words automatically.
 
 ```cpp
 void FlashProsign(Prosign sign)
 ```
-Flash a Morse prosign by enum value.
+- Flash a Morse prosign by enum value.
 
 ```cpp
 void FlashProsignWord(String keyword)
 ```
-Flash a prosign by keyword (e.g., "START", "END", "OVER").
+- Flash a prosign by keyword (e.g., "START", "END", "OVER").
 
 Supported keywords:
 - "START" / "STARTING" → KA
 - "END" / "OK" → AR
 - "OUT" / "ENDWORK" → SK
 - "OVER" / "INVITE" → K
-- "ROGER" → R
-- "UNDERSTOOD" → VE
+- "RECEIVED" / "ROGER" → R
+- "UNDERSTOOD" / "VERIFIED" → VE
 - "ERROR" / "CORRECTION" → HH
 - "YES" / "CORRECT" / "CONFIRM" → C
 - "NO" / "NEGATIVE" → N
@@ -290,12 +293,12 @@ The library automatically adapts based on `UNO_R3` board definition.
 
 ## Historical Note: CQD vs SOS
 
-This library uses **CQD** ("Come Quick - Distress") for equipment failures rather than **SOS**.
+This library uses **CQD** ("Come Quick - Distress") for equipment failures and errors rather than **SOS**.
 
 **Why?**
-- **CQD** was the original maritime distress signal (pre-1912)
-- **SOS** replaced CQD and is reserved for life-threatening emergencies
-- Using CQD for equipment failures follows international convention
+- **CQD** was the original maritime distress signal (pre-1912,Titanic).
+- **SOS** replaced CQD and is reserved for life-threatening emergencies only.
+- Using CQD for equipment failures or errors, historic throwback, not life-threatening, just needs attention. 
 - Morse operators will recognize no life threatening emergency
 
 The library includes both:
@@ -304,7 +307,7 @@ The library includes both:
 
 ## Integration Example
 
-From the WiFi Binary Clock project:
+From the [WiFi Binary Clock][BinaryClock] project:
 
 ```cpp
 #include <MorseCodeLED.h>

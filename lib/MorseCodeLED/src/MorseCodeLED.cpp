@@ -1,7 +1,7 @@
 /// @file MorseCodeLED.cpp
 /// @brief Implementation file for the MorseCodeLED class.
 /// @details  This file contains the implementation of the MorseCodeLED class, 
-///           which is used to flash an LED in Morse code. The class supports 
+///           which is used to flash a LED in Morse code. The class supports 
 ///           flashing predefined messages, as well as arbitrary strings of text.
 /// @author Chris-80 (2025/08)          
 
@@ -145,7 +145,7 @@ namespace BinaryClockShield
       #endif
       }
 
-   #ifndef UNO_R3
+   #if !defined(LIMITED_MEMORY) || !LIMITED_MEMORY
    /*
       morse.FlashString("CQD NO RTC");      // Original message as a string.
       morse.FlashString("ERROR 404");       // Numbers and letters
@@ -369,15 +369,20 @@ namespace BinaryClockShield
             {Prosign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
             {Prosign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
             {Prosign::EndWork   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
+            {Prosign::OverOut   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
             {Prosign::Out       , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
             {Prosign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
             {Prosign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
             {Prosign::Invite    , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, Invitation to transmit 
             {Prosign::Over      , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Done, you transmit now
             {Prosign::Understood, 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
-            {Prosign::SayAgain  , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Say Again?
+            {Prosign::Verified  , 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Verified, Understood
+            {Prosign::SayAgain  , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Say Again?, Repeat?
+            {Prosign::Repeat    , 0x600C}, ///< [` ..--..    `] (len=6, pattern=001100)     [?]   Repeat?, Say Again?
             {Prosign::Correction, 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
             {Prosign::Error     , 0x8000}, ///< [` ........  `] (len=8, pattern=00000000)   [HH]  Error, Correction follows
+            {Prosign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International life distress signal
+            {Prosign::Roger     , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Roger, Received OK             
             {Prosign::R         , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Received OK             
             {Prosign::K         , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Invitation to transmit  
             {Prosign::AR        , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message          
@@ -389,7 +394,6 @@ namespace BinaryClockShield
             {Prosign::SK        , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work
             {Prosign::C         , 0x4005}, ///< [` -.-.      `] (len=4, pattern=1010)       [C]   Correct, Confirm, Yes
             {Prosign::N         , 0x2002}, ///< [` -.        `] (len=2, pattern=10)         [N]   Negative, No
-            {Prosign::SOS       , 0x9038}, ///< [` ...---... `] (len=9, pattern=000111000)  [SOS] International distress signal
             // End marker
             };
 
@@ -411,69 +415,175 @@ namespace BinaryClockShield
       #undef TABLE_SIZE
       }
 
+   // FlashProsignWord() and hash function Design:    [Chris-70 (2026/03)]
+   //    To implement the `FlashProsignWord()` method, we need to efficiently map input strings to their corresponding Morse code prosigns. 
+   //          The method should support the predefined prosign words. Words that are not in the predefined list will be treated as strings of text.
+   //    - To efficiently map the input string to the correct prosign, we can use a hash function to compute a hash value for the input string and 
+   //          then use a switch statement to match against known hashes for the predefined prosign words.
+   //    - The hash function should be simple and fast, and we can use a combination of XOR and multiplication with prime numbers to create 
+   //          a hash that minimizes collisions for our set of predefined words.
+   //    - We will implement both a runtime hash function (for hashing the input string) and a compile-time hash function (for hashing the predefined prosign keywords) 
+   //          to ensure that the case labels in the switch statement are computed at compile time, which allows for efficient code generation and avoids runtime overhead.
+   //    - Macros and preprocessor definitions will be used to write the code (production and test) from a single source that matches the string word with the `Prosign` enum.
+   #define STARTING_PRIME     21661u  // A prime number to start the hash (arbitrary choice)
+   #define MULTIPLIER_PRIME   167u    // A prime number to multiply the hash (arbitrary choice)
+
+   /// @brief Runtime hash function for Morse code keywords.
+   ///        Simple method to compute a hash for a string without using recursion on an embedded processor.
+   /// @details This function computes a hash for a given string at runtime.
+   /// @return A 16-bit hash value for the input string.
+   /// @see hashWordConst()
+   static inline uint16_t hashWordRuntime(const char* text)
+      {
+      uint16_t hash = STARTING_PRIME;
+      while (*text)
+         {
+         hash ^= (uint8_t)(*text++);
+         hash = (uint16_t)(hash * MULTIPLIER_PRIME);
+         }
+      return hash;
+      }
+
+   /// @brief Compile-time hash function for Morse code keywords.
+   ///        Simple method to compute a hash for a string using recursion, which is evaluated at compile time.
+   ///        It uses recursion to compute the hash and this is done by the computer that is compiling the code.
+   /// @details This function computes a hash for a given string at compile time.
+   /// @return A 16-bit hash value for the input string.
+   /// @see hashWordRuntime()
+   static constexpr uint16_t hashWordConst(const char* text, uint16_t hash = STARTING_PRIME)
+      {
+      return *text ? hashWordConst(text + 1, (uint16_t)((hash ^ (uint8_t)(*text)) * MULTIPLIER_PRIME)) : hash;
+      }
+
+   #undef STARTING_PRIME
+   #undef MULTIPLIER_PRIME
+
+   // Using macros and preprocessor compilation to define the keyword-prosign mapping is done in only one location, here.
+   // This ensures consistency between runtime and compile-time hashing and validation without additional RAM/ROM usage.
+   // During code maintenance/changes this provides:
+   // - Single source of truth for keyword -> prosign mapping.
+   // - Keeps production switch and TESTING validation in sync.
+   // The `FLASH_PROSIGN_KEYWORD_MAP` macro defines the mapping between input keywords and their corresponding prosigns.
+   //       The macro takes another macro `X` as an argument, which is used to generate code for both the switch statements in 
+   //       `FlashProsignWord()` and the compile-time validation in `validateKeywordHashUniqueness()`.
+   // This ensures that any additions, deletions, or modifications to the keyword-prosign mapping are consistently 
+   //       applied across both runtime and compile-time checks ensuring that the test will keep current with the code.
+   // Note: The keywords are in uppercase and should match the input string after converting to uppercase.
+   //       The first element in the tuple is the keyword string value without any quotes (The macro will add the quotes). 
+   //       The second element is the corresponding prosign enum value without the leading `Prosign::` (The macro will add it).
+   #define FLASH_PROSIGN_KEYWORD_MAP(X) \
+      X(START, Start)                   \
+      X(STARTING, Start)                \
+      X(END, End)                       \
+      X(ENDWORK, EndWork)               \
+      X(OVEROUT, OverOut)               \
+      X(OUT, Out)                       \
+      X(WAIT, Wait)                     \
+      X(FULLSTOP, FullStop)             \
+      X(INVITE, Invite)                 \
+      X(OVER, Over)                     \
+      X(UNDERSTOOD, Understood)         \
+      X(VERIFIED, Verified)             \
+      X(SAYAGAIN, SayAgain)             \
+      X(REPEAT, Repeat)                 \
+      X(CORRECTION, Correction)         \
+      X(ERROR, Error)                   \
+      X(SOS, SOS)                       \
+      X(ROGER, Roger)                   \
+      X(R, R)                           \
+      X(K, K)                           \
+      X(AR, AR)                         \
+      X(AS, AS)                         \
+      X(VE, VE)                         \
+      X(HH, HH)                         \
+      X(BT, BT)                         \
+      X(KA, KA)                         \
+      X(SK, SK)                         \
+      X(CORRECT, C)                     \
+      X(CONFIRM, C)                     \
+      X(YES, C)                         \
+      X(NEGATIVE, N)                    \
+      X(NO, N)                          \
+      X(C, C)                           \
+      X(N, N)                           \
+      X('?', Repeat)
+
    void MorseCodeLED::FlashProsignWord(String keyString)
       {
       if (keyString.isEmpty()) { return; }
 
       keyString.toUpperCase();
       const char* keyword = keyString.c_str();
-      // This isn't very efficient in terms of memory usage and speed but
-      // there are very few predefined messages so it is acceptable.
-      if (strcmp(keyword, "START") == 0 || strcmp(keyword, "STARTING") == 0)
+      uint16_t hash = hashWordRuntime(keyword);
+
+      switch (hash)
          {
-         FlashProsign(Prosign::KA); // Standard prosign for START: [-.-.-]
+         #define FLASH_PROSIGN_CASE(keywordToken, prosignToken) \
+            case hashWordConst(#keywordToken):                  \
+               FlashProsign(Prosign::prosignToken);             \
+               break;
+         FLASH_PROSIGN_KEYWORD_MAP(FLASH_PROSIGN_CASE)
+         // Note: This macro expands to:
+         // case hashWordConst("START"):
+         //    FlashProsign(Prosign::KA); // Standard prosign for START: [-.-.-]
+         //    break;
+         // case hashWordConst("STARTING"):
+         //    FlashProsign(Prosign::KA); // Standard prosign for STARTING: [-.-.-]
+         //    break;
+         // case hashWordConst("END"):
+         //    FlashProsign(Prosign::AR); // Standard prosign for END/OK: [.-.-.]
+         //    break;
+         // case hashWordConst("OVER"):
+         //    FlashProsign(Prosign::K); // Standard prosign for OVER/INVITE: [.-.-.]
+         //    break;
+         // case ... etc.   For all tuples defined in the macro.
+         #undef FLASH_PROSIGN_CASE
+
+         default:
+            // Default to flashing the `keyword` as just text
+            FlashString(keyword);
+            break;
          }
-      else if (strcmp_P(keyword, "END") == 0 || strcmp(keyword, "OK") == 0)
+      }  // End of FlashProsignWord()
+
+   #if TESTING
+   /// @brief Compile-time validation that keyword hashes are unique.
+   /// @details Duplicate case labels will trigger a compile error if a collision occurs.
+   /// @note This only needs to be compiled once during development or any changes to either.
+   ///       This function is used to validate the hash function and keywords. 
+   static void validateKeywordHashUniqueness()
+      {
+      switch (0)
          {
-         FlashProsign(Prosign::AR); // Standard prosign for END/OK: [.-.-.]
-         }
-      else if (strcmp_P(keyword, "ENDWORK") == 0 || strcmp(keyword, "OUT") == 0)
-         {
-         FlashProsign(Prosign::SK); // Standard prosign for ENDWORK: [...-.-]
-         }
-      else if (strcmp(keyword, "OVER") == 0 || strcmp(keyword, "INVITE") == 0)
-         {
-         FlashProsign(Prosign::K); // Standard prosign for OVER: [-.-]
-         }
-      else if (strcmp(keyword, "UNDERSTOOD") == 0)
-         {
-         FlashProsign(Prosign::VE); // Standard prosign for UNDERSTOOD: [..-.]
-         }
-      else if (strcmp(keyword, "SAYAGAIN") == 0)
-         {
-         FlashProsign(Prosign::SayAgain); // Standard prosign for SAYAGAIN: "?" [..--..]
-         }
-      else if (strcmp(keyword, "ROGER") == 0)
-         {
-         FlashProsign(Prosign::R); // Standard prosign for ROGER: [.-.]
-         }
-      else if (strcmp(keyword, "ERROR") == 0 || strcmp(keyword, "CORRECTION") == 0)
-         {
-         FlashProsign(Prosign::HH); // Standard error signal: [........]
-         }
-      else if (strcmp(keyword, "OUT") == 0)
-         {
-         FlashProsign(Prosign::SK); // Standard prosign for OUT: [...-.-]
-         }
-      else if (strcmp(keyword, "CORRECT") == 0 || strcmp(keyword, "CONFIRM") == 0 || strcmp(keyword, "YES") == 0)
-         {
-         FlashProsign(Prosign::C); // Standard Conrect signal: "C" [-.-.]
-         }
-      else if (strcmp(keyword, "NEGATIVE") == 0 || strcmp(keyword, "NO") == 0)
-         {
-         FlashProsign(Prosign::C); // Standard Negative signal: "N" [-.]
-         }
-      else if (strcmp(keyword, "SOS") == 0)
-         {
-         FlashProsign(Prosign::SOS); // Standard distress signal: [...---...]
-         }
-      else
-         {
-         // Default to flashing the keyword as text
-         FlashString(keyword);
+         #define FLASH_PROSIGN_TEST_CASE(keywordToken, prosignToken) \
+            case hashWordConst(#keywordToken):                        \
+               assert(hashWordConst(#keywordToken) == hashWordRuntime(#keywordToken)); \
+               break;
+         FLASH_PROSIGN_KEYWORD_MAP(FLASH_PROSIGN_TEST_CASE)
+         // Note: This macro expands to:
+         // case hashWordConst("START"):
+         //    assert(hashWordConst("START") == hashWordRuntime("START"));
+         //    break;
+         // case hashWordConst("STARTING"):
+         //    assert(hashWordConst("STARTING") == hashWordRuntime("STARTING"));
+         //    break;
+         // case hashWordConst("END"):
+         //    assert(hashWordConst("END") == hashWordRuntime("END"));
+         //    break;
+         // case hashWordConst("OVER"):
+         //    assert(hashWordConst("OVER") == hashWordRuntime("OVER"));
+         //    break;
+         // case ... etc.   For all tuples defined in the macro.
+         #undef FLASH_PROSIGN_TEST_CASE
+         default:
+            break;
          }
       }
-   #endif // END ...#ifndef UNO_R3
+   #endif // TESTING
+
+   #undef FLASH_PROSIGN_KEYWORD_MAP
+
+   #endif // !LIMITED_MEMORY
    } // namespace BinaryClockShield
 
 #undef DIT_MS

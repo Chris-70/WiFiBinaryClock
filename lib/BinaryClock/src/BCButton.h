@@ -65,7 +65,7 @@ namespace BinaryClockShield
       /// @details This method debounces the button and returns true if it is currently pressed.
       ///          If the current value isn't stable, it calls `IsPressedNew()`  to get a
       ///          stable reading. This requires that the method is called a second time,
-      ///          at least `BounceDelay` miliseconds later, for a stable reading.
+      ///          at least `DebounceDelay` miliseconds later, for a stable reading.
       /// @remarks This method is designed to be called frequently (every few milliseconds) or 
       ///          the IsPressedNew() method is called frequently to get a stable reading.
       /// @note This method can impact the state of `IsPressedNew()` as it calls that method
@@ -143,17 +143,30 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       virtual unsigned long get_LastReadTime() const override { return lastReadTime; }
 
-      /// @brief Property pattern for `BounceDelay` the current debounce delay in milliseconds.
-      /// @param delay Debounce delay in milliseconds
-      /// @see get_BounceDelay()
+      /// @brief Property pattern for `DebounceDelay` the current debounce delay in milliseconds.
+      /// @param value Debounce delay in milliseconds
+      /// @see get_DebounceDelay()
       /// @author Chris-70 (2025/09)
-      static void set_BounceDelay(unsigned long delay) { bounceDelay = delay; }
+      virtual void set_DebounceDelay(unsigned long value) override { debounceDelay = value; }
 
-      /// @brief Property pattern for `BounceDelay` the current debounce delay in milliseconds.
+      /// @brief Property pattern for `DebounceDelay` the current debounce delay in milliseconds.
       /// @return Current debounce delay in milliseconds
-      /// @see set_BounceDelay()
+      /// @see set_DebounceDelay()
       /// @author Chris-70 (2025/09)
-      static unsigned long get_BounceDelay() { return bounceDelay; }
+      virtual unsigned long get_DebounceDelay() const override { return debounceDelay; }
+      /// @}
+
+      /// @brief Property pattern for `GlobalDebounceDelay` the current debounce delay in milliseconds.
+      /// @param value Debounce delay in milliseconds
+      /// @see get_GlobalDebounceDelay()
+      /// @author Chris-70 (2025/09)
+      static void set_GlobalDebounceDelay(unsigned long value) { globalDebounceDelay = value; }
+
+      /// @brief Property pattern for `GlobalDebounceDelay` the current debounce delay in milliseconds.
+      /// @return Current debounce delay in milliseconds
+      /// @see set_GlobalDebounceDelay()
+      /// @author Chris-70 (2025/09)
+      static unsigned long get_GlobalDebounceDelay() { return globalDebounceDelay; }
       /// @}
 
    private:
@@ -163,8 +176,9 @@ namespace BinaryClockShield
       uint8_t lastRead;               ///< Last physical read value
       unsigned long lastReadTime;     ///< Time of last state change
       unsigned long lastDebounceTime; ///< Time of last debounce
+      unsigned long debounceDelay;      ///< Instance debounce delay for this button
 
-      static unsigned long bounceDelay; ///< Global debounce delay for all buttons
+      static unsigned long globalDebounceDelay; ///< Global debounce delay for all buttons
       };
    }
 

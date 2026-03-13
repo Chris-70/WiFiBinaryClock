@@ -148,7 +148,10 @@ class DateTime
           @return Hour (0--23).
       */
       uint8_t hour() const { return hh; }
-
+      /*!
+          @brief  Return the hour in 12-hour format.
+          @return Hour (1--12).
+      */
       uint8_t twelveHour() const;
       /*!
           @brief  Return whether the time is PM.

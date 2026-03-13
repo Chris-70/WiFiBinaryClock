@@ -137,14 +137,16 @@ namespace BinaryClockShield
       {
       String ssid;   ///< The AP name that is normally displayed when listing APs.
       String bssid;  ///< The AP MAC address in the format "xx:xx:xx:xx:xx:xx". Can be empty.
+      bool   valid;  ///< Indicates if the APNames structure contains valid data (e.g. from a WiFi scan) or is just a placeholder.
       bool operator==(const APNames& other) const
          { return ((ssid == other.ssid) && ((bssid == other.bssid) || bssid.isEmpty() || other.bssid.isEmpty())); }
       bool operator!=(const APNames& other) const
          { return !(*this == other); }
-      APNames(const String& ssid, const String& bssid) : ssid(ssid), bssid(bssid) { }
+      APNames(const String& ssid, const String& bssid) : ssid(ssid), bssid(bssid), valid(true) { }
       APNames(const APNames& names) = default;
-      APNames() = default; // : ssid(""), bssid("") {}
+      APNames() : ssid(""), bssid(""), valid(false) {}
       virtual ~APNames() = default;
+      virtual bool IsValid() const { return valid; } ///< Check if the APNames structure contains valid data.
 
       /// @brief Convert the bssid string to an array of 6 bytes. The parameter `bssidArray` is the result.
       /// @details This method parses the `bssid` string (if not empty) and fills the provided
@@ -225,6 +227,8 @@ namespace BinaryClockShield
       APCredsPlus(const APCredsPlus& creds) = default;
       APCredsPlus() = default; // : APCreds(), id(0) {}
       virtual ~APCredsPlus() = default;
+      ///< Check if the APCredsPlus structure contains valid data, including a valid ID.
+      virtual bool IsValid() const { return APCreds::IsValid() && (id > 0) && (id <= MAX_ID_SIZE); } 
       }; // struct APCredsPlus
 
    // External EventGroup handle for FreeRTOS task synchronization

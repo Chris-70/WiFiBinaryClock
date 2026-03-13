@@ -1,9 +1,10 @@
 # WiFiBinaryClock - Software to Supercharge The Binary Clock Shield for Arduino  
 
-[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Chris-70/WiFiBinaryClock?style=flat-square)]
-[![GitHub license](https://img.shields.io/github/license/Chris-70/WiFiBinaryClock?style=flat-square)]
-[![GitHub issues](https://img.shields.io/github/issues/Chris-70/WiFiBinaryClock?style=flat-square)]
-[![GitHub pull requests](https://img.shields.io/github/issues-pr/Chris-70/WiFiBinaryClock?style=flat-square)]
+[![GitHub release (latest by date)](https://img.shields.io/github/v/release/Chris-70/WiFiBinaryClock?style=flat-square)](https://github.com/Chris-70/WiFiBinaryClock/releases)
+[![GitHub license](https://img.shields.io/github/license/Chris-70/WiFiBinaryClock?style=flat-square)](https://github.com/Chris-70/WiFiBinaryClock?tab=MIT-1-ov-file)
+[![GitHub issues](https://img.shields.io/github/issues/Chris-70/WiFiBinaryClock?style=flat-square)](https://github.com/Chris-70/WiFiBinaryClock/issues)
+[![GitHub pull requests](https://img.shields.io/github/issues-pr/Chris-70/WiFiBinaryClock?style=flat-square)](https://github.com/Chris-70/WiFiBinaryClock/pulls)
+[![GitHub last commit](https://img.shields.io/github/last-commit/Chris-70/WiFiBinaryClock?style=flat-square)](https://github.com/Chris-70/WiFiBinaryClock/commits/main)
 
 ## Binary Clock Shield for Arduino
 
@@ -164,7 +165,7 @@ The [`WiFiBinaryClock`][WiFiBinaryClock] project extended the basic capabilities
       *  The melody is played using the `tone()` function on the UNO R3 and R4 boards.
       *  The melody is played using the `ledcWriteTone()` function on the ESP32 based boards.
 
-6. #### Added callback handling for the Time and Alarm. This allows the `BinarClock` class to be implemented as a library and be part of another class or project.
+6. #### Added callback handling for the Time and Alarm. This allows the `BinaryClock` class to be implemented as a library and be part of another class or project.
    1. The `Time` callback is called every second when the time is updated.
    2. The `Alarm` callback is called when the alarm goes off.
    3. The callbacks remain active even when the user is in the settings menu and the time isn't being displayed on the shield.
@@ -336,14 +337,14 @@ A fork of the `RTCLib`, `RTCLibPlus`, is available ([https://github.com/Chris-70
 ___
 ## License
 
-The WiFiBinaryClock software, Copyright (c) 2025, 2026 [`Chris-70`][Chris-70] and [`Chris-80`][Chris-80], are licensed under the GNU General Public License v3.0 (GPL-v3.0).  
+The WiFiBinaryClock software, Copyright (c) 2025, 2026 **The Chris Team** ([`Chris-70`][Chris-70] and [`Chris-80`][Chris-80]), are licensed under the GNU General Public License v3.0 (GPL-v3.0).  
 You may obtain a copy of the License at: [https://www.gnu.org/licenses/gpl-3.0.en.html][gpl_3] (see [**LICENSE**][license] file).  
 Parts of the [`BCMenu`][BCMenu] class are Copyright (c) 2018 Marcin Saj, also released under the GPL-v3.0 license.
 
 ## **Acknowledgements:**
 *   Marcin Saj, the original creator of the [Binary Clock Shield for Arduino][shield] and the author of the [Binary-Clock-Shield-for-Arduino GitHub repository][shield_github].
-*   [Adafruit][adafruit] for their excellent [RTClib library][rtclib], their commitment to open source hardware and software and the numerous libraries, [Adafruit Repositories][adafruit_github], and all the software they provide to the community.   
-   Their contribution to education and teaching with [Adafruit Learning System][adafruit_learn] needs to be acknowledged as well. They are a great example of how companies can to do open source hardware and software right.
+*   [Adafruit][adafruit] for their excellent libraries: [RTClib library][rtclib]; [BusIO library][busio]; [GFX library][gfx]; [SSD1306 library][ssd1306]; and their commitment to open source hardware and software with the irnumerous libraries, [Adafruit Repositories][adafruit_github], as well as all the open-source software they provide to the community.   
+   * [Adafruit's][adafruit] contribution to education and teaching through the [Adafruit Learning System][adafruit_learn] needs to be acknowledged as well. They are a great example of how companies can to do open source hardware and software right.
 *   FastLED community for their excellent [FastLED library][fastled].
 *   Janelia for their excellent [Janelia Arduino Streaming library][streaming].
 *   Arduino community for their excellent [Arduino IDE][arduino_ide] and [Arduino CLI][arduino_cli] tools.
@@ -387,13 +388,15 @@ ___
 [boardselect]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClock/src/board_select.h
 [busio]: https://github.com/adafruit/Adafruit_BusIO
 [Chris-70]: https://github.com/Chris-70
-[CLASS_DIAGRAM]: ClassDiagram.md
+[Chris-80]: https://github.com/Chris-80
+[CLASS_DIAGRAM]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/ClassDiagram.md
 [CLASS_DIAGRAM_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/ClassDiagram.md
-[WiFiBinaryClock_CD]: ClassDiagram.md
+[WiFiBinaryClock_CD]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/ClassDiagram.md
 [datetime_h]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/RTClibPlus/src/DateTime.h
 [example_11]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example/11-BinaryClockRTCInterruptAlarmButtons
 [fastled]: https://github.com/FastLED/FastLED
 [ForkDiff]: https://github.com/Chris-70/RTClibPlus/blob/RTClibPlus/ForkDifferences.md
+[gfx]: https://github.com/adafruit/Adafruit-GFX-Library
 [gpl_3]: https://www.gnu.org/licenses/gpl-3.0.en.html
 [IBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClock.h
 [IBinaryClockBase]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/IBinaryClockBase.h
@@ -421,6 +424,7 @@ ___
 [settings_cpp]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BinaryClockWAN/src/BinaryClockSettings.cpp
 [shield]: https://nixietester.com/product/binary-clock-shield-for-arduino/
 [shield_github]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino
+[ssd1306]: https://github.com/adafruit/Adafruit_SSD1306
 [streaming]: https://github.com/janelia-arduino/Streaming
 [TaskWrapper]: https://github.com/Chris-70/WiFiBinaryClock/tree/main/lib/BCGlobalDefines/src/TaskWrapper.h
 [uno_r3]: https://store.arduino.cc/collections/uno/products/arduino-uno-rev3

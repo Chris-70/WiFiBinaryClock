@@ -115,6 +115,17 @@ namespace BinaryClockShield
       /// @return Time (ms) of the last read, 0 if never read
       virtual unsigned long get_LastReadTime() const = 0;
 
+      /// @brief Property pattern for `DebounceDelay` the current debounce delay in milliseconds.
+      /// @param value Debounce delay in milliseconds
+      /// @see get_DebounceDelay()
+      /// @author Chris-70 (2025/09)
+      virtual void set_DebounceDelay(unsigned long value) = 0;
+
+      /// @brief Property pattern for `DebounceDelay` the current debounce delay in milliseconds.
+      /// @return Current debounce delay in milliseconds
+      /// @see set_DebounceDelay()
+      /// @author Chris-70 (2025/09)
+      virtual unsigned long get_DebounceDelay() const = 0;
       /// @}
    }; // class IBCButtonBase
 

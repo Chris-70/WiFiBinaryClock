@@ -6,7 +6,7 @@ This document provides a detailed explanation of all changes made to the origina
 
 RTClibPlus is a fork of Adafruit's RTClib library with significant enhancements to support:
 - 12-hour time format (AM/PM) support in hardware and DateTime
-- User-configurable starting day of the week
+- User-configurable starting day of the week (e.g. Mon, Sun, Sat, etc.)
 - Century support for DS3231
 - Enhanced DateTime formatting with new `toString()` capabilities
 - Extended timestamp format options
@@ -43,18 +43,18 @@ bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode, bool use12HourMo
 ```
 
 #### Implementation Details
-- The RTC hour register bit 6 stores the 12/24-hour mode flag
-- When mode is changed, the hour value is read, converted, and written back
-- **Alarm synchronization**: When time mode changes, both alarm hour modes are also changed
-- **Alarm disable trick**: Different hour modes between time and alarm effectively disable the alarm (the alarm fired flags `A1F`/`A2F` will never be set)
+- The RTC hour register (02h) bit 6 stores the 12/24-hour mode flag (as per DS3231/DS1307 datasheets).
+- When mode is changed, the hour value is read, converted, and written back.
+- **Alarm synchronization**: When time mode changes, both alarm hour modes are also changed.
+- **Alarm disable trick**: Different hour modes between time and alarm effectively disable the alarm (the alarm fired flags `A1F`/`A2F` will never be set).
 
 #### DateTime Class Support
 **File Modified:** `DateTime.h`
 
 **New Methods:**
 ```cpp
-bool isPM() const;     // Returns true if time is PM in 12-hour mode
-uint8_t hour12() const; // Returns hour in 12-hour format (1-12)
+bool isPM() const;      // Returns true if time is PM (hour >= 12)
+uint8_t twelveHour() const; // Returns hour in 12-hour format (i.e. 1 - 12).
 ```
 
 **Enhanced `toString()` Support:**
@@ -135,9 +135,14 @@ static const DateTime WeekdayEpoch;  // Initialized based on FIRST_WEEKDAY_MONTH
 - 6 = Friday
 
 #### RTC Chip Synchronization
-The DS3231 and DS1307 chips store day-of-week as 1-7 (not 0-6). RTClibPlus maintains this mapping:
+The DS3231 and DS1307 chips store day-of-week as 1-7 (not 0-6). RTClibPlus maintains this mapping so the days of the week order doesn't change:
 - DateTime value `0` → RTC register value `1`
-- DateTime value `6` → RTC register value `7`
+- DateTime value `6` → RTC register value `7`  
+
+The **Original:** mapping changed Sunday (0) to 7 (RTC), so Monday became the first day of the week and Sunday the last day of the week on the RTC chips. 
+- DateTime value `0` = Sunday → RTC register value `7`
+- DateTime value `1` = Monday → RTC register value `1`
+- DateTime value `6` = Saturday → RTC register value `6`
 
 The `dayOfTheWeek()` calculation ensures the RTC chip's day-of-week stays synchronized with the configured `FIRST_WEEKDAY`.
 
@@ -154,7 +159,7 @@ The `dayOfTheWeek()` calculation ensures the RTC chip's day-of-week stays synchr
 #### DS3231 Century Bit
 **File Modified:** `RTC_DS3231.cpp`
 
-The DS3231 uses bit 7 of the month register to store the century bit:
+The DS3231 uses bit 7 of the month register (05h) to store the century bit:
 - `0` = 2000-2099 (20xx)
 - `1` = 2100-2199 (21xx)
 

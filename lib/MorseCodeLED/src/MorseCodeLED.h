@@ -4,6 +4,9 @@
 ///          flash an LED in Morse code. The class supports flashing predefined messages,
 ///          as well as arbitrary strings of text. The class is designed to be used with
 ///          the Arduino framework and can be easily integrated into existing projects.
+/// @note When `LIMITED_MEMORY` is defined `true`, the class is truncated.  
+///           The methods: `Flash_CQD()` and `FlashMorseCode()` are the only methods that
+///           are available. In this state the library is less than 500 bytes.
 /// @author  Chris-80 (2025/08)
 #pragma once
 #ifndef __MORSE_CODE_LED_H__
@@ -12,8 +15,21 @@
 #include <Arduino.h>
 
 // If BINARY_CLOCK_LIB hasn't been defined set it to false.
+// This is for when it is included in the `WiFiBinaryClock` project.
+//   - `Flash_CQD()` is replaced with `Flash_CQD_NO_RTC()`.
+//   - UNO_R3 is defined when the target board is an UNO R3, which is 
+//     ROM limited in that project.
 #ifndef BINARY_CLOCK_LIB
    #define BINARY_CLOCK_LIB false
+#else
+   #ifdef UNO_R3
+      #define LIMITED_MEMORY true
+   #endif 
+#endif
+
+// If not defined, assume no memory limits, include the full library.
+#ifndef LIMITED_MEMORY
+   #define LIMITED_MEMORY false
 #endif
 
 namespace BinaryClockShield
@@ -30,7 +46,7 @@ namespace BinaryClockShield
    ///         between characters is 3 dot durations. The space between words is 7 dot durations.
    ///         The implementation supports flashing predefined messages, such as "CQD NO RTC"
    ///         and also supports flashing arbitrary strings of text.
-   ///         The class also supports a few prosigns, such as "AR" (end of message) and "SK" (end of contact).
+   ///         The class also supports many prosigns, such as "AR" (end of message) and "SK" (end of contact).
    ///         The class can be extended to support more prosigns if needed.
    /// @design The Morse code patterns are stored in a lookup table for letters A-Z and numbers 0-9.
    ///         The patterns are stored as a bit pattern, with the length of the pattern also stored.
@@ -42,11 +58,12 @@ namespace BinaryClockShield
    ///         and over again. None of the code was robust, and there was no error checking. I had to
    ///         rewrite most of the code to make it work properly. I also added the ability to flash
    ///         arbitrary strings of text, which was not in the original code. Overall, it was a good
-   ///         learning experience, but I would not rely on CoPilot to generate production code.
+   ///         learning experience, but I would not rely on CoPilot to generate production code just yet.
    /// @author Chris-80 (2025/08)
    class MorseCodeLED
       {
    public:
+      #pragma region Enums_Structs
       /// @brief Enumeration of the Morse code components, used to define the Morse code patterns.
       /// @details The enumeration defines the different components of Morse code:
       ///         - Dot: A short signal (dit) [**`.`**] (~200ms).
@@ -74,17 +91,22 @@ namespace BinaryClockShield
       ///         | :--------- | :----------- | :--------: | :---------------------- | :-------- | :----------------------- | :--------------------- |
       ///         | Start      |` -.-.-      `|  {0x5015}  | (len=5, code=10101)     |` [KA]    `| Start of transmission    | KA; CT; ATTENTION      |
       ///         | End        |` .-.-.      `|  {0x500A}  | (len=5, code=01010)     |` [AR]    `| End of message           | AR; EC;                |
-      ///         | EndWork    |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact / work    | SK; OUT;               |
+      ///         | EndWork    |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact / work    | SK; OVER and OUT;      |
+      ///         | OverOut    |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact / work    | SK; EndWork;           |
       ///         | Out        |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact / work    | SK; EndWork;           |
       ///         | Wait       |` .-...      `|  {0x5008}  | (len=5, code=01000)     |` [AS]    `| Wait, I am busy          | AS;                    |
       ///         | FullStop   |` .-.-.-     `|  {0x6015}  | (len=6, code=010101)    |` [.]     `| Full stop (period)       | (not a prosign)        |
       ///         | Invite     |` -.-        `|  {0x3005}  | (len=3, code=101)       |` [K]     `| Invitation to transmit   | K; OVER;               |
       ///         | Over       |` -.-        `|  {0x3005}  | (len=3, code=101)       |` [K]     `| Over, you transmit now   | K; Invite;             |
       ///         | Understood |` ...-.      `|  {0x5002}  | (len=5, code=00010)     |` [VE]    `| Understood               | VE; Verified           |
+      ///         | Verified   |` ...-.      `|  {0x5002}  | (len=5, code=00010)     |` [VE]    `| Verified                 | VE; Understood         |
       ///         | SayAgain   |` ..--..     `|  {0x600C}  | (len=6, code=001100)    |` [?]     `| Say Again?               | (not a prosign)        |
+      ///         | Repeat     |` ..--..     `|  {0x600C}  | (len=6, code=001100)    |` [?]     `| Repeat?                  | (not a prosign)        |
       ///         | Correction |` ........   `|  {0x8000}  | (len=8, code=00000000)  |` [HH]    `| Error signal             | HH; Correction         |
       ///         | Error      |` ........   `|  {0x8000}  | (len=8, code=00000000)  |` [HH]    `| Correction, disregard    | HH; Error              |
-      ///         | R          |` .-.        `|  {0x3002}  | (len=3, code=010)       |` [R]     `| Received OK              | Roger                  |
+      ///         | SOS        |` ...---...  `|  {0x9038}  | (len=9, code=000111000) |` [SOS]   `| Distress signal          | (Life Emergency only)  |
+      ///         | Roger      |` .-.        `|  {0x3002}  | (len=3, code=010)       |` [R]     `| Received OK, Roger       | R; Roger               |
+      ///         | R          |` .-.        `|  {0x3002}  | (len=3, code=010)       |` [R]     `| Received OK, Roger       | Roger; R               |
       ///         | K          |` -.-        `|  {0x3005}  | (len=3, code=101)       |` [K]     `| Invitation to transmit   | Invite, Over           |
       ///         | AR         |` .-.-.      `|  {0x500A}  | (len=5, code=01010)     |` [AR]    `| End of message, Out      | End, Out               |
       ///         | AS         |` .-...      `|  {0x5008}  | (len=5, code=01000)     |` [AS]    `| Wait for response        | Wait                   |
@@ -95,7 +117,6 @@ namespace BinaryClockShield
       ///         | SK         |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact           | VA; OUT                |
       ///         | C          |` -.-.       `|  {0x4005}  | (len=4, code=1010)      |` [C]     `| Correct, Confirm, Yes    | (not a prosign)        |
       ///         | N          |` -.         `|  {0x2002}  | (len=2, code=10)        |` [N]     `| Negative, No             | (not a prosign)        |
-      ///         | SOS        |` ...---...  `|  {0x9038}  | (len=9, code=000111000) |` [SOS]   `| Distress signal          |                        |
       ///         | EndMark    |`            `|  End of command list. ||||
       /// -----
       /// @note Some `Prosign`s have multiple representations or are not strictly prosigns (like FullStop). 
@@ -107,27 +128,31 @@ namespace BinaryClockShield
          Start     ,   ///< `|  -.-.-       |  {0x5015}  | (len=5, code=10101)     | [KA]    | Start of transmission    |`
          End       ,   ///< `|  .-.-.       |  {0x500A}  | (len=5, code=01010)     | [AR]    | End of message           |`
          EndWork   ,   ///< `|  ...-.-      |  {0x5025}  | (len=6, code=001101)    | [SK]    | End of contact, Out      |`
+         OverOut   ,   ///< `|  ...-.-      |  {0x5025}  | (len=6, code=001101)    | [SK]    | End of contact / work    |`
          Out       ,   ///< `|  ...-.-      |  {0x5025}  | (len=6, code=001101)    | [SK]    | End of contact / work    |`
          Wait      ,   ///< `|  .-...       |  {0x5008}  | (len=5, code=01000)     | [AS]    | Wait for response, busy  |`
-         FullStop  ,   ///< `|  .-.-.-      |  {0x6015}  | (len=6, code=010101)    | [.]     | Full stop (period)       |`
+         FullStop  ,   ///< `|  .-.-.-      |  {0x6015}  | (len=6, code=010101)    | [.]     | Full stop (period)       |`  (not a prosign)
          Invite    ,   ///< `|  -.-         |  {0x3005}  | (len=3, code=101)       | [K]     | Invitation to transmit   |`
          Over      ,   ///< `|  -.-         |  {0x3005}  | (len=3, code=101)       | [K]     | Over, you transmit now   |`
-         Understood,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Understood               |`
-         SayAgain  ,   ///< `|  ..--..      |  {0x600C}  | (len=6, code=001100)    | [?]     | Say Again?               |`
-         Correction,   ///< `|  ........    |  {0x8000}  | (len=8, code=00000000)  | [HH]    | Correction, Error signal |`
+         Understood,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Understood, Verified     |`
+         Verified  ,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Verified, Understood     |`
+         SayAgain  ,   ///< `|  ..--..      |  {0x600C}  | (len=6, code=001100)    | [?]     | Say Again? '?'           |`  (not a prosign)
+         Repeat    ,   ///< `|  ..--..      |  {0x600C}  | (len=6, code=001100)    | [?]     | Repeat? '?'              |`  (not a prosign)
+         Correction,   ///< `|  ........    |  {0x8000}  | (len=8, code=00000000)  | [HH]    | Correction, Error signal |` 
          Error     ,   ///< `|  ........    |  {0x8000}  | (len=8, code=00000000)  | [HH]    | Correction, Error signal |`
+         SOS       ,   ///< `|  ...---...   |  {0x9038}  | (len=9, code=000111000) | [SOS]   | Distress signal          |`  (Life emergency only)
+         Roger     ,   ///< `|  .-.         |  {0x3002}  | (len=3, code=010)       | [R]     | Received OK, Roger       |`
          R         ,   ///< `|  .-.         |  {0x3002}  | (len=3, code=010)       | [R]     | Received OK, Roger       |`
          K         ,   ///< `|  -.-         |  {0x3005}  | (len=3, code=101)       | [K]     | Invitation to transmit   |`
          AR        ,   ///< `|  .-.-.       |  {0x500A}  | (len=5, code=01010)     | [AR]    | End of message           |`
          AS        ,   ///< `|  .-...       |  {0x5008}  | (len=5, code=01000)     | [AS]    | Wait for response        |`
-         VE        ,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Understood               |`
+         VE        ,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Understood, Verified     |`
          HH        ,   ///< `|  ........    |  {0x8000}  | (len=8, code=00000000)  | [HH]    | Correction, Error signal |`
          BT        ,   ///< `|  -...-       |  {0x5011}  | (len=5, code=10001)     | [BT]    | New paragraph, separator |`
          KA        ,   ///< `|  -.-.-       |  {0x5015}  | (len=5, code=10101)     | [KA]    | Start of transmission    |`
          SK        ,   ///< `|  ...-.-      |  {0x5025}  | (len=6, code=001101)    | [SK]    | End of contact, BREAK    |`
-         C         ,   ///< `|  -.-.        |  {0x4005}  | (len=4, code=1010)      | [C]     | Correct, Confirm, Yes    |`
-         N         ,   ///< `|  -.          |  {0x2002}  | (len=2, code=10)        | [N]     | Negative, No             |`
-         SOS       ,   ///< `|  ...---...   |  {0x9038}  | (len=9, code=000111000) | [SOS]   | Distress signal          |`
+         C         ,   ///< `|  -.-.        |  {0x4005}  | (len=4, code=1010)      | [C]     | Correct, Confirm, Yes    |`  (not a prosign)
+         N         ,   ///< `|  -.          |  {0x2002}  | (len=2, code=10)        | [N]     | Negative, No             |`  (not a prosign)
          EndMark       ///< || End of command list; value is the size of the list. |||
          };
 
@@ -155,14 +180,20 @@ namespace BinaryClockShield
          /// @brief Constructor to initialize the MCode with a length and code.
          /// @param len The length of the Morse code sequence (0-12).
          /// @param code The Morse code pattern (0-4095).
-         /// @note The length is forced to be within 0-11 to avoid overflow and
+         /// @note The length is forced to be within 0-12 to avoid overflow and
          ///       ensure it can't cause memory access outside the integer.
-         MCode(uint8_t len, uint16_t code) : code(code), len(len % 12) {}
+         MCode(uint8_t len, uint16_t code) : code(code), len(len > 12 ? 12 : len) {}
          /// @brief Constructor to initialize the MCode with a 16-bit value.
          /// @param value The 16-bit value containing the Morse code pattern and length.
-         /// @note The length is forced to be within 0-11 to avoid overflow and
+         /// @note The length is forced to be within 0-12 to avoid overflow and
          ///       ensure it can't cause memory access outside the integer.
-         MCode(uint16_t value) : pattern(value) { this->len %= 12; }
+         MCode(uint16_t value) : pattern(value) 
+            { 
+            if (this->len > 12) 
+               { 
+               this->len = 12;
+               } 
+            }
          /// @brief Default constructor initializes the MCode with a pattern of 0.
          MCode() : pattern(0) {}
          };
@@ -183,6 +214,7 @@ namespace BinaryClockShield
          Prosign sign;     ///< The `Prosign` (Procedural Signal) entity to lookup
          MCode mc;         ///< The `MCode` for the sign.
          };
+      #pragma endregion Enums_Structs
 
       /// @brief Constructor for the MorseCodeLED class, requires a 
       ///        pin number for the attached LED.
@@ -197,12 +229,12 @@ namespace BinaryClockShield
       /// @details This method flashes the "Come Quick Distress No Real Time Clock" message
       ///          called from the BinaryClock::purgatory() method. This is the only message
       ///          that is available on the UNO R3 board, as it lacks resources for more.
-      void Flash_CQD_NO_RTC();  // Predefined error message
+      void Flash_CQD_NO_RTC();  // Predefined error message for BinaryClock.
       #else
       /// @brief Method to flash the predefined error message, "CQD" in Morse code.
       /// @details This method flashes the "Come Quick Distress" error message.
       ///          This is a generic error message that doesn't look like a 'Blinky' sketch.
-      void Flash_CQD();  // Predefined error message
+      void Flash_CQD();  // Predefined general error message
       #endif
 
       /// @brief Method to flash an array of raw Morse code components.
@@ -236,10 +268,11 @@ namespace BinaryClockShield
    private:
       int ledPin; ///< The pin number where the LED is connected.
 
-      // If this is part of the BinaryClock library AND the board is an UNO R3, we have to limit the functionality to 
-      // just flashing the "CQD NO RTC" message as there are limited resources on the UNO R3.
-      // The full Morse code functionality is only available when not using the UNO R3 board, or when not part of the BinaryClock library.
-      #if !defined(UNO_R3) || !UNO_R3
+      #pragma region Full_Class
+      // If the board has limited memory, we have to limit the functionality to the `Flash_CQD()` and `FlashMorseCode()` methods, 
+      // for just flashing the "CQD" message or a user defined message as there are limited resources available.
+      // The full Morse code functionality is only available when `LIMITED_MEMORY` is not defined or is defined as false.
+      #if !defined(LIMITED_MEMORY) || !LIMITED_MEMORY
    public:
       /// @brief Method to flash a single character in Morse code. Characters A-Z, 0-9, many punctuation symbols.
       /// @details This method flashes the LED according to the Morse code pattern for the given character.
@@ -318,7 +351,8 @@ namespace BinaryClockShield
 
    private:
       static const MCode morseTable[26 + 10];  ///< Morse code lookup table for letters and numbers (A-Z, 0-9).
-      #endif   // END ...#ifndef UNO_R3
+      #endif   // !LIMITED_MEMORY
+      #pragma endregion Full_Class
       };
 
    } // namespace BinaryClockShield
