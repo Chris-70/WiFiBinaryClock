@@ -1,4 +1,4 @@
-# BinaryClockWiFi Library - WiFi Connectivity and SNTP Time Sync for The Binary Clock
+# BinaryClockWiFi Library - WiFi Connectivity, Settings and SNTP Time Sync for The Binary Clock
 
 [![GitHub release](https://img.shields.io/github/release/Chris-70/WiFiBinaryClock.svg?style=flat-square)]
 [![License: GPL v3](https://img.shields.io/badge/License-GPLv3-blue.svg?style=flat-square)]
@@ -56,6 +56,7 @@ For complete installation instructions, API reference, usage examples, and troub
 
 The guide includes:
 - Installation instructions for PlatformIO and Arduino IDE
+- Root-level `WiFiCreds.h` user credentials file pattern for Arduino IDE builds
 - Quick start examples
 - Complete API reference for all four classes
 - Advanced usage patterns
@@ -68,6 +69,18 @@ The guide includes:
 ## Quick Start
 
 Here's a minimal example to get started. For complete examples and detailed documentation, see the [Installation & Usage Guide (`InstallUsage.md`)](InstallUsage.md).
+
+### Arduino IDE Credentials File
+
+For Arduino IDE builds, create `WiFiCreds.h` in the project root (same folder as `WiFiBinaryClock.ino`) with your local credentials:
+
+```cpp
+#pragma once
+#define WIFI_SSID     "your_network_name"
+#define WIFI_PASSWORD "your_password"
+```
+
+This file is user-local and should not be committed.
 
 ```cpp
 #include <BinaryClock.h>

@@ -10,6 +10,8 @@
 #ifndef __BINARYCLOCKSTRUCTS_H__
 #define __BINARYCLOCKSTRUCTS_H__
 
+#include "BinaryClock.ProjectConfig.h"     // Include the user defined project configuration file for any overrides of `#define` values used here.
+
 // Design:
 // The use of WiFi requires that additional header files are included and that additional structures need to be defined.
 // The `LedPattern` enum changes when using WiFi which changes the enum value of `endTAG` impacting other code.
@@ -48,11 +50,16 @@ namespace BinaryClockShield
    /// @details This structure contains all the information related to a specific alarm, including
    ///          the alarm number, time, melody, status, and whether it has fired or not.   
    ///          While repeating the alarm based the date or day of the week instead of just daily is
-   ///          supported by the DS3231 RTC.
-   /// @note  The 'melody' selection has been implemented for most boards that support STL.    
-   ///        The UNO_R3 will use the internal melody or one user supplied melody.
+   ///          supported by the DS3231 RTC. Set the date to 2001-01-dd where dd is the day of the week 
+   ///          (1-7) for weekly repetition or the date of the month (1-31) for monthly repetition.
+   ///          
+   /// @remarks The 'melody' selection has been implemented for most boards that support STL.    
+   ///          The UNO_R3 will use the internal melody or one user supplied melody.
+   /// @note    If the frequency is Monthly and the date is greater than 28, the alarm will NOT sound
+   ///          in months with less days than the value set.   
+   ///          e.g. A date of `29` will not sound in February unless it is a leap year.
    /// @author Chris-80 (2025/07)
-   typedef struct alarmTime
+   struct AlarmTime
       {
       enum Repeat             ///< Alarm repeation when ON. Default is Daily.
          {
@@ -64,22 +71,118 @@ namespace BinaryClockShield
          endTag               ///< Always the last enum value, defines the size.
          };
 
-      uint8_t  number;        ///< The number of the alarm: 1 or 2
+      uint8_t  number;        ///< The number of the alarm: `1` or `2`
       DateTime time;          ///< The time of the alarm as a DateTime object
-      uint8_t  melody;        ///< The melody to play when the alarm is triggered, 0 = internal melody
-      uint8_t  status;        ///< Status of the alarm: 0 - inactive, 1 - active
-      Repeat   freq;          ///< The alarm repeat frequency, default: Daily.
+      uint8_t  melody;        ///< The melody to play when the alarm is triggered, `0` = internal melody
+      uint8_t  status;        ///< Status of the alarm: `0` - inactive (OFF), `1` - active (ON)
+      Repeat   freq;          ///< The alarm repeat frequency, default: `Daily`.
       bool     fired;         ///< The alarm has fired (e.g. alarm is 'ringing').
 
       void clear()            ///< Clear all data except the alarm 'number'
          {
-         time = DateTime();   // 00:00:00 (2000-01-01)
+         time = DateTime::WeekdayEpoch;   // 00:00:00 (2000-FirstWeekdayMonth-01)
          melody = 0;          // Default melody number, internal
          status = 0;          // OFF, alarm is not set.
          freq = Daily;        // The alarm repeats every day when ON.
          fired = false;       // Alarm is not ringing (OFF)
          }
-      } AlarmTime;
+
+      /// @brief Default constructor for AlarmTime.
+      /// @details This constructor initializes a daily alarm time to midnight, the alarm is off
+      /// @remarks The alarm is created `OFF` (`0`), to enable the alarm, set the `status` to `1`
+      AlarmTime() 
+            : AlarmTime(DateTime::WeekdayEpoch)
+         { }
+
+      /// @brief Constructor for AlarmTime with time and optional repeat frequency.
+      /// @details This constructor allows setting an alarm based on time and repeat frequency.  
+      ///          Weekly and Monthly repetions use the value from `time.day()` as the day of 
+      ///          the week (1-7) or month (1-31) for repetition. The date portion is ignored for 
+      ///          Daily and Hourly repetition.  
+      /// @remarks For weekly repetition, the day value (1-7) is used for the weekday. A value of `1` 
+      ///          is the first weekday and is set from the @c #define `FIRST_WEEKDAY` in the `DateTime` class. 
+      ///          The default value for `FIRST_WEEKDAY` is `"Mon"` however it can be changed to another
+      ///          weekday (e.g. `"Sun"`). The `AlarmTime(uint8_t hour24, uint8_t minute, DoW weekday)` 
+      ///          constructor can be used to set the alarm for weekly repetition using the enum value for 
+      ///          the weekday instead of the day value as this works regardless of the value of `FIRST_WEEKDAY`. 
+      /// @note    The alarm is created `OFF` (`0`), to enable the alarm, set the `status` to `1`
+      /// @param time The time of the alarm as a DateTime object. For weekly or monthly 
+      ///             repetition, the day value is used for repetition, seconds are ignored.
+      /// @param frequency The optional repeat frequency of the alarm, default is `Daily`.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute) for an alternative constructor that takes just the time and repeats daily.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, Repeat frequency, uint8_t day) for an alternative constructor that takes time and repeat frequency with an optional day parameter.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, DoW weekday) for an alternative constructor that takes time and repeat frequency with a weekday parameter.
+      AlarmTime(DateTime time, Repeat frequency = Daily) 
+            : number(ALARM_2)
+            , time(time)
+            , melody(0)
+            , status(0)
+            , freq(frequency)
+            , fired(false) 
+         {
+         if (frequency == Weekly || frequency == Monthly)
+            {
+            uint8_t day = time.day();
+            uint8_t maxDay = (frequency == Weekly) ? 7 : 31;
+            if (day < 1)
+               { day = 1; }
+            else if (day > maxDay)
+               { day = maxDay; }
+
+            DateTime date = ((frequency == Weekly) 
+                  // The year and month are set to the `WeekdayEpoch` (2000-FirstWeekdayMonth-01) 
+                  // for the day of the week calculation to work correctly.
+                  ? DateTime(DateTime::WeekdayEpoch.year(), DateTime::WeekdayEpoch.month(), day) 
+                  : DateTime(time.year(), time.month(), day));
+            
+            time = DateTime(date, time);
+            }
+         else if (frequency == endTag)
+            {
+            freq = Daily; // Default to Daily if an invalid frequency is provided.
+            }
+         }
+         
+      /// @brief Constructor for AlarmTime with hour and minute, repeats daily.
+      /// @remarks The alarm is created `OFF` (`0`), to enable the alarm, set the `status` to `1`
+      /// @param hour24 The hour in 24-hour format (0-23).
+      /// @param minute The minute in 0-59.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, Repeat frequency, uint8_t day) for an alternative constructor that takes time and repeat frequency with an optional day parameter.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, DoW weekday) for an alternative constructor that takes time and repeat frequency with a weekday parameter.
+      AlarmTime(uint8_t hour24, uint8_t minute)
+            : AlarmTime(DateTime(hour24, minute, 0U))
+         { }
+            
+      /// @brief Constructor for alarm with repeat frequency and optional day of month parameter.
+      /// @details This constructor allows setting an alarm based on time and repeat frequency, with an
+      ///          optional day parameter for monthly repetition.  
+      ///          For daily or hourly repetition, the day parameter is ignored.  
+      ///          For weekly repetition, use `AlarmTime(uint8_t hour24, uint8_t minute, DoW weekday)` instead.
+      /// @remarks The alarm is created `OFF` (`0`), to enable the alarm, set the `status` to `1`
+      /// @param hour24 The hour in 24-hour format (0-23).
+      /// @param minute The minute in 0-59.
+      /// @param frequency The repeat frequency of the alarm (e.g. Repeat::Daily, Repeat::Hourly, Repeat::Monthly).
+      /// @param day The optional day parameter for monthly (1-31) repetition.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, DoW weekday) for an alternative constructor that takes the weekday as an enum value.
+      AlarmTime(uint8_t hour24, uint8_t minute, Repeat frequency, uint8_t day = 0)
+            : AlarmTime((day > 0 ? DateTime(day, hour24, minute, 0U) : DateTime(hour24, minute, 0U)), frequency)
+         { }
+      // 
+      /// @brief Constructor for alarm with weekly repeat frequency.
+      /// @details This constructor allows setting an alarm based on time and repeat frequency, with an
+      ///          optional day parameter for monthly repetition.  
+      ///          For daily or hourly repetition, the day parameter is ignored.  
+      ///          For weekly repetition, use `AlarmTime(uint8_t hour24, uint8_t minute, Repeat frequency, DoW weekday)` instead.
+      /// @remarks The alarm is created `OFF` (`0`), to enable the alarm, set the `status` to `1`
+      /// @param hour24 The hour in 24-hour format (0-23).
+      /// @param minute The minute in 0-59.
+      /// @param weekday The `DoW` weekday parameter for weekly repetition (e.g. DoW::Monday).
+      /// @see DoW enum for the weekday values.
+      /// @see AlarmTime(uint8_t hour24, uint8_t minute, Repeat frequency, uint8_t day) for an alternative constructor that takes the repeat frequency with an optional day parameter.
+      AlarmTime(uint8_t hour24, uint8_t minute, DoW weekdayday)
+            : AlarmTime(DateTime(weekdayday, hour24, minute, 0U), Repeat::Weekly)
+         { }
+      } ;
    
    /// @brief The structure to create a note with a sound frequency and duration.
    /// @details The melody used to signal an alarm uses an array of these to create

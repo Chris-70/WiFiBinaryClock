@@ -161,38 +161,6 @@ void setupWiFi(BinaryClock& binClock, BinaryClockWAN& wifi, bool autoConnect)
    vTaskDelay(pdMS_TO_TICKS(5000));
    SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - Post-Begin() stabilization delay complete." << endl)
    
-   if (wifiResult)
-      {
-      APCreds creds = wifi.get_WiFiCreds();
-      SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi is: " << (wifi.get_IsConnected()? "Connected" : "Disconnected") << " SSID: " << creds.ssid << " BSSID: " << creds.bssid << " Password: " << creds.pw << endl)
-
-      SERIAL_STREAM("[" << millis() << "] SetupWiFi() - WiFi initialization complete. Waiting for NTP completion..." << endl)
-      
-      // Wait for NTP initialization to complete using a binary semaphore.
-      auto x = wifi.get_NtpEventBits();   // ToDo: Cleanup
-      uxBits = xEventGroupWaitBits
-                     ( taskEventGroup        // Event group handle
-                     , x->get_CompletedMask()   // Bits to wait for
-                     , pdFALSE               // Don't clear bits on exit
-                     , pdFALSE               // Don't require all bits
-                     , SEC_TO_TICKS(30));    // 30-second timeout
-      
-      // NTPInitTask will signal this flag when NTP is fully initialized.
-      // Timeout after 30 seconds if NTP doesn't complete.
-      if ((uxBits & x->get_CompletedMask()) == 0)
-         {
-         SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - TIMEOUT waiting for NTP compleated flag." << endl)
-         }
-      else
-         {
-         SERIAL_STREAM("[" << millis() << "] SetupWiFiTask - NTP completion flag is true." << endl)
-         }
-      }
-   else
-      {
-      SERIAL_STREAM("[" << millis() << "] setupWiFi()-> WiFi Begin() failed. Skipping NTP initialization." << endl)
-      }
-   
    SERIAL_STREAM("[" << millis() << "] SetupWiFi() - Task exiting successfully." << endl)
    } // setupWiFi()
 #endif // WIFI

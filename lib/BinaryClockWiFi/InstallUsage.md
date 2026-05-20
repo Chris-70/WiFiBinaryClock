@@ -4,7 +4,7 @@ This document provides detailed instructions on how to install and use the Binar
 
 ## Additional Documents
 - [**`ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClockWiFi library**.
-- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClockWiFi library**.
+- [**Library `README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClockWiFi library**.
 ---
 
 ## Installation
@@ -44,6 +44,20 @@ lib_deps =
 5. **Verify Installation**:
    - Go to **File → Examples → BinaryClockWiFi**
    - Open an example sketch and compile to verify installation
+
+### Arduino IDE WiFi Credentials File
+
+For Arduino IDE builds, create a user-local file named `WiFiCreds.h` in the
+project root (same folder as `WiFiBinaryClock.ino`):
+
+```cpp
+#pragma once
+#define WIFI_SSID     "your_network_name"
+#define WIFI_PASSWORD "your_password"
+```
+
+This file is local user configuration and should not be committed to version
+control.
 
 **Note:** For easier dependency management and better build configuration, we recommend using PlatformIO instead of Arduino IDE.
 
@@ -301,11 +315,18 @@ std offset [dst [offset][,start[/time],end[/time]]]
 ```
 
 **Examples:**
-- `"EST+5EDT,M3.2.0/2,M11.1.0/2"` - US Eastern Time
-- `"PST+8PDT,M3.2.0/2,M11.1.0/2"` - US Pacific Time
-- `"CET-1CEST,M3.5.0,M10.5.0/3"` - Central European Time
-- `"GMT0"` - UTC
-- `"JST-9"` - Japan Standard Time (no DST)
+
+| Timezone String                         | Offset to UTC | DST (+) | Description
+| ----------------------------------------|---------------|---------|-------------
+| "UTC" or "UTC0"                         | 0;            | No DST  | Coordinated Universal Time also known as ZuLu Time (Z) e.g. 22:45Z
+| "EST+5EDT,M3.2.0/2,M11.1.0/2"           | EST+5;        | +1 hour | Canada/US Eastern Time with DST
+| "PST+8PDT,M3.2.0/2,M11.1.0/2"           | PST+8;        | +1 hour | Canada/US Pacific Time with DST
+| "CET-1CEST,M3.5.0/2,M10.5.0/3"          | CET-1;        | +1 hour | Central European with Summer Time i.e. DST
+| "JST-9"                                 | JST-9;        | No DST  | Japan Standard Time (no DST)
+| "NZST-12NZDT,M9.5.0/2,M4.1.0/3"         | NZST-12;      | +1 hour | New Zealand Time with DST
+| "ACWST-8:45"                            | ACWST-8:45;   | No DST  | Australia Central Western Standard Time
+| "ACST-9:30ACDT,M10.1.0/2,M4.1.0/3"      | ACST-9:30;    | +1 hour | Australia Central Standard Time with DST
+| "LHST-10:30LHDT-11,M10.1.0/2,M3.5.0/2"  | LHST-10:30;   | +30 min | Lord Howe (AU) Standard Time with DST
 
 ---
 

@@ -3,8 +3,9 @@
 This document provides detailed instructions on how to install and use the BinaryClock library, which is the core component of the WiFi Binary Clock project. It covers installation steps for both PlatformIO and Arduino IDE, as well as examples of how to utilize the library's features for time management, alarm configuration, LED display control, button handling, and melody playback.
 
 ## Additional Documents
-- [**`README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClock library**.
-- [**`ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClock library**.
+- [**Project `README.md`**][README_Project] (GitHub: [`README.md`][README_ProjectGit]) - Overview of the **WiFi Binary Clock project**.
+- [**Library `README.md`**][README] (GitHub: [`README.md`][README_Git]) - Overview and usage instructions for the **BinaryClock library**.
+- [**Library `ClassDiagram.md`**][CLASS_DIAGRAM] (GitHub: [`ClassDiagram.md`][CLASS_DIAGRAM_GIT]) - Class diagram and structure of the **BinaryClock library**.
 ---
 
 ## Installation
@@ -72,8 +73,82 @@ void loop() {
     clock.loop();  // Handles button input and menu system
 }
 ```
+___
 
-### Setting Initial Time
+## Configuration
+
+Edit the file [board_select.h][boardselect] to customize for your hardware:
+
+### Board-Specific Configuration
+
+To use one of the supported boards, select one of the defines below and add it to the [`board_select.h`][boardselect] file to enable the configuration for your board. This will automatically set the appropriate pin definitions and capabilities for that board. Only one board define can be active at a time.
+```cpp
+#define ESP32_D1_R32_UNO     // If defined, the code will use Wemos D1 R32 ESP32 UNO board definitions     (ESP32 WiFi)
+#define METRO_ESP32_S3       // If defined, the code will use Adafruit Metro ESP32-S3 board definitions    (ESP32 WiFi)
+#define METRO_ESP32_S2       // If defined, the code will use Adafruit Metro ESP32-S2 board definitions    (ESP32 WiFi)
+#define ESP32_S3_UNO         // If defined, the code will use generic ESP32-S3 UNO board definitions       (ESP32 WiFi)
+#define UNO_R4_WIFI          // If defined, the code will use Arduino UNO R4 WiFi board definitions        (WiFiS3)
+#define UNO_R4_MINIMA        // If defined, the code will use Arduino UNO R4 Minima board definitions      (No WiFi)
+#define UNO_R3               // If defined, the code will use Arduino UNO R3 (ATMEL 328) board definitions (NO WiFi)
+```
+
+To change the configuration defaults for your board/application, make these changes in the [`board_select.h`][boardselect] file.
+
+```cpp
+// Board capabilities and configuration
+#define ESP32_WIFI            true    ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
+#define WIFIS3                false   ///< Set to true if the board has onboard WIFIS3 based WiFi (UNO R4 WiFi); false otherwise.
+#define FREE_RTOS             true    ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
+#define STL_USED              true    ///< Set to true if the board can use the C++ STL library (i.e. has enough memory).
+#define LED_HEART      LED_BUILTIN    ///< Heartbeat LED to show working software, errors or messages.
+#define PRINTF_OK             true    ///< Use printf style code if supported, usually true.
+#define ESP32_INPUT_PULLDOWN  INPUT_PULLDOWN   ///< Pin has an internal pull-down resistor (e.g. ESP32) or just use `INPUT` (e.g. Arduino).
+
+// Initial default values for properties that can be changed at run-time.
+#define DEFAULT_DEBOUNCE_DELAY    75   ///< The default debounce delay in milliseconds for the buttons
+#define DEFAULT_BRIGHTNESS        30   ///< The best tested LEDs brightness range: 20-60
+#define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
+#define DEFAULT_SERIAL_SPEED   115200  ///< Default serial output speed in bps
+// Time format string definitions names and values used for formatting time and alarm display. 
+// #define TIME_FORMAT_24HR    "HH:mm:ss"    ///< 24 Hour time format string
+// #define TIME_FORMAT_AMPM    "HH:mm:ss AP" ///< 12 Hour time format string with AM/PM
+// #define ALARM_FORMAT_24HR   "HH:mm"       ///< 24 Hour alarm format string
+// #define ALARM_FORMAT_AMPM   "HH:mm AP"    ///< 12 Hour alarm format string with AM/PM
+#define DEFAULT_TIME_MODE    AMPM_MODE    ///< Default time mode: AMPM_MODE or HR24_MODE
+#define DEFAULT_TIME_FORMAT  TIME_FORMAT_AMPM  ///< Default time  format, or TIME_FORMAT_24HR 
+#define DEFAULT_ALARM_FORMAT ALARM_FORMAT_AMPM ///< Default alarm format, or ALARM_FORMAT_24HR
+```
+### Custom Board Support
+
+If your board is not supported out of the box, you can create a custom configuration by defining `CUSTOM_UNO` and providing the necessary pin definitions and capabilities in the [`board_select.h`][boardselect] file. This allows you to use the library with a wide range of hardware by simply specifying the correct pin mappings and features.
+
+```cpp
+#define CUSTOM_UNO true
+
+// Define all required pins and capabilities
+// example Arduino UNO based pin definitions (R3 & R4). Modify for your board.
+#define RTC_INT            3   ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
+#define PIEZO             11   ///< The number of the Piezo pin
+#define LED_DATA_PIN      A3   ///< Data Out pin that the LED data will be written to.
+
+// Push buttons S1; S2; and S3 connected to the: A2, A1, A0 Arduino pins
+#define S1                A2   ///< A2: S1 button: Time set  & Decrement button   
+#define S2                A1   ///< A1: S2 button: Select    & Confirm/Save button  
+#define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
+
+// I2C pins used by the shield on Arduino boards
+#define I2C_SDA_PIN      PC4   ///< SDA pin (A4) for Arduino UNO_R3, PC4 position near Reset button.
+#define I2C_SCL_PIN      PC5   ///< SCL pin (A5) for Arduino UNO_R3, PC5 position near Reset button.
+```
+---
+
+### Setting the Time and Alarm
+
+The alarm and time can be set by pressing either the __`S3`__ or __`S1`__ buttons respectivly.  
+
+Alternatively, you can set the time programmatically using the `set_Alarm()` or `set_Time()` methods of the `BinaryClock` class. The [`BinaryClockWiFi`][BinaryClockWiFi] library uses these methods to automatically synchronize time using SNTP when connected to WiFi.
+
+#### Setting Initial Time Example
 
 ```cpp
 #include <BinaryClock.h>
@@ -82,7 +157,7 @@ void loop() {
 void setClockTime() {
     BinaryClock& clock = BinaryClock::get_Instance();
     
-    // Create DateTime object (year, month, day, hour, minute, second)
+    // Create DateTime object (year, month, day, hour24, minute, second)
     DateTime newTime(2026, 2, 15, 14, 30, 0);
     
     // Set clock time
@@ -94,24 +169,31 @@ void setClockTime() {
 }
 ```
 
-### Setting an Alarm
+#### Setting an Alarm Example
 
 ```cpp
 #include <BinaryClock.h>
 
 void setAlarm() {
     BinaryClock& clock = BinaryClock::get_Instance();
-    
-    // Create alarm for 7:30 AM
-    AlarmTime alarm;
-    alarm.hour = 7;
-    alarm.minute = 30;
-    alarm.enabled = true;
-    alarm.isAM = true;  // For 12-hour format
-    
+
+    // Set a daily alarm for 7:30 (i.e. 7:30 AM)
+    AlarmTime alarm(7, 30);                   // Time: (hour24, minute)
     clock.set_Alarm(alarm);
-    
+
     Serial.println("Alarm set for 7:30 AM");
+} 
+
+void setWeeklyAlarm() {
+    BinaryClock& clock = BinaryClock::get_Instance();
+
+    // Set a weekly alarm for Friday at 14:45 (i.e. 2:45 PM)
+    // RTC_FRIDAY is always Friday regardless of the first day of the week configuration.
+    // See: `FIRST_WEEKDAY` definition in `DateTime.h`
+    AlarmTime alarm(14, 45, AlarmTime::Weekly, RTC_FRIDAY); 
+    clock.set_Alarm(alarm);
+
+    Serial.println("Alarm set for 2:45 PM");
 }
 ```
 
@@ -176,11 +258,11 @@ BinaryClock& clock = BinaryClock::get_Instance();
 DateTime now = clock.get_Time();
 char buffer[32];
 
-// Format as "2026-02-15 14:30:00"
+// Format as "2026-02-15 02:30:00"
 clock.DateTimeToString(now, buffer, 32, "YYYY-MM-DD HH:mm:ss");
 Serial.println(buffer);
 
-// Format as "02/15/2026 02:30 PM"
+// Format as "02/15/2026 02:30 AM"
 clock.DateTimeToString(now, buffer, 32, "MM/DD/YYYY hh:mm AP");
 Serial.println(buffer);
 
@@ -190,19 +272,25 @@ Serial.println(buffer);
 ```
 
 **Format Codes:**
-- `YYYY` - 4-digit year (2026)
-- `YY` - 2-digit year (26)
-- `MM` - 2-digit month (02)
-- `MMM` - Short month name (Feb)
-- `MMMM` - Full month name (February)
-- `DD` - 2-digit day (15)
-- `DDD` - Short day name (Sat)
-- `DDDD` - Full day name (Saturday)
-- `HH` - 24-hour (14)
-- `hh` - 12-hour (02)
-- `mm` - Minutes (30)
-- `ss` - Seconds (00)
-- `AP` - AM/PM indicator
+   The following lists all the format specifiers are supported in the format string:
+
+   | Specifier   | Output                                   | Value range       | Status   |
+   |-------------|------------------------------------------|-------------------|----------|
+   | `YYYY`      | the year as a 4-digit number             | (2000--2199)      | Modified |
+   | `YY`        | the year as a 2-digit number             | (00--99)          |          |
+   | `MM`        | the month as a 2-digit number            | (01--12)          |          |
+   | `MMM`       | the abbreviated English month name       | ("Jan"--"Dec")    |          |
+   | `DD`        | the day as a 2-digit number              | (01--31)          |          |
+   | `DDD`       | the abbreviated English day of the week  | ("Mon"--"Sun")    |          |
+   | `AP`        | either "AM" or "PM"                      | (AM/PM)           | New      |
+   | `ap`        | either "am" or "pm"                      | (am/pm)           | New      |
+   | `hh`        | the hour as a 2-digit number             | (00--23 / 01--12) | Modified |
+   | `HH`        | the hour as a 1/2-digit number/space     | ( 0--23 /  1--12) | New      |
+   | `mm`        | the minute as a 2-digit number           | (00--59)          |          |
+   | `ss`        | the second as a 2-digit number           | (00--59)          |          |
+
+   If either "__AP__" or "__ap__" is used, then the "__hh__" and "__HH__" specifiers use a 12-hour mode
+   (range: 01--12). Otherwise they use a 24-hour mode (range: 00--23).
 
 ---
 
@@ -216,8 +304,8 @@ void set_Is12HourFormat(bool value);
 bool get_Is12HourFormat();
 
 // Get format strings
-char* get_TimeFormat();   // Returns "%I:%M:%S %p" or "%H:%M:%S"
-char* get_AlarmFormat();  // Returns "%I:%M %p" or "%H:%M"
+char* get_TimeFormat();   // Returns "HH:mm:ss AP" or "hh:mm:ss"
+char* get_AlarmFormat();  // Returns "hh:mm AP"    or "hh:mm"
 ```
 
 **Example: Toggle Time Format**
@@ -226,11 +314,11 @@ BinaryClock& clock = BinaryClock::get_Instance();
 
 // Switch to 12-hour format
 clock.set_Is12HourFormat(true);
-Serial.println(clock.get_TimeFormat());  // Prints: %I:%M:%S %p
+Serial.println(clock.get_TimeFormat());  // Prints: HH:mm:ss AP
 
 // Switch to 24-hour format
 clock.set_Is12HourFormat(false);
-Serial.println(clock.get_TimeFormat());  // Prints: %H:%M:%S
+Serial.println(clock.get_TimeFormat());  // Prints: hh:mm:ss
 ```
 
 ---
@@ -244,8 +332,8 @@ void set_Alarm(AlarmTime value);
 // Get current alarm settings
 AlarmTime get_Alarm();
 
-// Get alarm directly from RTC
-AlarmTime GetRtcAlarm(uint8_t number);
+// Get alarm settings directly from RTC (alarm 1 or 2)
+AlarmTime GetRtcAlarm(int number);
 
 // Play the configured alarm melody
 void PlayAlarm();
@@ -255,31 +343,33 @@ void PlayAlarm(AlarmTime alarm);
 **AlarmTime Structure:**
 ```cpp
 struct AlarmTime {
-    uint8_t hour;      // 0-23 or 1-12 depending on format
-    uint8_t minute;    // 0-59
-    bool enabled;      // Alarm on/off
-    bool isAM;         // AM/PM for 12-hour format (true = AM)
+    uint8_t  number;   // Alarm number: 1 or 2
+    DateTime time;     // Alarm time
+    uint8_t  melody;   // Melody ID (0 = default)
+    uint8_t  status;   // 0 = OFF, 1 = ON
+    Repeat   freq;     // Repeat mode (Never, Hourly, Daily, Weekly(*), Monthly)
+    bool     fired;    // True while alarm is active/ringing
 };
+// (*) Weekly uses the `DateTime::day()` i.e. `d` field of the date in `time` for 
+//     day of the week (1 - 7) where 1 is the first day of the week, 7 is the last.
+//     This is defined by `FIRST_WEEKDAY` in `DateTime.h` (e.g. "Mon").
 ```
 
 **Example: Daily Alarm**
 ```cpp
 BinaryClock& clock = BinaryClock::get_Instance();
 
-void setDailyAlarm(uint8_t hour, uint8_t minute) {
+void setDailyAlarm(uint8_t hour24, uint8_t minute) {
     AlarmTime alarm = clock.get_Alarm();
-    
-    alarm.hour = hour;
-    alarm.minute = minute;
-    alarm.enabled = true;
-    
-    if (clock.get_Is12HourFormat()) {
-        alarm.isAM = (hour < 12);
-        if (hour > 12) alarm.hour = hour - 12;
-    }
-    
+
+    alarm.number = 2;
+    alarm.time = DateTime(hour24, minute, 0);
+    alarm.status = 1;
+    alarm.freq = AlarmTime::Daily;
+    alarm.fired = false;
+
     clock.set_Alarm(alarm);
-    Serial.printf("Alarm set for %02d:%02d\n", hour, minute);
+    Serial.printf("Alarm set for %02u:%02u\n", hour24, minute);
 }
 ```
 
@@ -293,11 +383,7 @@ void DisplayBinaryTime(uint8_t h, uint8_t m, uint8_t s, bool use12Hr);
 
 // Display predefined patterns
 void DisplayLedPattern(LedPattern pattern);
-void DisplayLedPattern(LedPattern pattern, uint16_t duration);
-
-// Display custom LED buffer
-void DisplayLedBuffer(CRGB* buffer);
-void DisplayLedBuffer(CRGB* buffer, uint16_t duration);
+void DisplayLedPattern(LedPattern pattern, unsigned long duration);
 
 // Set display brightness (0-255)
 void set_Brightness(byte value);
@@ -307,13 +393,14 @@ byte get_Brightness();
 **LedPattern Enum:**
 ```cpp
 enum class LedPattern : uint8_t {
-    off,        // All LEDs off
-    on,         // All LEDs white
-    ok,         // Green checkmark pattern
-    fail,       // Red X pattern
-    rainbow,    // Rainbow gradient
-    cycle,      // Color cycling animation
-    // ... additional patterns
+    onColors,
+    offColors,
+    onText,
+    offTxt,
+    xAbort,
+    okText,
+    rainbow
+    // WiFi builds add: wText, aText, pText, nText
 };
 ```
 
@@ -322,19 +409,16 @@ enum class LedPattern : uint8_t {
 BinaryClock& clock = BinaryClock::get_Instance();
 
 // Show success pattern for 2 seconds
-clock.DisplayLedPattern(LedPattern::ok, 2000);
+clock.DisplayLedPattern(LedPattern::okText, 2000);
 
 // Show rainbow pattern indefinitely
 clock.DisplayLedPattern(LedPattern::rainbow);
 
 // Set brightness to 50%
 clock.set_Brightness(128);
-
-// Create custom pattern (all red)
-CRGB customBuffer[17];
-fill_solid(customBuffer, 17, CRGB::Red);
-clock.DisplayLedBuffer(customBuffer, 3000);  // Show for 3 seconds
 ```
+
+Note: `DisplayLedBuffer(...)` is not a public API in `BinaryClock`; use `DisplayLedPattern(...)` from application code.
 
 ---
 
@@ -342,9 +426,9 @@ clock.DisplayLedBuffer(customBuffer, 3000);  // Show for 3 seconds
 
 ```cpp
 // Get button interface references
-IBCButtonBase& get_S1TimeDec();   // Button 1 (Time Dec)
-IBCButtonBase& get_S2SaveStop();  // Button 2 (Save/Stop)
-IBCButtonBase& get_S3AlarmInc();  // Button 3 (Alarm Inc)
+const IBCButtonBase& get_S1TimeDec();   // Button 1 (Time Dec)
+const IBCButtonBase& get_S2SaveStop();  // Button 2 (Save/Stop)
+const IBCButtonBase& get_S3AlarmInc();  // Button 3 (Alarm Inc)
 ```
 
 **Example: Button State Monitoring**
@@ -352,23 +436,26 @@ IBCButtonBase& get_S3AlarmInc();  // Button 3 (Alarm Inc)
 BinaryClock& clock = BinaryClock::get_Instance();
 
 void checkButtons() {
-    IBCButtonBase& s1 = clock.get_S1TimeDec();
-    IBCButtonBase& s2 = clock.get_S2SaveStop();
-    IBCButtonBase& s3 = clock.get_S3AlarmInc();
-    
-    if (s1.get_IsPressed()) {
-        Serial.println("Button 1 pressed!");
+    const IBCButtonBase& s1 = clock.get_S1TimeDec();
+    const IBCButtonBase& s2 = clock.get_S2SaveStop();
+    const IBCButtonBase& s3 = clock.get_S3AlarmInc();
+
+    // Raw state access is const-safe.
+    if (s1.IsPressedRaw()) {
+        Serial.println("S1 is currently pressed (raw).");
     }
-    
-    if (s2.get_IsLongPressed()) {
-        Serial.println("Button 2 long press detected!");
+
+    if (s2.IsPressedRaw()) {
+        Serial.println("S2 is currently pressed (raw).");
     }
-    
-    if (s3.get_ClickCount() > 0) {
-        Serial.printf("Button 3 clicked %d times\n", s3.get_ClickCount());
+
+    if (s3.IsPressedRaw()) {
+        Serial.println("S3 is currently pressed (raw).");
     }
 }
 ```
+
+Note: debounced edge detection uses `IsPressedNew()`, which is non-const; if you need it from these const accessors, cast carefully and consistently in your own wrapper code.
 
 ---
 
@@ -382,17 +469,17 @@ bool PlayMelody(size_t id);
 size_t RegisterMelody(const std::vector<Note>& melody);
 
 // Get registered melody
-std::vector<Note>& GetMelodyById(size_t id);
+const std::vector<Note>& GetMelodyById(size_t id) const;
 
-// Set alarm melody from array
-bool SetAlarmMelody(const Note* array, size_t size);
+// Set alarm melody from array (only on non-STL builds)
+bool SetAlarmMelody(Note* array, size_t size);
 ```
 
 **Note Structure:**
 ```cpp
 struct Note {
-    uint16_t frequency;  // Hz (e.g., 440 for A4)
-    uint16_t duration;   // Milliseconds
+    unsigned tone;           // Hz (e.g., 440 for A4)
+    unsigned long duration;  // Milliseconds
 };
 ```
 
@@ -402,27 +489,30 @@ BinaryClock& clock = BinaryClock::get_Instance();
 
 // Define custom melody (C major scale)
 std::vector<Note> customMelody = {
-    {262, 200},  // C4
-    {294, 200},  // D4
-    {330, 200},  // E4
-    {349, 200},  // F4
-    {392, 200},  // G4
-    {440, 200},  // A4
-    {494, 200},  // B4
-    {523, 400}   // C5
+    {262U, 200UL},  // C4
+    {294U, 200UL},  // D4
+    {330U, 200UL},  // E4
+    {349U, 200UL},  // F4
+    {392U, 200UL},  // G4
+    {440U, 200UL},  // A4
+    {494U, 200UL},  // B4
+    {523U, 400UL}   // C5
 };
 
-// Register and set as alarm melody
+// Register and assign as alarm melody
 size_t melodyId = clock.RegisterMelody(customMelody);
 Serial.printf("Melody registered with ID: %zu\n", melodyId);
 
 // Play immediately for testing
 clock.PlayMelody(melodyId);
 
-// Set as alarm melody
-Note* melodyArray = customMelody.data();
-clock.SetAlarmMelody(melodyArray, customMelody.size());
+AlarmTime alarm = clock.get_Alarm();
+alarm.melody = static_cast<uint8_t>(melodyId);
+alarm.status = 1;
+clock.set_Alarm(alarm);
 ```
+
+For non-STL builds, use `SetAlarmMelody(...)` instead of melody registry IDs.
 
 **Common Note Frequencies:**
 ```cpp
@@ -447,12 +537,12 @@ clock.SetAlarmMelody(melodyArray, customMelody.size());
 
 ```cpp
 // Register time change callback (called every second)
-bool RegisterTimeCallback(std::function<void(DateTime&)> callback);
-bool UnregisterTimeCallback(std::function<void(DateTime&)> callback);
+bool RegisterTimeCallback(void (*callback)(const DateTime&));
+bool UnregisterTimeCallback(void (*callback)(const DateTime&));
 
 // Register alarm trigger callback
-bool RegisterAlarmCallback(std::function<void(AlarmTime&)> callback);
-bool UnregisterAlarmCallback(std::function<void(AlarmTime&)> callback);
+bool RegisterAlarmCallback(void (*callback)(const DateTime&));
+bool UnregisterAlarmCallback(void (*callback)(const DateTime&));
 ```
 
 **Example: Time and Alarm Callbacks**
@@ -460,7 +550,7 @@ bool UnregisterAlarmCallback(std::function<void(AlarmTime&)> callback);
 BinaryClock& clock = BinaryClock::get_Instance();
 
 // Time callback - called every second
-void onTimeChange(DateTime& time) {
+void onTimeChange(const DateTime& time) {
     static int lastMinute = -1;
     
     if (time.minute() != lastMinute) {
@@ -470,9 +560,9 @@ void onTimeChange(DateTime& time) {
 }
 
 // Alarm callback - called when alarm triggers
-void onAlarmTriggered(AlarmTime& alarm) {
+void onAlarmTriggered(const DateTime& time) {
     Serial.println("ALARM TRIGGERED!");
-    Serial.printf("Alarm time: %02d:%02d\n", alarm.hour, alarm.minute);
+    Serial.printf("Alarm time: %02d:%02d\n", time.hour(), time.minute());
     
     // Custom alarm action (e.g., turn on lights, send notification)
 }
@@ -493,7 +583,7 @@ void setup() {
 
 ```cpp
 // Get clock identifier string
-char* get_IdName();
+const char* get_IdName();
 
 // Check serial time mode
 bool get_IsSerialTime();
@@ -502,14 +592,16 @@ bool get_IsSerialTime();
 bool get_IsSerialSetup();
 
 // Flash LED for debugging
-static void FlashLed(uint8_t pin, uint8_t repeat, uint16_t cycle, 
-                     uint16_t freq, uint8_t onValue = HIGH);
+void FlashLed(uint8_t ledNum, uint8_t repeat = 1,
+              uint8_t dutyCycle = 50, uint8_t frequency = 1,
+              uint8_t onValue = CC_ON) const;
 ```
 
 **Example: Debug LED Flashing**
 ```cpp
-// Flash built-in LED 5 times, 500ms cycle, 50% duty
-BinaryClock::FlashLed(LED_BUILTIN, 5, 500, 250, HIGH);
+BinaryClock& clock = BinaryClock::get_Instance();
+// Flash built-in LED 5 times, 50% duty at 2 Hz.
+clock.FlashLed(LED_BUILTIN, 5, 50, 2, CC_ON);
 ```
 
 ---
@@ -519,22 +611,23 @@ BinaryClock::FlashLed(LED_BUILTIN, 5, 500, 250, HIGH);
 Handles button debouncing and event detection.
 
 **Key Features:**
-- Debounced press/release detection
-- Long press detection
-- Click counting
-- Multi-click patterns
+- Debounced edge detection (`IsPressedNew()`)
+- Stable pressed-state checks (`IsPressed()`)
+- Raw pin reads (`IsPressedRaw()`)
+- Configurable debounce delay
 
 **Usage through IBCButtonBase interface:**
 ```cpp
-IBCButtonBase& button = clock.get_S1TimeDec();
+const IBCButtonBase& button = clock.get_S1TimeDec();
 
-// Check button states
-bool isPressed = button.get_IsPressed();
-bool isLongPress = button.get_IsLongPressed();
-uint8_t clicks = button.get_ClickCount();
+// Const-safe raw state check
+bool rawPressed = button.IsPressedRaw();
 
 // Get timing information
-unsigned long pressDuration = button.get_PressDuration();
+unsigned long lastRead = button.get_LastReadTime();
+
+// For debounced edge detection (non-const API), cast only if needed:
+// bool pressedNow = const_cast<IBCButtonBase&>(button).IsPressedNew();
 ```
 
 ---
@@ -607,22 +700,25 @@ void syncWithRTC() {
 ```cpp
 BinaryClock& clock = BinaryClock::get_Instance();
 
+void onAlarmEvent(const DateTime& alarmTime) {
+    BinaryClock& localClock = BinaryClock::get_Instance();
+    Serial.println("Smart Alarm Triggered!");
+
+    // Gradually increase brightness
+    for (int brightness = 0; brightness <= 255; brightness += 5) {
+        localClock.set_Brightness(static_cast<byte>(brightness));
+        delay(100);
+    }
+
+    // Play alarm sound
+    localClock.PlayAlarm();
+
+    // Additional actions: send notification, turn on lights, etc.
+}
+
 void setupSmartAlarm() {
-    // Register callback for alarm event
-    clock.RegisterAlarmCallback([](AlarmTime& alarm) {
-        Serial.println("Smart Alarm Triggered!");
-        
-        // Gradually increase brightness
-        for (int brightness = 0; brightness <= 255; brightness += 5) {
-            clock.set_Brightness(brightness);
-            delay(100);
-        }
-        
-        // Play alarm sound
-        clock.PlayAlarm(alarm);
-        
-        // Additional actions: send notification, turn on lights, etc.
-    });
+    // Register function-pointer callback for alarm event.
+    clock.RegisterAlarmCallback(onAlarmEvent);
 }
 ```
 
@@ -667,7 +763,7 @@ void showTimePattern() {
         clock.DisplayLedPattern(LedPattern::rainbow, 5000);
     } else if (now.minute() == 0) {
         // Top of hour - brief flash
-        clock.DisplayLedPattern(LedPattern::on, 500);
+        clock.DisplayLedPattern(LedPattern::okText, 500);
     }
     
     // Resume normal time display
@@ -675,66 +771,6 @@ void showTimePattern() {
                            clock.get_Is12HourFormat());
 }
 ```
-
----
-
-## Configuration
-
-Edit the file [board_select.h][boardselect] to customize for your hardware:
-
-### Custom Board Support
-
-For unsupported boards:
-
-```cpp
-#define CUSTOM_UNO true
-
-// Define all required pins and capabilities
-// example Arduino UNO based pin definitions (R3 & R4). Modify for your board.
-#define RTC_INT            3   ///< Interrupt. Arduino pin no.3 <-> Shield RTC INT/SQW pin           
-#define PIEZO             11   ///< The number of the Piezo pin
-#define LED_DATA_PIN      A3   ///< Data Out pin that the LED data will be written to.
-
-// Push buttons S1; S2; and S3 connected to the: A2, A1, A0 Arduino pins
-#define S1                A2   ///< A2: S1 button: Time set  & Decrement button   
-#define S2                A1   ///< A1: S2 button: Select    & Confirm/Save button  
-#define S3                A0   ///< A0: S3 button: Alarm set & Increment button  
-
-// I2C pins used by the shield on Arduino boards
-#define I2C_SDA_PIN      PC4   ///< SDA pin (A4) for Arduino UNO_R3, PC4 position near Reset button.
-#define I2C_SCL_PIN      PC5   ///< SCL pin (A5) for Arduino UNO_R3, PC5 position near Reset button.
-
-```
-### Board-Specific Configuration
-
-To change the configuration defaults for your board/application
-
-```cpp
-// Board capabilities and configuration
-#define ESP32_WIFI            true  ///< Set to true if the board has onboard ESP32 based WiFi; false otherwise.
-#define WIFIS3                false ///< Set to true if the board has onboard WIFIS3 based WiFi (UNO R4 WiFi); false otherwise.
-#define FREE_RTOS             true  ///< Set to true if the board is running FreeRTOS, e.g. boards with an ESP32.
-#define STL_USED              true  ///< Set to true if the board can use the C++ STL library (i.e. has enough memory).
-#define LED_HEART      LED_BUILTIN  ///< Heartbeat LED to show working software, errors or messages.
-#define PRINTF_OK             true  ///< Use printf style code if supported, usuall true.
-#define ESP32_INPUT_PULLDOWN  INPUT_PULLDOWN   ///< Pin has an internal pull-down resistor (e.g. ESP32) or just use `INPUT` (e.g. Arduino).
-
-// Initial default values for properties that can be changed at run-time.
-#define DEFAULT_DEBOUNCE_DELAY    75   ///< The default debounce delay in milliseconds for the buttons
-#define DEFAULT_BRIGHTNESS        30   ///< The best tested LEDs brightness range: 20-60
-#define DEFAULT_ALARM_REPEAT       3   ///< How many times to play the melody alarm
-#define DEFAULT_SERIAL_SPEED   115200  ///< Default serial output speed in bps
-// Time format string definitions used for formatting time and alarm display. 
-// #define TIME_FORMAT_24HR    "HH:mm:ss"    ///< 24 Hour time format string
-// #define TIME_FORMAT_AMPM    "HH:mm:ss AP" ///< 12 Hour time format string with AM/PM
-// #define ALARM_FORMAT_24HR   "HH:mm"       ///< 24 Hour alarm format string
-// #define ALARM_FORMAT_AMPM   "HH:mm AP"    ///< 12 Hour alarm format string with AM/PM
-#define DEFAULT_TIME_MODE    AMPM_MODE    ///< Default time mode: AMPM_MODE or HR24_MODE
-#define DEFAULT_TIME_FORMAT  TIME_FORMAT_AMPM  ///< Default time  format, or TIME_FORMAT_24HR 
-#define DEFAULT_ALARM_FORMAT ALARM_FORMAT_AMPM ///< Default alarm format, or ALARM_FORMAT_24HR
-
-```
-
 
 ---
 
@@ -812,14 +848,14 @@ void testLEDs() {
 void debugButtons() {
     BinaryClock& clock = BinaryClock::get_Instance();
     
-    IBCButtonBase& s1 = clock.get_S1TimeDec();
-    IBCButtonBase& s2 = clock.get_S2SaveStop();
-    IBCButtonBase& s3 = clock.get_S3AlarmInc();
+    const IBCButtonBase& s1 = clock.get_S1TimeDec();
+    const IBCButtonBase& s2 = clock.get_S2SaveStop();
+    const IBCButtonBase& s3 = clock.get_S3AlarmInc();
     
     Serial.printf("S1: %d, S2: %d, S3: %d\n",
-                  s1.get_IsPressed(),
-                  s2.get_IsPressed(),
-                  s3.get_IsPressed());
+                  s1.IsPressedRaw(),
+                  s2.IsPressedRaw(),
+                  s3.IsPressedRaw());
 }
 ```
 
@@ -843,16 +879,17 @@ void checkAlarm() {
     BinaryClock& clock = BinaryClock::get_Instance();
     
     AlarmTime alarm = clock.get_Alarm();
-    Serial.printf("Alarm: %02d:%02d, Enabled: %d\n",
-                  alarm.hour, alarm.minute, alarm.enabled);
+    Serial.printf("Alarm: %02d:%02d:%02d, Status: %u, Melody: %u\n",
+                  alarm.time.hour(), alarm.time.minute(), alarm.time.second(),
+                  alarm.status, alarm.melody);
     
     // Force alarm test
-    clock.PlayAlarm(alarm);
+    clock.PlayAlarm();
 }
 ```
 
 **Checklist:**
-- Ensure `alarm.enabled` is true
+- Ensure `alarm.status` is 1
 - Verify piezo buzzer connected to correct pin
 - Test buzzer with tone() function directly
 - Check if alarm time is in correct format (12/24 hour)
@@ -942,9 +979,9 @@ void checkMemory() {
 
 ### Button Debouncing
 
-- **Default debounce**: 50ms
-- **Long press threshold**: 1000ms (1 second)
-- **Double-click window**: 300ms
+- **Default debounce**: controlled by `DEFAULT_DEBOUNCE_DELAY` (project default is commonly 75ms)
+- **Per-button override**: `set_DebounceDelay(unsigned long)` on each button interface
+- **Edge detection API**: use `IsPressedNew()` when you need debounced OFF->ON transitions
 
 ---
 
@@ -953,6 +990,14 @@ void checkMemory() {
 ### Initialization Order
 
 ```cpp
+void myTimeCallback(const DateTime& now) {
+    // User time callback code
+}
+
+void myAlarmCallback(const DateTime& alarmTime) {
+    // User alarm callback code
+}
+
 void setup() {
     // 1. Serial first for debugging
     Serial.begin(115200);
@@ -986,7 +1031,7 @@ void enterLowPowerMode() {
     // Turn off display during night hours
     DateTime now = clock.get_Time();
     if (now.hour() >= 23 || now.hour() < 6) {
-        clock.DisplayLedPattern(LedPattern::off);
+        clock.DisplayLedPattern(LedPattern::offColors);
     }
 }
 ```
@@ -1002,7 +1047,7 @@ void cleanup() {
     clock.UnregisterAlarmCallback(myAlarmCallback);
     
     // Turn off display
-    clock.DisplayLedPattern(LedPattern::off);
+    clock.DisplayLedPattern(LedPattern::offColors);
     
     // Singleton persists - no explicit cleanup needed
 }
@@ -1106,6 +1151,8 @@ See [LICENSE][license] file for details.
 [metro]: https://www.adafruit.com/product/5500
 [README]: README.md
 [README_Git]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/lib/BinaryClock/README.md
+[README_Project]: ../../README.md
+[README_ProjectGit]: https://github.com/Chris-70/WiFiBinaryClock/blob/main/README.md
 [shield]: https://nixietester.com/product/binary-clock-shield-for-arduino/
 [ShieldExamples]: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino/tree/master/example
 [WiFiBinaryClock]: https://github.com/Chris-70/WiFiBinaryClock

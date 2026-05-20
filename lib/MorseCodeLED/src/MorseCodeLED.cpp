@@ -2,7 +2,7 @@
 /// @brief Implementation file for the MorseCodeLED class.
 /// @details  This file contains the implementation of the MorseCodeLED class, 
 ///           which is used to flash a LED in Morse code. The class supports 
-///           flashing predefined messages, as well as arbitrary strings of text.
+///           flashing predefined messages, as well as arbitrary strings of text.  
 /// @author Chris-80 (2025/08)          
 
 #include <ctype.h>
@@ -15,22 +15,29 @@
 #define SPACE_MS (DIT_MS * 3)
 #define WORD_SPACE_MS (DIT_MS * 7)
 
+#define ON_STATE   onState
+#define OFF_STATE !onState
+
 namespace BinaryClockShield
    {
-   MorseCodeLED::MorseCodeLED(int ledPin) : ledPin(ledPin) { }
+   MorseCodeLED::MorseCodeLED(uint8_t ledPin) 
+         : ledPin(ledPin), onState(DEFAULT_ON_STATE) { }
 
-   void MorseCodeLED::Begin()
+   MorseCodeLED::MorseCodeLED(uint8_t ledPin, uint8_t onState)
+         : ledPin(ledPin), onState(onState) { }
+
+void MorseCodeLED::Begin()
       {
       pinMode(ledPin, OUTPUT);
-      digitalWrite(ledPin, LOW);
+      digitalWrite(ledPin, OFF_STATE);
       }
 
    // Private helper function to reduce code duplication
    void MorseCodeLED::flashLED(int duration)
       {
-      digitalWrite(ledPin, HIGH);
+      digitalWrite(ledPin, ON_STATE);
       delay(duration);
-      digitalWrite(ledPin, LOW);
+      digitalWrite(ledPin, OFF_STATE);
       delay(DIT_MS);  // Standard gap after each element
       }
 
@@ -46,19 +53,20 @@ namespace BinaryClockShield
 
    void MorseCodeLED::space()
       {
-      digitalWrite(ledPin, LOW);  // Ensure LED is off
+      digitalWrite(ledPin, OFF_STATE);  // Ensure LED is off
       delay(SPACE_MS);
       }
 
    void MorseCodeLED::wordSpace()
       {
-      digitalWrite(ledPin, LOW);  // Ensure LED is off
+      digitalWrite(ledPin, OFF_STATE);  // Ensure LED is off
       delay(WORD_SPACE_MS);
       }
 
    #if BINARY_CLOCK_LIB
    void MorseCodeLED::Flash_CQD_NO_RTC()
       {
+      // Used in the WiFiBinaryClock project only, `Flash_CQD()` otherwise.
       // Flash "CQD NO RTC" in Morse code - ultra compact implementation
       // This was designed for the UNO_R3 as RAM and ROM were almost out.
       // Calling FlashMCode() and a fixed array spelling out: CQD NO RTC
@@ -92,9 +100,9 @@ namespace BinaryClockShield
    void MorseCodeLED::Flash_CQD()
       {
       // Flash "CQD" in Morse code - ultra compact implementation
-      // This was designed for the UNO_R3 as RAM and ROM were almost out.
+      // This was designed for projects where RAM and ROM were almost out.
       // Calling FlashMCode() and a fixed array spelling out: CQD
-      // cost an extra 132 bytes of ROM, so this format is used for all.
+      // cost just 132 bytes of ROM, so this format is used for all.
       // Keeping this for all other boads costs 72 bytes of ROM but it
       // doesn't add visual / maintenance complexity by having this code
       // littered with conditional compilation statements. We have just
@@ -175,6 +183,7 @@ namespace BinaryClockShield
    */
    const MorseCodeLED::MCode PROGMEM MorseCodeLED::morseTable[26 + 10] =
          {
+         // Letters A-Z
          0x2002, // A: .-     (len=2, pattern=01)   
          0x4001, // B: -...   (len=4, pattern=1000)
          0x4005, // C: -.-.   (len=4, pattern=1010)
@@ -220,7 +229,7 @@ namespace BinaryClockShield
       {
       uint8_t length = morseData.len;    // Extract length (4 bits)
       uint16_t pattern = morseData.code; // Extract pattern (12 bits)
-      if (length > 12) { return; }       // Invalid length check
+      if (length > CODE_BITS) { return; }       // Invalid length check
 
       // Interpret a length of 0 to be a word space, do the delay and exit.
       if (length == 0) 
@@ -329,7 +338,7 @@ namespace BinaryClockShield
             };
 
       #define EXTENDED_SIZE sizeof(extendedLookup) / sizeof(extendedLookup[0])
-      // Rest of function remains the same...
+      // Note: The extended lookup table is small and a linear search is efficient enough for this use case.
       // Search for the character
       for (uint8_t i = 0; i < EXTENDED_SIZE; i++)
          {
@@ -344,7 +353,7 @@ namespace BinaryClockShield
          }
 
       #undef EXTENDED_SIZE
-      }
+      } // End of flashExtendedCharacter()
 
    void MorseCodeLED::FlashProsign(Prosign sign)
       {
@@ -369,7 +378,7 @@ namespace BinaryClockShield
             {Prosign::Start     , 0x5015}, ///< [` -.-.-     `] (len=5, pattern=10101)      [KA]  Start, Attention
             {Prosign::End       , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message
             {Prosign::EndWork   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  End of contact / work, Out
-            {Prosign::OverOut   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
+            {Prosign::OverOut   , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Over and Out, End of contact
             {Prosign::Out       , 0x6025}, ///< [` ...-.-    `] (len=6, pattern=001101)     [SK]  Out, End of contact
             {Prosign::Wait      , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, I am busy
             {Prosign::FullStop  , 0x6015}, ///< [` .-.-.-    `] (len=6, pattern=010101)     [.]   Full stop (period)
@@ -385,6 +394,7 @@ namespace BinaryClockShield
             {Prosign::Roger     , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Roger, Received OK             
             {Prosign::R         , 0x3002}, ///< [` .-.       `] (len=3, pattern=010)        [R]   Received OK             
             {Prosign::K         , 0x3005}, ///< [` -.-       `] (len=3, pattern=101)        [K]   Invitation to transmit  
+            {Prosign::AA        , 0x4005}, ///< [` .-.-.     `] (len=4, pattern=0101)       [AA]  Next line          
             {Prosign::AR        , 0x500A}, ///< [` .-.-.     `] (len=5, pattern=01010)      [AR]  End of message          
             {Prosign::AS        , 0x5008}, ///< [` .-...     `] (len=5, pattern=01000)      [AS]  Wait for response, busy       
             {Prosign::VE        , 0x5002}, ///< [` ...-.     `] (len=5, pattern=00010)      [VE]  Understood, Verified
@@ -404,7 +414,7 @@ namespace BinaryClockShield
       Prosign lookup = (Prosign)(pgm_read_byte(&prosignTable[index].sign));
 
       // Coding error check: The `prosignTable` lookup index value, `ProsignLookup::sign`, is not in the correct order.
-      // The index order MUST match the `Prosign` enum order. This assert indicates an error was found.
+      // The index order MUST match the `Prosign` enum order. This assert indicates an error in the code was found.
       assert(lookup == sign); 
       if (lookup == sign)
          {
@@ -451,9 +461,7 @@ namespace BinaryClockShield
    /// @return A 16-bit hash value for the input string.
    /// @see hashWordRuntime()
    static constexpr uint16_t hashWordConst(const char* text, uint16_t hash = STARTING_PRIME)
-      {
-      return *text ? hashWordConst(text + 1, (uint16_t)((hash ^ (uint8_t)(*text)) * MULTIPLIER_PRIME)) : hash;
-      }
+      { return *text ? hashWordConst(text + 1, (uint16_t)((hash ^ (uint8_t)(*text)) * MULTIPLIER_PRIME)) : hash; }
 
    #undef STARTING_PRIME
    #undef MULTIPLIER_PRIME
@@ -492,6 +500,7 @@ namespace BinaryClockShield
       X(ROGER, Roger)                   \
       X(R, R)                           \
       X(K, K)                           \
+      X(AA, AA)                         \
       X(AR, AR)                         \
       X(AS, AS)                         \
       X(VE, VE)                         \
@@ -590,3 +599,5 @@ namespace BinaryClockShield
 #undef DAH_MS  
 #undef SPACE_MS
 #undef WORD_SPACE_MS
+#undef ON_STATE
+#undef OFF_STATE

@@ -71,7 +71,7 @@ namespace BinaryClockShield
       /// @{
       /// @brief The property methods called to set/get the current 'Time' property.
       /// @param value The DateTime object containing the current time to set.
-      /// @note The DateTime class is defiend in the RTCLib.h header file.
+      /// @note The DateTime class is defiend in the DateTime.h header file.
       /// @see get_Time()
       /// @see ReadTime()
       /// @author Chris-80 (2025/07)

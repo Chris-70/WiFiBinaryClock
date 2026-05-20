@@ -33,7 +33,7 @@
 
 namespace BinaryClockShield
    {
-   size_t NTPEventBits::ntpDefaultOffset = 0U; // Initialize static property
+   // size_t NtpEventBits::ntpDefaultOffset = 0U; // Initialize static property
 
    BinaryClockNTP::BinaryClockNTP()
          : syncInProgress(false)
@@ -48,6 +48,22 @@ namespace BinaryClockShield
    BinaryClockNTP::~BinaryClockNTP()
       {
       stopSNTP();
+      }
+
+   void BinaryClockNTP::SignalEvent(enum NtpEvents event)
+      {
+      if (event == NtpEvents::EventEnd)
+         {
+         SERIAL_STREAM("BinaryClockNTP::SignalEvent() - Invalid event: " << static_cast<uint8_t>(event) << endl)
+         return;
+         }
+      else if (get_NtpGroupBits() == nullptr)
+         {
+         SERIAL_STREAM("BinaryClockNTP::SignalEvent() - No event bits registered to signal event: " << static_cast<uint8_t>(event) << endl)
+         return;
+         }
+
+      get_NtpGroupBits()->SignalEvent(event);
       }
 
    ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -317,11 +333,11 @@ namespace BinaryClockShield
          SERIAL_STREAM("[" << millis() << "] NTP sync successful!" << endl)
          SERIAL_STREAM(" Time: " << result.dateTime.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
          SERIAL_STREAM(" Server: " << result.serverUsed << endl)
-         SERIAL_STREAM(" Round trip: " << MILLIS_TO_MS(endTime - startTime) << "ms" << endl)
+         SERIAL_STREAM(" Round trip: " << (endTime - startTime) << "ms" << endl)
          struct timeval tv = ntpToTimeval(packet.txTime);
          int setRes = settimeofday(&tv, NULL);
          result.success = (setRes == 0);
-         DateTime internal(time(&now));
+         DateTime internal(now);
          SERIAL_STREAM("Internal: " << internal.timestamp(DateTime::TIMESTAMP_DATETIME) << endl)
          }
       else

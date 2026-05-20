@@ -46,14 +46,14 @@
 #include "RTClib.h"
 
 #ifdef __AVR__
-#include <avr/pgmspace.h>
+    #include <avr/pgmspace.h>
 #elif defined(ESP8266)
-#include <pgmspace.h>
+    #include <pgmspace.h>
 #elif defined(ARDUINO_ARCH_SAMD)
-// nothing special needed
+    // nothing special needed
 #elif defined(ARDUINO_SAM_DUE)
-#define PROGMEM
-#define pgm_read_byte(addr) (*(const unsigned char *)(addr))
+    #define PROGMEM
+    #define pgm_read_byte(addr) (*(const unsigned char *)(addr))
 #endif
 
 /**************************************************************************/
@@ -164,7 +164,7 @@ static uint32_t time2ulong(uint16_t days, uint8_t h, uint8_t m, uint8_t s) {
 */
 /**************************************************************************/
 DateTime::DateTime(uint32_t t) {
-  t -= SECONDS_FROM_1970_TO_2000; // bring to 2000 timestamp from 1970
+  t -= SecondsFrom1970to2000; // bring to 2000 timestamp from 1970
 
   ss = t % 60;
   t /= 60;
@@ -208,24 +208,20 @@ DateTime::DateTime(uint32_t t) {
     @param day Day of the month (1--31).
     @param hour,min,sec Hour (0--23), minute (0--59) and second (0--59).
     @remarks The WeekdayEpoch is an exception, its year is always 2000.
-             This constructor will allow year 2000 when the day is 1.
-             To set a date in the year 2000, use the constructor that
-             takes UNIX style seconds since 1970-01-01 00:00:00.
+             Avoid using year 2000 to ensure valid day of week calculation.
 */
 /**************************************************************************/
 DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
-                   uint8_t min, uint8_t sec) {
+                   uint8_t min, uint8_t sec) 
+                  : m(month < 1 ? 1 : (month > 12 ? 12 : month))
+                  , d(day < 1 ? 1 : (day > 31 ? 31 : day))
+                  , hh(hour % 24)
+                  , mm(min % 60)
+                  , ss(sec % 60) {
   if (year >= 2000U)
-    year = (year - 2000U);
-  // In order for the dayOfTheWeek() to work correctly the must be 2001 or later.
-  // When calculating dayOfTheWeek the 'WeekdayEpoch' is subtracted from the date.
-  // The WeekdayEpoch is always in the year 2000, so the date must be later.
-  yOff = (year > 0) ? year % 200U : (day == 1 ? 0 : 1U);
-  m = month;
-  d = day;
-  hh = hour % 24;
-  mm = min % 60;
-  ss = sec % 60;
+    yOff = (year - 2000U) % 200U;
+  else
+     yOff = year % 200U;
 }
 
 /*!
@@ -235,23 +231,13 @@ DateTime::DateTime(uint16_t year, uint8_t month, uint8_t day, uint8_t hour,
              The `tm` month range is 0-11, we add 1 to make it 1-12.
 */
 DateTime::DateTime(struct tm& rtmTime) {
-  yOff = (rtmTime.tm_year + 1900 - 2000);   // Move year offset from 1900 to 2000 (i.e -100)
+  yOff = (rtmTime.tm_year + (1900 - 2000));   // Move year offset from 1900 to 2000 (i.e -100)
   m    = (rtmTime.tm_mon + 1);   // convert from 0-11 to 1-12 month format.
   d    = rtmTime.tm_mday;
   hh   = rtmTime.tm_hour;
   mm   = rtmTime.tm_min;
   ss   = rtmTime.tm_sec;
 }
-
-/**************************************************************************/
-/*!
-    @brief  Copy constructor.
-    @param copy DateTime to copy.
-*/
-/**************************************************************************/
-DateTime::DateTime(const DateTime &copy)
-    : yOff(copy.yOff), m(copy.m), d(copy.d), hh(copy.hh), mm(copy.mm),
-      ss(copy.ss) {}
 
 /**************************************************************************/
 /*!
@@ -291,19 +277,19 @@ static uint8_t conv2d(const char *p) {
 */
 /**************************************************************************/
 DateTime::DateTime(const char *date, const char *time) {
-  yOff = conv2d(date + 9);
+  yOff = (date[8] == '1'? 100 : 0) + conv2d(date + 9); 
   // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
   switch (date[0]) {
-  case 'J':
+  case 'J': // J[a]n, Ju[n], Ju[l]
     m = (date[1] == 'a') ? 1 : ((date[2] == 'n') ? 6 : 7);
     break;
   case 'F':
     m = 2;
     break;
-  case 'A':
-    m = date[2] == 'r' ? 4 : 8;
+  case 'A': // A[p]r, A[u]g
+    m = date[1] == 'p' ? 4 : 8;
     break;
-  case 'M':
+  case 'M': // Ma[r], Ma[y]
     m = date[2] == 'r' ? 3 : 5;
     break;
   case 'S':
@@ -344,19 +330,19 @@ DateTime::DateTime(const __FlashStringHelper *date,
                    const __FlashStringHelper *time) {
   char buff[11];
   memcpy_P(buff, date, 11);
-  yOff = conv2d(buff + 9);
+  yOff = (buff[8] == '1'? 100 : 0) + conv2d(buff + 9);
   // Jan Feb Mar Apr May Jun Jul Aug Sep Oct Nov Dec
   switch (buff[0]) {
-  case 'J':
+  case 'J': // J[a]n, Ju[n], Ju[l]
     m = (buff[1] == 'a') ? 1 : ((buff[2] == 'n') ? 6 : 7);
     break;
   case 'F':
     m = 2;
     break;
-  case 'A':
-    m = buff[2] == 'r' ? 4 : 8;
+  case 'A': // A[p]r, A[u]g
+    m = buff[1] == 'p' ? 4 : 8;
     break;
-  case 'M':
+  case 'M': // Ma[r], Ma[y]
     m = buff[2] == 'r' ? 3 : 5;
     break;
   case 'S':
@@ -405,7 +391,7 @@ DateTime::DateTime(const __FlashStringHelper *date,
 DateTime::DateTime(const char *iso8601dateTime) {
   char ref[] = "2000-01-01T00:00:00";
   memcpy(ref, iso8601dateTime, min(strlen(ref), strlen(iso8601dateTime)));
-  yOff = conv2d(ref + 2);
+  yOff = (ref[1] == '1'? 100 : 0) + conv2d(ref + 2);
   m = conv2d(ref + 5);
   d = conv2d(ref + 8);
   hh = conv2d(ref + 11);
@@ -544,7 +530,7 @@ char *DateTime::toString(char *buffer) const {
     // Get the name of the weekday give the day number and offset.
     if (buffer[i] == 'D' && buffer[i + 1] == 'D' && buffer[i + 2] == 'D') {
       static PROGMEM const char day_names[] = "MonTueWedThuFriSatSun";
-      const char *p = &day_names[3 * ((dayOfTheWeek() + WEEKDAY_NAME_OFFSET) % 7)];
+      const char* p = &day_names[3 * ((dayOfTheWeek() + WeekdayNameOffset) % 7)];
       buffer[i] = pgm_read_byte(p);
       buffer[i + 1] = pgm_read_byte(p + 1);
       buffer[i + 2] = pgm_read_byte(p + 2);
@@ -667,7 +653,7 @@ uint32_t DateTime::unixtime(void) const {
   uint32_t t;
   uint16_t days = date2days(yOff, m, d);
   t = time2ulong(days, hh, mm, ss);
-  t += SECONDS_FROM_1970_TO_2000; // seconds from 1970 to 2000
+  t += SecondsFrom1970to2000; // seconds from 1970 to 2000
 
   return t;
 }
@@ -679,7 +665,7 @@ uint32_t DateTime::unixtime(void) const {
     The result can be converted back to a DateTime with:
 
     ```cpp
-    DateTime(SECONDS_FROM_1970_TO_2000 + value)
+    DateTime(SecondsFrom1970to2000 + value)
     ```
 
     @return Number of seconds since 2000-01-01 00:00:00.
@@ -799,7 +785,7 @@ String DateTime::timestamp(timestampOpt opt) const {
   // Generate timestamp according to `opt`
   switch (opt) {
   case TIMESTAMP_TIME:
-    // Only time: Hour:Minute:Second
+    // Only time: Hour24:Minute:Second
     snprintf(buffer, BUFFER_SIZE, "%02d:%02d:%02d", hh, mm, ss);
     break;
   case TIMESTAMP_DATE:
@@ -807,7 +793,7 @@ String DateTime::timestamp(timestampOpt opt) const {
     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d", 2000U + yOff, m, d);
     break;
   case TIMESTAMP_DATETIME:
-    // Date and time: Year-Month-Day Hour:Minute:Second
+    // Date and time: Year-Month-Day Hour24:Minute:Second
      snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02d %02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
      break;
   case TIMESTAMP_DATETIME12:
@@ -821,7 +807,7 @@ String DateTime::timestamp(timestampOpt opt) const {
              mm, ss, hh < 12 ? "AM" : "PM");
      break;
   case TIMESTAMP_TIME_HM:
-     // Only time: Hour:Minute
+     // Only time: Hour24:Minute
      snprintf(buffer, BUFFER_SIZE, "%02d:%02d:", hh, mm);
      break;
   case TIMESTAMP_TIME12_HM:
@@ -830,16 +816,16 @@ String DateTime::timestamp(timestampOpt opt) const {
              mm, hh < 12 ? "AM" : "PM");
      break;
   case TIMESTAMP_DATE_DMY:
-     // Only date: Day-Month-Year
+     // Only date: Day-Month-Year (Europe)
      snprintf(buffer, BUFFER_SIZE, "%02d-%02d-%u", d, m, 2000U + yOff);
      break;
-  case TIMESTAMP_DATE_MDY:
-     // Only date: Month-Day-Year
+  case TIMESTAMP_DATE_MDY: 
+     // Only date: Month-Day-Year (US)
      snprintf(buffer, BUFFER_SIZE, "%02d-%02d-%u", m, d, 2000U + yOff);
      break;
   case TIMESTAMP_FULL:
   default:
-    // Full date and time: Year-Month-DayTHour:Minute:Second
+    // Full date and time: (ISO 8601 format) Year-Month-DayTHour:Minute:Second
     snprintf(buffer, BUFFER_SIZE, "%u-%02d-%02dT%02d:%02d:%02d", 2000U + yOff, m, d, hh, mm, ss);
     break;
   }
@@ -855,7 +841,7 @@ String DateTime::timestamp(timestampOpt opt) const {
 // Monday would be the first day of the week. If you want Sunday as the first day of the
 // week you'd choose October 1st, 2000, which was a Sunday.
 // So WeekdayEpoch.dayOfTheWeek() always returns 0, the first day of the week.
-const DateTime DateTime::WeekdayEpoch = DateTime(2000, FIRST_WEEKDAY_MONTH, 1, 0, 0, 0);
+const DateTime DateTime::WeekdayEpoch = DateTime(2000, FirstWeekdayMonth, 1, 0, 0, 0);
 
 // The epoch for the DateTime class, which is 1 Jan 2000, 00:00:00.
 // This can be used to calculate the time difference between two DateTime objects.

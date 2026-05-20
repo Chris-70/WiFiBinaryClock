@@ -1,6 +1,15 @@
 /**************************************************************************/
 /*!
   @file     RTClib.h
+  @details  This is a fork of `Adafruit's RTClib` to expand the functionality,
+            support 12 hour mode, selectable day for the start of the week, etc.
+            (see RTClibPlus library: https://github.com/Chris-70/RTClibPlus),
+            review the `ForkDifferences.md` file for details on the differences
+            between this library and the original Adafruit RTClib
+            (https://github.com/Chris-70/RTClibPlus/blob/RTClibPlus/ForkDifferences.md).
+
+  @par Adafruit Library  
+  https://github.com/adafruit/RTClib
 
   Original library by JeeLabs http://news.jeelabs.org/code/, released to the
   public domain
@@ -49,25 +58,25 @@ enum Ds3231SqwPinMode {
 /** DS3231 Alarm modes for alarm 1 */
 enum Ds3231Alarm1Mode {
   DS3231_A1_PerSecond = 0x0F, /**< Alarm once per second */
-  DS3231_A1_Second = 0x0E,    /**< Alarm when seconds match */
-  DS3231_A1_Minute = 0x0C,    /**< Alarm when minutes and seconds match */
+  DS3231_A1_Second = 0x0E,    /**< Alarm when seconds match (every minute) */
+  DS3231_A1_Minute = 0x0C,    /**< Alarm when minutes and seconds match (hourly) */
   DS3231_A1_Hour = 0x08,      /**< Alarm when hours, minutes
-                                   and seconds match */
+                                   and seconds match (daily) */
   DS3231_A1_Date = 0x00,      /**< Alarm when date (day of month), hours,
-                                   minutes and seconds match */
+                                   minutes and seconds match (monthly) */
   DS3231_A1_Day = 0x10        /**< Alarm when day (day of week), hours,
-                                   minutes and seconds match */
+                                   minutes and seconds match (weekly) */
 };
 /** DS3231 Alarm modes for alarm 2 */
 enum Ds3231Alarm2Mode {
   DS3231_A2_PerMinute = 0x7, /**< Alarm once per minute
                                   (whenever seconds are 0) */
-  DS3231_A2_Minute = 0x6,    /**< Alarm when minutes match */
-  DS3231_A2_Hour = 0x4,      /**< Alarm when hours and minutes match */
+  DS3231_A2_Minute = 0x6,    /**< Alarm when minutes match (hourly) */
+  DS3231_A2_Hour = 0x4,      /**< Alarm when hours and minutes match (daily) */
   DS3231_A2_Date = 0x0,      /**< Alarm when date (day of month), hours
-                                  and minutes match */
+                                  and minutes match (monthly) */
   DS3231_A2_Day = 0x8        /**< Alarm when day (day of week), hours
-                                  and minutes match */
+                                  and minutes match (weekly) */
 };
 /** PCF8523 INT/SQW pin mode settings */
 enum Pcf8523SqwPinMode {
@@ -125,7 +134,7 @@ enum Pcf8563SqwPinMode {
 */
 /**************************************************************************/
 class RTC_I2C {
-protected:
+public:
   /*!
       @brief  Convert a binary coded decimal value to binary. RTC stores
     time/date values as BCD.
@@ -139,9 +148,10 @@ protected:
       @return BCD value
   */
   static uint8_t bin2bcd(uint8_t val) { return val + 6 * (val / 10); }
-  Adafruit_I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
   uint8_t read_register(uint8_t reg);
   void write_register(uint8_t reg, uint8_t val);
+protected:
+  Adafruit_I2CDevice *i2c_dev = NULL; ///< Pointer to I2C bus interface
 };
 
 /**************************************************************************/
@@ -169,7 +179,7 @@ public:
               from 0 (WeekdayEpoch.dayOfTheWeek()) to 6 (WeekdayEpoch.dayOfTheWeek() + 6).
       @return the converted value
   */
-  static uint8_t dowToDS1307(uint8_t d) { return d + 1; }
+  static uint8_t dowToDS1307(uint8_t d) { return (d > 6? 6 : d + 1); }
   bool getIs12HourMode();
   void setIs12HourMode(bool value);
 };
@@ -182,16 +192,18 @@ public:
 class RTC_DS3231 : public RTC_I2C {
 public:
   bool begin(TwoWire *wireInstance = &Wire);
-  void adjust(const DateTime& dt);
+  uint8_t* adjust(const DateTime& dt, bool use12HourMode, uint8_t (buf)[8]);
   void adjust(const DateTime& dt, bool use12HourMode);
-  uint8_t* adjust(const DateTime& dt, bool use12HourMode, uint8_t* buf);
+  void adjust(const DateTime& dt);
   bool lostPower(void);
   DateTime now();
   Ds3231SqwPinMode readSqwPinMode();
   void writeSqwPinMode(Ds3231SqwPinMode mode);
-  bool setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode);
+  bool setAlarm1(uint8_t day, uint8_t hour24, uint8_t min, uint8_t sec, Ds3231Alarm1Mode alarm_mode);
+  bool setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode = Ds3231Alarm1Mode::DS3231_A1_Hour);
   bool setAlarm1(const DateTime &dt, Ds3231Alarm1Mode alarm_mode, bool use12HourMode);
-  bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode);
+  bool setAlarm2(uint8_t day, uint8_t hour24, uint8_t min, Ds3231Alarm2Mode alarm_mode);
+  bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode = Ds3231Alarm2Mode::DS3231_A2_Hour);
   bool setAlarm2(const DateTime &dt, Ds3231Alarm2Mode alarm_mode, bool use12HourMode);
   DateTime getAlarm1();
   DateTime getAlarm2();
@@ -212,7 +224,7 @@ public:
               from 0 (WeekdayEpoch.dayOfTheWeek()) to 6 (WeekdayEpoch.dayOfTheWeek() + 6).
       @return the converted value
   */
-  static uint8_t dowToDS3231(uint8_t d) { return d + 1; }
+  static uint8_t dowToDS3231(uint8_t d) { return (d > 6? 6 : d + 1); }
   bool getIs12HourMode();
   void setIs12HourMode(bool value);
 

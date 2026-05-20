@@ -310,6 +310,18 @@ namespace BinaryClockShield
       /// @author Chris-70 (2025/09)
       size_t calculateTotalSize() const;
 
+      /// @brief Update/find the AP credentials for an existing entry with the same SSID and BSSID, 
+      ///        or just return the ID if the credentials are the same. 
+      /// @details This helper method checks if an AP entry with the same SSID and BSSID already exists. 
+      ///          If it does, it updates the credentials of that entry if the P/W changed. 
+      ///          This method is called from both `AddWiFiCreds()` methods.
+      /// @param creds The `APCreds` structure containing the AP credentials to update.
+      /// @return The ID of the updated/found access point.
+      /// @see AddWiFiCreds(const String& ssid, const String& password, const String& bssid = "")
+      /// @see AddWiFiCreds(const APCreds& creds)
+      /// @author Chris-70 (2026/03)
+      uint8_t updateWiFiCreds(const APCreds& creds);
+
    //#################################################################################//  
    //                                   FIELDS                                        //  
    //#################################################################################//   

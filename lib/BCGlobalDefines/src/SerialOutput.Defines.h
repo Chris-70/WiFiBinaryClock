@@ -1,9 +1,3 @@
-#pragma once
-#ifndef __SERIALOUTPUT_DEFINES_H__
-#define __SERIALOUTPUT_DEFINES_H__
-
-#include <Streaming.h>           /// Streaming serial output with `operator<<` (https://github.com/janelia-arduino/Streaming)
-
 /// @file SerialOutput.Defines.h
 /// @brief Defines for controlling serial output statements.
 /// @details This file contains the MACRO definitions to control the serial output
@@ -26,6 +20,12 @@
 ///################################################################################//
 /// @endverbatim
 
+#pragma once
+#ifndef __SERIALOUTPUT_DEFINES_H__
+#define __SERIALOUTPUT_DEFINES_H__
+
+#include <Streaming.h>           /// Streaming serial output with `operator<<` (https://github.com/janelia-arduino/Streaming)
+
 #define FOREVER while(true)            ///< Infinite loop, e.g. used in task methods.
 
 #ifndef PRINTF_OK
@@ -34,8 +34,9 @@
 
 // ##################################################################################### //
 /// These methods/functions can be redefined if the definition is placed BEFORE the 
-/// #include <BinaryClock.Defines.h> statement in the source file where it is used.
-/// Define any of these in the "board_select.h" file as it is included first.
+/// `#include <BinaryClock.Defines.h>` statement in the source file where it is used.
+/// This is usually done in the `BinaryClock.ProjectConfig.h` file as it is included 
+/// first in the project. `board_select.h` is for user options.
 /// Note: These defines are for developers who are modifying/extending the library and
 ///       need to tailor the `SERIAL_TIME()`; `SERIAL_TIME_STREAM()`; and `SERIAL_SETUP_STREAM()`
 ///       MACROs for their own code. This can be done by defining them BEFORE this file is included.
@@ -52,7 +53,7 @@
 
 //#####################################################################################//  
 /// These output statements are defined as MACROs to simplify the code.
-/// This avoids surrounding the code with #if `__defined__` directives. An additional
+/// This avoids surrounding the code with `#if __defined__` directives. An additional
 /// advantage is that the code is not compiled at all if `__defined__` is false or undefined.  
 /// This code contains output statements that are used for different development and debugging
 /// purposes. The output statements can be enabled/disabled by defining the appropriate

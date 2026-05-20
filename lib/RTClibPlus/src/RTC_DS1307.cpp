@@ -184,9 +184,6 @@ void RTC_DS1307::setIs12HourMode(bool value)
              'use12HourFormat' parameter.
 */
 /**************************************************************************/
-void RTC_DS1307::adjust(const DateTime &dt) 
-               { adjust(dt, getIs12HourMode()); }
-
 void RTC_DS1307::adjust(const DateTime &dt, bool use12HourFormat) {
   uint8_t buffer[8] = {0,
               (uint8_t)(bin2bcd(dt.second() % 60)            & DS_SECONDS_MASK), // CH bit = 0
@@ -198,6 +195,11 @@ void RTC_DS1307::adjust(const DateTime &dt, bool use12HourFormat) {
               (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)};   // (0-99)
   i2c_dev->write(buffer, 8);
 }
+/*!
+    @copydoc adjust(const DateTime& dt, bool use12HourFormat)
+*/
+void RTC_DS1307::adjust(const DateTime &dt) 
+               { adjust(dt, getIs12HourMode()); }
 
 /**************************************************************************/
 /*!

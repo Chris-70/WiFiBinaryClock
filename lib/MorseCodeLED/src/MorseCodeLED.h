@@ -1,7 +1,7 @@
 /// @file MorseCodeLED.h
 /// @brief Header file for the MorseCodeLED class.
 /// @details This file contains the declaration of the MorseCodeLED class, which is used to
-///          flash an LED in Morse code. The class supports flashing predefined messages,
+///          flash a LED in Morse code. The class supports flashing predefined messages,
 ///          as well as arbitrary strings of text. The class is designed to be used with
 ///          the Arduino framework and can be easily integrated into existing projects.
 /// @note When `LIMITED_MEMORY` is defined `true`, the class is truncated.  
@@ -14,22 +14,50 @@
 
 #include <Arduino.h>
 
-// If BINARY_CLOCK_LIB hasn't been defined set it to false.
-// This is for when it is included in the `WiFiBinaryClock` project.
-//   - `Flash_CQD()` is replaced with `Flash_CQD_NO_RTC()`.
-//   - UNO_R3 is defined when the target board is an UNO R3, which is 
-//     ROM limited in that project.
+// These defines are used to set the ON and OFF states for the LED, depending on how it is wired.
+// Common Cathode (CC) wiring: ON when HIGH, OFF when LOW.
+// Common Anode   (CA) wiring: ON when LOW,  OFF when HIGH.
+#define CC_ON        HIGH              ///< Common Cathode (CC) LED wiring, ON  when HIGH.
+#define CC_OFF        LOW              ///< Common Cathode (CC) LED wiring, OFF when LOW.
+#define CA_ON         LOW              ///< Common Anode   (CA) LED wiring, ON  when LOW.
+#define CA_OFF       HIGH              ///< Common Anode   (CA) LED wiring, OFF when HIGH.
+
+#pragma region BinaryClockProject
+// [The WiFiBinaryClock project (https://github.com/Chris-70/BinaryClock_ESP32)] 
+// When compiled as part of the WiFiBinaryClock project, the file `BinaryClock.ProjectConfig.h`
+// (in `lib/BCGlobalDefines/src/`) defines `BINARY_CLOCK_LIB=true` to include the required methods
+// that are unique to that project (e.g. `Flash_CQD_NO_RTC()`) .
+// `BINARY_CLOCK_LIB` defaults to false for all other cases.
 #ifndef BINARY_CLOCK_LIB
-   #define BINARY_CLOCK_LIB false
-#else
+   #ifdef __has_include
+      #if __has_include("BinaryClock.ProjectConfig.h")
+         #include "BinaryClock.ProjectConfig.h"
+      #endif
+   #endif // __has_include
+   #ifndef BINARY_CLOCK_LIB
+      #define BINARY_CLOCK_LIB false   ///< Default: standalone use, not the WiFiBinaryClock project.
+   #endif 
+#endif // BINARY_CLOCK_LIB
+
+#if BINARY_CLOCK_LIB
    #ifdef UNO_R3
       #define LIMITED_MEMORY true
-   #endif 
+   #endif
 #endif
+#pragma endregion BinaryClockProject 
 
 // If not defined, assume no memory limits, include the full library.
 #ifndef LIMITED_MEMORY
    #define LIMITED_MEMORY false
+#endif
+
+// The MCode is stored as a 16-bit value, with the upper 4 bits representing the length of the code and 
+// the lower 12 bits representing the pattern of dots and dashes. A dot is 0, a dash is 1.
+#define CODE_BITS                12    ///< Number of bits to store the Morse code.
+#define  LEN_BITS                 4    ///< Number of bits to store the code length.
+
+#if !defined(DEFAULT_ON_STATE)
+   #define DEFAULT_ON_STATE      CC_ON ///< Default state to turn the LED on (HIGH for CC wiring).
 #endif
 
 namespace BinaryClockShield
@@ -108,6 +136,7 @@ namespace BinaryClockShield
       ///         | Roger      |` .-.        `|  {0x3002}  | (len=3, code=010)       |` [R]     `| Received OK, Roger       | R; Roger               |
       ///         | R          |` .-.        `|  {0x3002}  | (len=3, code=010)       |` [R]     `| Received OK, Roger       | Roger; R               |
       ///         | K          |` -.-        `|  {0x3005}  | (len=3, code=101)       |` [K]     `| Invitation to transmit   | Invite, Over           |
+      ///         | AA         |` .-.-       `|  {0x4005}  | (len=4, code=0101)      |` [AA]    `| Next line                | AA;                    |
       ///         | AR         |` .-.-.      `|  {0x500A}  | (len=5, code=01010)     |` [AR]    `| End of message, Out      | End, Out               |
       ///         | AS         |` .-...      `|  {0x5008}  | (len=5, code=01000)     |` [AS]    `| Wait for response        | Wait                   |
       ///         | VE         |` ...-.      `|  {0x5002}  | (len=5, code=00010)     |` [VE]    `| Understood               | Understood; Verified   |
@@ -117,7 +146,7 @@ namespace BinaryClockShield
       ///         | SK         |` ...-.-     `|  {0x5025}  | (len=6, code=001101)    |` [SK]    `| End of contact           | VA; OUT                |
       ///         | C          |` -.-.       `|  {0x4005}  | (len=4, code=1010)      |` [C]     `| Correct, Confirm, Yes    | (not a prosign)        |
       ///         | N          |` -.         `|  {0x2002}  | (len=2, code=10)        |` [N]     `| Negative, No             | (not a prosign)        |
-      ///         | EndMark    |`            `|  End of command list. ||||
+      ///         | EndMark    |`            `|  End of command list Marker. ||||
       /// -----
       /// @note Some `Prosign`s have multiple representations or are not strictly prosigns (like FullStop). 
       ///       These common signs and word representations are included for the caller's benefit to make the 
@@ -144,6 +173,7 @@ namespace BinaryClockShield
          Roger     ,   ///< `|  .-.         |  {0x3002}  | (len=3, code=010)       | [R]     | Received OK, Roger       |`
          R         ,   ///< `|  .-.         |  {0x3002}  | (len=3, code=010)       | [R]     | Received OK, Roger       |`
          K         ,   ///< `|  -.-         |  {0x3005}  | (len=3, code=101)       | [K]     | Invitation to transmit   |`
+         AA        ,   ///< `|  .-.-        |  {0x4005}  | (len=4, code=0101)      | [AA]    | Next line                |`
          AR        ,   ///< `|  .-.-.       |  {0x500A}  | (len=5, code=01010)     | [AR]    | End of message           |`
          AS        ,   ///< `|  .-...       |  {0x5008}  | (len=5, code=01000)     | [AS]    | Wait for response        |`
          VE        ,   ///< `|  ...-.       |  {0x5002}  | (len=5, code=00010)     | [VE]    | Understood, Verified     |`
@@ -173,25 +203,26 @@ namespace BinaryClockShield
          uint16_t pattern;       ///< The full 16 bit pattern (len + code).
          struct
             {
-            uint16_t code : 12;  ///< [00-11] Morse code pattern (max 12 bits)
-            uint16_t len  :  4;  ///< [12-15] Length of the Morse code sequence (max 12)
+            uint16_t code : CODE_BITS;  ///< [00-11] Morse code pattern (max 12 bits)
+            uint16_t len  :  LEN_BITS;  ///< [12-15] Length of the Morse code sequence (max 12)
             };
 
          /// @brief Constructor to initialize the MCode with a length and code.
          /// @param len The length of the Morse code sequence (0-12).
-         /// @param code The Morse code pattern (0-4095).
+         /// @param code The Morse code pattern (0 to 12 bits): 0 for dot; 1 for dash.
          /// @note The length is forced to be within 0-12 to avoid overflow and
          ///       ensure it can't cause memory access outside the integer.
-         MCode(uint8_t len, uint16_t code) : code(code), len(len > 12 ? 12 : len) {}
+         MCode(uint8_t len, uint16_t code) : code(code), len(len > CODE_BITS ? CODE_BITS : len) { }
+
          /// @brief Constructor to initialize the MCode with a 16-bit value.
          /// @param value The 16-bit value containing the Morse code pattern and length.
          /// @note The length is forced to be within 0-12 to avoid overflow and
          ///       ensure it can't cause memory access outside the integer.
          MCode(uint16_t value) : pattern(value) 
             { 
-            if (this->len > 12) 
+            if (this->len > CODE_BITS) 
                { 
-               this->len = 12;
+               this->len = CODE_BITS;
                } 
             }
          /// @brief Default constructor initializes the MCode with a pattern of 0.
@@ -219,7 +250,13 @@ namespace BinaryClockShield
       /// @brief Constructor for the MorseCodeLED class, requires a 
       ///        pin number for the attached LED.
       /// @param ledPin The pin number where the LED is connected.
-      MorseCodeLED(int ledPin);
+      MorseCodeLED(uint8_t ledPin);
+
+      /// @brief Constructor for the MorseCodeLED class, requires a 
+      ///        pin number for the attached LED and the ON state (HIGH or LOW).
+      /// @param ledPin The pin number where the LED is connected.
+      /// @param onState The state to turn the LED on CC_ON or CA_ON (HIGH or LOW).
+      MorseCodeLED(uint8_t ledPin, uint8_t onState);
 
       /// @brief Starting method, needs to be called before any other method.
       void Begin();
@@ -229,7 +266,7 @@ namespace BinaryClockShield
       /// @details This method flashes the "Come Quick Distress No Real Time Clock" message
       ///          called from the BinaryClock::purgatory() method. This is the only message
       ///          that is available on the UNO R3 board, as it lacks resources for more.
-      void Flash_CQD_NO_RTC();  // Predefined error message for BinaryClock.
+      void Flash_CQD_NO_RTC();  // Predefined error message for WiFiBinaryClock project.
       #else
       /// @brief Method to flash the predefined error message, "CQD" in Morse code.
       /// @details This method flashes the "Come Quick Distress" error message.
@@ -266,12 +303,14 @@ namespace BinaryClockShield
       void flashLED(int duration);
 
    private:
-      int ledPin; ///< The pin number where the LED is connected.
+      const uint8_t ledPin;            ///< The pin number where the LED is connected.
+      const uint8_t onState;           ///< The state to turn the LED on (HIGH or LOW).
 
       #pragma region Full_Class
       // If the board has limited memory, we have to limit the functionality to the `Flash_CQD()` and `FlashMorseCode()` methods, 
       // for just flashing the "CQD" message or a user defined message as there are limited resources available.
       // The full Morse code functionality is only available when `LIMITED_MEMORY` is not defined or is defined as false.
+      // This is the remainder of the class when there is enough memory (RAM/ROM) to include the full functionality.
       #if !defined(LIMITED_MEMORY) || !LIMITED_MEMORY
    public:
       /// @brief Method to flash a single character in Morse code. Characters A-Z, 0-9, many punctuation symbols.
@@ -287,7 +326,7 @@ namespace BinaryClockShield
       /// @param text The null terminated C string to flash in Morse code.
       void FlashString(const String& text); 
 
-      /// @brief Method to flash a Morse code Prosign (Procedural SIgnal) as defined in the `Prosign` enumeration.
+      /// @brief Method to flash a Morse code Prosign (Procedural Signal) as defined in the `Prosign` enumeration.
       /// @details This method flashes the LED according to the Morse code pattern for the given Prosign.
       ///          It uses the flashMCode() method to flash the prosign.
       /// @param sign The Prosign (Procedural Signal) to flash in Morse code.
@@ -295,6 +334,7 @@ namespace BinaryClockShield
       ///          Some of the defined prosigns are two representations of the same Morse code, 
       ///          e.g. `Error` and `HH` where HH is the prosign and Error is the spoken equivalent.
       /// @see Prosign
+      /// @see FlashProsignWord()
       void FlashProsign(Prosign sign);
 
       /// @brief Method to flash a Prosign keyword string in Morse code. Keywords that are equivalent a `Prosign`
@@ -307,16 +347,20 @@ namespace BinaryClockShield
       /// @paragraph The currently supported predefined prosign messages are: 
       ///            - "START" or "STARTING" for the prosign KA [-.-.-]
       ///            - "END" or "OK" for the prosign AR [.-.-.]
-      ///            - "ENDWORK" or "OUT" for the prosign SK [...-.-]
+      ///            - "ENDWORK", "OUT" or "OVEROUT" for the prosign SK [...-.-]
+      ///            - "WAIT" or "BUSY" for the prosign AS [.-...]
+      ///            - "FULLSTOP", "PERIOD" or "DOT" for the prosign `.` [.-.-.-]
       ///            - "OVER" or "INVITE" for the prosign K [-.-]
       ///            - "UNDERSTOOD" for the prosign VE [...-.]
       ///            - "SAYAGAIN" for the prosign "?" [..--..]
-      ///            - "ROGER" for the prosign R [.-.]
       ///            - "CORRECTION" or "ERROR" for the prosign HH [......]
-      ///            - "OUT" for the prosign SK [...-.-]
       ///            - "YES", "CORRECT" or "CONFIRM" for the prosign C [.-.]
       ///            - "NO" or "NEGATIVE" for the prosign N [-..-]
       ///            - "SOS" for the life emergency prosign SOS [...---...]
+      ///            - "ROGER" for the prosign R [.-.]
+      ///            - etc. includes the prosigns defined in the Prosign enumeration.
+      /// @see Prosign
+      /// @see FlashProsign()
       void FlashProsignWord(String keyword);
 
    protected:
@@ -332,7 +376,7 @@ namespace BinaryClockShield
       void flashMCode(const MCode& morseData);
 
    private:
-      /// @brief Helper method called by FlashCharacter() to flash a single letter, A-Z or number, 0-9.
+      /// @brief Helper method called by FlashCharacter() to flash a single letter, `A-Z` or number, `0-9`.
       /// @details The FlashCharacter() method determines the type of character it is: Alphabetic: Numeric;
       ///          or punctuation. For alpha-numeric characters it calls this method with the index for
       ///          the character to flash. This method then sends the MCode for the character to flashMCode().

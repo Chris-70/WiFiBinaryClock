@@ -102,6 +102,10 @@
 // Generic Task Wrapper for Instance Methods
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
+#define SECONDS_MS                  1000UL         ///< Number of milliseconds in 1 second.
+#define MINUTES_MS                  60000UL        ///< Number of milliseconds in 1 minute.
+#define HOURS_MS                    3600000UL      ///< Number of milliseconds in 1 hour.
+
 #define DEFAULT_STACKSIZE     2048U                   /// The default stack size for a small task, in words.
 #define DEFAULT_PRIORITY      (tskIDLE_PRIORITY + 1U) /// The default task priority, just above idle.
 
@@ -525,7 +529,7 @@ TaskHandle_t CreateMethodTask( void (*method)(Args...)
    return taskHandle;
    }
 
-/// @copydoc CreateMethodTask(T*, void (T::*)(Args...), const char*, uint32_t, UBaseType_t, Args...)
+/// @copydoc CreateMethodTask(void (*)(Args...), const char*, uint32_t, UBaseType_t, Args...)
 /// @remarks Calls `CreateMethodTask(T*, void (T::*)(Args...), const char*, uint32_t, UBaseType_t, Args...)`
 ///          using the default stack size, `DEFAULT_STACKSIZE` (e.g. 1024 words) and 
 ///          priority `DEFAULT_PRIORITY` (e.g. tskIDLE_PRIORITY + 1).

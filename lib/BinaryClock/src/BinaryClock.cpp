@@ -389,6 +389,50 @@ namespace BinaryClockShield
       #define serialTime() 
    #endif
 
+   #if STL_USED
+   int BinaryClock::ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const std::vector<std::pair<CRGB, CRGB>>& colorPairs)
+      {
+      if (colorPairs.size() == 0) { return -1; }
+
+      int result = 0;
+      std::vector<std::pair<CRGB, std::vector<fl::size>>> colorMap;
+      for (auto& pair : colorPairs)
+         {
+         CRGB colorA = pair.first;
+         CRGB colorB = pair.second;
+
+         std::pair<CRGB, std::vector<fl::size>> changePair;
+         changePair.first = colorB;
+         std::vector<fl::size> indices;
+         for (fl::size i = 0; i < ledBuffer.size(); i++)
+            {
+            if (ledBuffer[i] == colorA)
+               {
+               indices.push_back(i);
+               }
+            }
+
+         if (indices.size() > 0)
+            {
+            changePair.second = indices;
+            colorMap.push_back(changePair);
+            }
+         } // for each color pair
+
+      for (auto& pair : colorMap)
+         {
+         CRGB newColor = pair.first;
+         for (auto& index : pair.second)
+            {
+            ledBuffer[index] = newColor;
+            result++;
+            }
+         }
+
+      return result;
+      }
+   #endif // STL_USED
+
    #if DEV_CODE
    const char* weekdays[7] = 
          {
@@ -432,48 +476,6 @@ namespace BinaryClockShield
             }
          }
 
-      return result;
-      }
-
-   int BinaryClock::ChangeColors(fl::array<CRGB, TOTAL_LEDS>& ledBuffer, const std::vector<std::pair<CRGB, CRGB>>& colorPairs)
-      { 
-      if (colorPairs.size() == 0) { return -1; }
-
-      int result = 0;
-      std::vector<std::pair<CRGB, std::vector<fl::size>>> colorMap;
-      for (auto& pair : colorPairs)
-         {
-         CRGB colorA = pair.first;
-         CRGB colorB = pair.second;
-
-         std::pair<CRGB, std::vector<fl::size>> changePair;
-         changePair.first = colorB;
-         std::vector<fl::size> indices;
-         for (fl::size i = 0; i < ledBuffer.size(); i++)
-            {
-            if (ledBuffer[i] == colorA)
-               {
-               indices.push_back(i);
-               }
-            }
-
-         if (indices.size() > 0)
-            {
-            changePair.second = indices;
-            colorMap.push_back(changePair);
-            }
-         } // for each color pair
-
-      for (auto& pair : colorMap)
-         {
-         CRGB newColor = pair.first;
-         for (auto& index : pair.second)
-            {
-            ledBuffer[index] = newColor;
-            result++;
-            }
-         }
-      
       return result;
       }
 
@@ -722,7 +724,7 @@ namespace BinaryClockShield
       Alarm2.number = ALARM_2;
       Alarm2.clear();
 
-      BCButton::set_BounceDelay(DEFAULT_DEBOUNCE_DELAY);
+      // BCButton::set_DebounceDelay(DEFAULT_DEBOUNCE_DELAY);
  
       buttonS1.Initialize();
       buttonS2.Initialize();
@@ -1399,11 +1401,11 @@ namespace BinaryClockShield
       { return debugDelay; }
    #endif
 
-   void BinaryClock::set_DebounceDelay(unsigned long value)
-      { debounceDelay = value; }
+   // void BinaryClock::set_DebounceDelay(unsigned long value)
+   //    { debounceDelay = value; }
 
-   unsigned long BinaryClock::get_DebounceDelay() const
-      { return debounceDelay; }
+   // unsigned long BinaryClock::get_DebounceDelay() const
+   //    { return debounceDelay; }
    
    #if STL_USED
    void BinaryClock::set_Melody(size_t value)
@@ -1760,7 +1762,7 @@ namespace BinaryClockShield
       if (pattern != nullptr)
          {
          // The number of display LEDs in each row
-         int displayLeds[NUM_ROWS] 
+         int displayLeds[NUM_ROWS]  // 3
                = { NUM_SECOND_LEDS  // 6
                  , NUM_MINUTE_LEDS  // 6
                  , NUM_HOUR_LEDS};  // 5

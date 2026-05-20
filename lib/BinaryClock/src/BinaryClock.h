@@ -97,7 +97,7 @@
 #ifndef __BINARYCLOCK_H__
 #define __BINARYCLOCK_H__
 
-#define IBINARYCLOCK_IDNAME "BinaryClock_v0.9.4"
+#define IBINARYCLOCK_IDNAME "BinaryClock_v0.9.5"   ///< The name of the IBinaryClock interface implementation. Used for identification and debugging.
 
 #ifdef PIO_UNIT_TESTING          /// Check for the `PlatformIO` unit testing environment.
    #define TESTING true          /// Enable the `TESTING` code.
@@ -110,9 +110,9 @@
 #include <BinaryClock.Defines.h> /// BinaryClock project-wide definitions and MACROs.
 #include <BinaryClock.Structs.h> /// Global structures and enums used by the Binary Clock project.
 #if STL_USED
-   #include <IBinaryClock.h>     /// The pure interface class that defines the full supported features.
+   #include <IBinaryClock.h>     /// The pure interface class that defines the full interface features.
 #else
-   #include <IBinaryClockBase.h> /// The pure interface class that defines the minimum supported features.
+   #include <IBinaryClockBase.h> /// The pure interface class that defines the minimum interface features.
 #endif
 
 #include "BCMenu.h"              /// Binary Clock Settings class: handles all settings and serial output.
@@ -129,6 +129,7 @@
 
 #if STL_USED
    // STL classes required to be included (when using the STL):
+   #include <cassert>            /// assert
    #include <vector>
    #include <exception>          /// For std::exception
    #include <functional>
@@ -217,17 +218,17 @@ namespace BinaryClockShield
    /// @remarks This class is designed to be used with the excellent 'Binary Clock Shield for Arduino' by 
    ///          Marcin Saj (available from: https://nixietester.com/product/binary-clock-shield-for-arduino/), 
    ///          original source code: https://github.com/marcinsaj/Binary-Clock-Shield-for-Arduino  
-   ///          This class uses a fork of the Adafruit RTCLib library, RTClibPlus, for the RTC functionality 
-   ///          (https://github.com/adafruit/RTClib) in place of the original DS3232RTC library by 
-   ///          Jack Christensen (https://github.com/JChristensen/DS3232RTC) used in the original code.  
+   ///          This class uses a fork of the Adafruit RTCLib library (https://github.com/adafruit/RTClib), 
+   ///          RTClibPlus (https://github.com/Chris-70/RTClibPlus), for the RTC functionality in place of the 
+   ///          DS3232RTC library by Jack Christensen (https://github.com/JChristensen/DS3232RTC) in the original code.  
    ///          One big reason for this is the inclusion of the classes `DateTime` and `TimeSpan`
    ///          which closely resemble the C# classes. The implementation of `DateTime` keeps the
    ///          time in individual bytes for Year; Month; Day; Hours; Minutes; and Seconds which is
-   ///          close to the format that the RTC uses. This class has been fully documented using `Doxygen`.   
+   ///          close to the format that the RTC uses. This fork has been fully documented in the repository.   
    /// @design  This class was designed to be used with multiple Arduino UNO style boards and to encapsulate
    ///          the base functionality of displaying the time in Binary format on the shield. The class 
    ///          follows the `Singleton Pattern` to ensure that only one instance of the class exists.   
-   ///          The class implements the `IBinaryClockBase` interface to ensure that all required methods are provided.  
+   ///          The class implements the `IBinaryClock` interface to ensure that all required methods are provided.  
    ///          The `BCMenu` class handles all the menu and serial output functionality.  
    ///          The `BCButton` class handles all button related functionality.  
    ///          The `BinaryClock.Defines.h` file contains all the project-wide definitions and MACROs required 
@@ -238,7 +239,7 @@ namespace BinaryClockShield
    ///          in `BinaryClock.Defines.h` allowing the user to override defines and MACROs as required.  
    ///          The `pitches.h` file contains the default alarm melody.  
    /// @par     Custom Libraries:  
-   ///          - `RTClibPlus`: A fork of the Adafruit RTCLib library with additional features including
+   ///          - `RTClibPlus`: A fork of the Adafruit RTClib library with additional features including
    ///                          raw read/write access to the RTC registers and the `DateTime` and `TimeSpan` 
    ///                          classes. The library was modified to support 12 (i.e. AM/PM) time/alarm format 
    ///                          available on the RTC chip.  To accommodate all cultures, the starting 
@@ -252,7 +253,7 @@ namespace BinaryClockShield
    ///                            for communication of messages that can be understood by 0.001% of people 
    ///                            and by 100% of online Morse code interpreters, and it was a fun exercise.
    /// 
-   ///          - `BinaryClockWAN`:  A library to handle all WiFi related functionality including NTP server
+   ///          - `BinaryClockWiFi`: A library to handle all WiFi related functionality including NTP server
    ///                               connections for time synchronization. This library connects to an open 
    ///                               local WiFi, a secure WiFi using WPS, or a secure WiFi using credentials 
    ///                               from the user and stored in the ESP32 flash memory. The library also 
@@ -570,7 +571,7 @@ namespace BinaryClockShield
       /// @param repeat The number of times to flash ON/OFF, each takes ~(1 sec / frequency).    {1}
       /// @param dutyCycle The percentage of time to keep the LED ON (HIGH), 0 - 100.           {50}
       /// @param frequency The number of times per second to flash ON/OFF (Hz) 1 - 25.           {1}
-      /// @param onValue The value to set the pin to turn the LED ON (e.g. CC_ON or CCA_ON). {CC_ON}
+      /// @param onValue The value to set the pin to turn the LED ON (e.g. CC_ON or CA_ON). {CC_ON}
       /// @note CC_ON - The LED is wired CC, where the LED is on when the pin goes HIGH.  
       ///               The LED is in the OFF (LOW) state when this method returns.  
       ///       CA_ON - The LED is wired CA, where the LED is on when the pin goes LOW.  
@@ -769,10 +770,10 @@ namespace BinaryClockShield
       ///        This  happens when the shield isn't attached at startup but is attached later.
       /// @note  We do **NOT** use the actual distress code: _SOS_, as this is reserved for actual
       ///        life critical emergencies. We use the old distress code: CQD ["-.-.  --.-  -.."] 
-      ///        which means: 'Come Quick Distress`(*). This was replaced more than a century ago by 
-      ///        SOS. **SOS** is the international distress signal for life critical emergencies.
-      /// @par   (*) Okay, it doesn't really mean "Come Quick - Distress." `CG` is a call to all 
-      ///        stations, `D` is actually for Distress. `CGD` means: "All stations - Distress."
+      ///        which means: 'Come Quick - Distress`(*). This was replaced more than a century ago by 
+      ///        SOS. **SOS** is the international distress signal for all life critical emergencies.
+      /// @par   (*) Okay, it doesn't really mean "Come Quick - Distress." `CQ` is a call to all 
+      ///        stations, `D` is actually for Distress. `CQD` means: "All stations - Distress."
       /// @author Chris-70 (2025/07)
       void PurgatoryTask(const char* message = nullptr, bool rtcFault = true);
 
@@ -919,7 +920,6 @@ namespace BinaryClockShield
    public:
 
       /// @defgroup properties Properties
-      /// @{
       /// @brief Property pattern compatible with all .net languages that have properties (e.g. C#).  
       /// A property such as: @c type @c PropertyName
       /// is implied from C++ getters and setters that follow the pattern:  
@@ -971,6 +971,7 @@ namespace BinaryClockShield
       /// We are following this property pattern for all our "properties" in C++.
       /// If you aren't creating a property, don't use @c "get_"...()  or @c "set_"...()
       /// in your method/function names.
+      /// @{
 
       //  ingroup properties
       /// @brief Singleton pattern to ensure only one instance of BinaryClock.
@@ -990,7 +991,7 @@ namespace BinaryClockShield
       /// @author Chris-80 (2025/07)
       void set_Brightness(byte value);
       //  ingroup properties
-      /// @copydoc set_Brightness()
+      /// @copydoc set_Brightness(byte value)
       /// @return The current brightness level (0-255).
       /// @see set_Brightness()
       byte get_Brightness();
@@ -1103,17 +1104,17 @@ namespace BinaryClockShield
       /// @see set_PmColor()
       CRGB get_PmColor() const;
 
-      //  ingroup properties
-      /// @brief Property: 'DebounceDelay' time (ms) for the button press to stabilize. 
-      ///        Initially set to  DEFAULT_DEBOUNCE_DELAY.
-      /// @param value The debounce delay time in milliseconds.
-      /// @return The current debounce delay time in milliseconds.
-      /// @see get_DebounceDelay()
-      /// @author Chris-70 (2025/07)
-      void set_DebounceDelay(unsigned long value);
-      /// @copydoc set_DebounceDelay()
-      /// @see set_DebounceDelay()
-      unsigned long get_DebounceDelay() const;
+      // //  ingroup properties
+      // /// @brief Property: 'DebounceDelay' time (ms) for the button press to stabilize. 
+      // ///        Initially set to  DEFAULT_DEBOUNCE_DELAY.
+      // /// @param value The debounce delay time in milliseconds.
+      // /// @return The current debounce delay time in milliseconds.
+      // /// @see get_DebounceDelay()
+      // /// @author Chris-70 (2025/07)
+      // void set_DebounceDelay(unsigned long value);
+      // /// @copydoc set_DebounceDelay()
+      // /// @see set_DebounceDelay()
+      // unsigned long get_DebounceDelay() const;
       
       #if STL_USED
       //  ingroup properties
@@ -1403,7 +1404,7 @@ namespace BinaryClockShield
       BCMenu menu;                           ///< Settings handler instance
 
       DateTime time;                         ///< Current time from the RTC, updated every second.
-      bool amPmMode = DEFAULT_TIME_MODE;     ///< Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
+      bool amPmMode = DEFAULT_12HR_MODE;     ///< Flag: Indicates if the clock is in 12-hour AM/PM, or 24 Hr mode.
       bool callbackAlarmEnabled = false;     ///< Flag: The 'Alarm' callback is enabled (i.e. is not nullptr) or not.
       bool callbackTimeEnabled  = false;     ///< Flag: The 'Time'  callback is enabled (i.e. is not nullptr) or not.
       bool rtcValid             = false;     ///< Flag: The RTC was found and initialized.

@@ -186,7 +186,7 @@ namespace BinaryClockShield
    //#################################################################################//   
 
    public:
-      /// @brief `NtpServers` Property: List of NTP servers to use for syncronizing the time with.
+      /// @brief `NtpServers` Property (RW): List of NTP servers to use for syncronizing the time with.
       /// @details Wrapper for the `BinaryClockNTP` property: `NtpServers`.
       ///          `get_` method returns the list of NTP servers used for time synchronization.
       ///          `set_` method allows modifying the list of NTP servers.
@@ -211,7 +211,7 @@ namespace BinaryClockShield
       APCreds get_WiFiCreds() const
          { return localCreds; }
       
-      /// @brief `LocalIP` Property: The local IP address assigned when connected to WiFi.
+      /// @brief `LocalIP` Property (RO): The local IP address assigned when connected to WiFi.
       /// @details This property provides access to the local IP address assigned to the device.
       /// @return An `IPAddress` object containing the local IP address on the network.
       /// @see get_WiFiCreds()
@@ -227,12 +227,12 @@ namespace BinaryClockShield
       bool get_IsConnected() const
          { return WiFi.isConnected(); }
 
-      /// @brief `Timezone` Property: The timezone string used for time calculations.
+      /// @brief `Timezone` Property (RW): The timezone string used for time calculations.
       /// @details This property provides access to the timezone string used for time calculations.
-      ///          The timezone string is in Proleptic Format, e.g. "EST+5EDT,M3.2.0/2,M11.1.0/2".
+      ///          The timezone string is in Proleptic Format, e.g. "EST+5EDT,M3.2.0/2,M11.1.0/2".  
       ///          See `BinaryClockNTP::set_Timezone()` for the format details.
-      ///          `get_` method returns the current timezone string.
-      ///          `set_` method allows modifying the timezone string.
+      ///          - `get_` method returns the current timezone string.
+      ///          - `set_` method allows modifying the timezone string.
       /// @param value A String object containing the timezone in Proleptic Format.
       /// @see get_Timezone()
       /// @see BinaryClockNTP::set_Timezone() 
@@ -244,10 +244,10 @@ namespace BinaryClockShield
       /// @see set_Timezone()
       String get_Timezone() const;
 
-      /// @brief `LocalCreds` Property: The `APCreds` credentials of the AP for the current connection.
-      /// @details This property provides access to the credentials of the currently connected AP.
-      ///          `get_` method returns the credentials of the connected AP.
-      ///          `set_` method allows modifying the credentials of the connected AP.
+      /// @brief `LocalCreds` Property (RW): The `APCreds` credentials of the AP for the current connection.
+      /// @details This property provides access to the credentials of the currently connected AP.  
+      ///          - `get_` method returns the credentials of the connected AP.
+      ///          - `set_` method allows modifying the credentials of the connected AP.
       /// @param value An `APCreds` structure containing the SSID, BSSID, password, and ID of the connected AP.
       /// @see get_WiFiCreds()
       /// @see get_LocalIP()
@@ -265,14 +265,14 @@ namespace BinaryClockShield
          { return localCreds; }
 
       void set_WanEventGroup(EventGroupHandle_t value)
-         { wanEventGroup = value; }
+         { 
+         wanEventGroup = value; 
+         for (auto& eventBits : taskEventList)
+            { eventBits.get().set_EventGroup(value); }
+         }
+   
       EventGroupHandle_t get_WanEventGroup() const
          { return wanEventGroup; }
-
-      void set_NtpEventBits(NTPEventBits* value)
-         { ntp.set_NtpEventBits(value); }
-      NTPEventBits* get_NtpEventBits() const
-         { return ntp.get_NtpEventBits(); }
 
    //#################################################################################//  
    // Protected PROPERTIES                                                            //   
@@ -301,7 +301,11 @@ namespace BinaryClockShield
       IPAddress localIP;               ///< The IP address of the local device when connected to WiFi.
       WiFiClient client;               ///< The WiFi client instance for network operations.
       WiFiEventId_t eventID;           ///< The WiFi event ID for managing event handlers.
-      EventGroupHandle_t wanEventGroup = nullptr; ///< Event group handle for WAN task notifications.
+
+      EventGroupHandle_t wanEventGroup = nullptr;  ///< Event group handle for WAN task notifications.
+      TaskGroupBits<NtpEvents> ntpEventBits;       ///< Event bits for NTP synchronization events.
+      TaskGroupBits<WpsEvents> wpsEventBits;       ///< Event bits for WPS connection events.
+      std::vector<std::reference_wrapper<TaskGroupBase>> taskEventList;    ///< List of task event bit groups for managing multiple event groups together.
 
       DateTime lastSync;               ///< The time of the last sync with the NTP server.
       TimeSpan zuluOffset;             ///< Current time offset to UTC/Zulu time.

@@ -1,7 +1,8 @@
 /// @file BinaryClockNTP.h
-/// @brief The header file for the `BinaryClockNTP` class.
+/// @brief The header file for the `BinaryClockNTP` class and related structures.
 /// @details This file contains the declaration of the `BinaryClockNTP` class, which provides NTP
 ///          and SNTP synchronization features for the Binary Clock project.   
+///          This file also contains all associated structures and enums related to NTP and SNTP.   
 ///          The `BinaryClockNTP` class manages NTP server communication, time synchronization,
 ///          and timezone handling.
 /// @author Chris-80 (2025/09)
@@ -12,15 +13,15 @@
 
 // __has_include is C++17 and beyond, or an extension in some compilers.
 #ifdef __has_include
-   // Include the `board_select.h` file for any user overrides of `#define` values used here.
-   #if __has_include("board_select.h")
-      #include "board_select.h"  // Include the user defined board selection file if it exists
+   // Include the `BinaryClock.ProjectConfig.h` file for any user overrides of `#define` values used here.
+   #if __has_include("BinaryClock.ProjectConfig.h")
+      #include "BinaryClock.ProjectConfig.h"  // Include the user defined project configuration file if it exists
    #else
-      #pragma message "board_select.h - file not found. No user overrides in BinaryClockNTP.h."
+      #pragma message "BinaryClock.ProjectConfig.h - file not found. No user overrides in BinaryClockNTP.h."
    #endif
 #else
-   #warning "BinaryClockNTP.h - Cannot check for board_select.h file, including by default."
-   #include "board_select.h"     // Include the user defined board selection file, assume it exists   
+   #warning "BinaryClockNTP.h - Cannot check for BinaryClock.ProjectConfig.h file, including by default."
+   #include "BinaryClock.ProjectConfig.h"     // Include the user defined project configuration file, assume it exists   
 #endif // __has_include
 
 #include <stdint.h>                    /// Integer types: uint8_t; uint16_t; etc.
@@ -37,10 +38,8 @@
 #include <esp_sntp.h>                  /// For ESP-IDF SNTP functions and types.
 
 #include "DateTime.h"                  /// DateTime and TimeSpan classes (part of RTClibPlus library).
+#include "TaskGroupBits.h"             /// For TaskGroupBits class to manage event group bits
 
-#define SECONDS_MS                  1000UL         ///< Number of milliseconds in 1 second.
-#define MINUTES_MS                  60000UL        ///< Number of milliseconds in 1 minute.///< 
-#define HOURS_MS                    3600000UL      ///< Number of milliseconds in 1 hour.
 #define NTP_PACKET_SIZE             48             ///< NTP time stamp is in the first 48 bytes of the message
 #define DEFAULT_NTP_TIMEOUT_MS      (10 * SECONDS_MS) ///< Default NTP server connection timeout in ms (e.g. 10 sec).
 #define SNTP_SYNC_INTERVAL_MS       (3 * HOURS_MS)    ///< SNTP default sync interval in milliseconds (e.g. 900 sec, 15 min).
@@ -51,7 +50,7 @@
 #define NTP_SERVER_3 "time.nist.gov"   ///< The tertiary NTP server
 
 #ifndef NTP_SERVER_LIST
-   ///< The list of NTP servers if they haven't been defined.
+   ///< The default list of NTP servers if they haven't been defined.
    #define NTP_SERVER_LIST { NTP_SERVER_1, NTP_SERVER_2, NTP_SERVER_3 }  
 #endif
 
@@ -61,14 +60,9 @@
 
 #define UTC_TIMEZONE_ENV "UTC0"        ///< UTC timezone string
 #ifndef DEFAULT_TIMEZONE
-   ///< Default timezone string (Canada Eastern Time with DST) if not defined.
+   ///< Default timezone string (Canada/US Eastern Time with DST) if not defined.
    #define DEFAULT_TIMEZONE "EST+5EDT,M3.2.0/2,M11.1.0/2"  
 #endif
-
-/// @brief Convert the result of a call to `millis()` to milliseconds.
-/// @details `millis()` returns a count of 1024 microseconds, to convert to         
-///          multiply by 1024 (i.e. left shift by 10) and divide by 1000.
-#define MILLIS_TO_MS(M)(((M) << 10) / 1000)
 
 namespace BinaryClockShield
    {
@@ -76,6 +70,9 @@ namespace BinaryClockShield
    struct NTPTaskParam;
    void ntpDoInitialize(NTPTaskParam* param);
    void ntpTaskWrapper(void* pvParameters);
+
+   #pragma region Dead Code
+   #if false
    /// @brief NTP Events class for managing NTP related event bit masks.
    /// @details This class provides methods to get bit masks for various NTP events
    ///          such as completion, synchronization, and failure. It allows setting
@@ -90,7 +87,7 @@ namespace BinaryClockShield
       {
       #define NTP_EVENT_SIZE              4     ///< The size/number of the NTP events, not including END.
       // The starting bit number for NTP events can be defined at compile time, 0 is the default.
-      // The NTP_RESERVED_BIT value impacts the enum values in `NTPEventBits`.N
+      // The NTP_RESERVED_BIT value impacts the enum values in `NTPEventBits`.
       // Use the `NTPEventBits::set_NtpBitOffset()` property to set the offset at runtime.
       // This allows user defined EventGroups / bit flags to be used without bit conflicts.
       // NOTE: The NtpBitOffset is added to NTP_RESERVED_BIT for the final bit mask value.
@@ -98,12 +95,12 @@ namespace BinaryClockShield
       #define NTP_RESERVED_BIT            0     ///< The starting bit number for NTP the events enum.
       #endif 
       
-      // The TICK_TYPE_WIDTH_32_BITS should be defined, if not we might be missing an include file.
+      // The TICK_TYPE_WIDTH_BITS should be defined, if not we might be missing an include file.
       // Just define the configTICK_TYPE_WIDTH_IN_BITS to be 32, assume we are using an ESP32.
       // This is just to validate the NTP Event bits don't exceed the maximum bit position.
-      #ifndef TICK_TYPE_WIDTH_32_BITS
-      #define TICK_TYPE_WIDTH_32_BITS     32
-      #define configTICK_TYPE_WIDTH_IN_BITS  TICK_TYPE_WIDTH_32_BITS
+      #ifndef TICK_TYPE_WIDTH_BITS
+      #define TICK_TYPE_WIDTH_BITS     32
+      #define configTICK_TYPE_WIDTH_IN_BITS  TICK_TYPE_WIDTH_BITS
       #endif 
       // The maximum offset that can be used based on the current board FreeRTOS implementation.
       // This accounts for the value of NTP_RESERVED_BIT.
@@ -128,10 +125,10 @@ namespace BinaryClockShield
       /// @author Chris-70 (2026/01)
       enum ntp_events
          {
-         Reserved  = NTP_RESERVED_BIT,       ///< Reserved bit, not used.
-         Completed = NTP_RESERVED_BIT + 1,   ///< NTP sync initialization completed event.
-         Synced    = NTP_RESERVED_BIT + 2,   ///< NTP sync received event, set everytime we sync.
-         Failed    = NTP_RESERVED_BIT + 3,   ///< NTP sync failed event, must re-initialize.
+         Reserved  = NTP_RESERVED_BIT,       ///< Reserved bit, sets the starting values for the enum.
+         Completed,                          ///< NTP sync initialization completed event.
+         Synced,                             ///< NTP sync received event, set everytime we sync.
+         Failed,                             ///< NTP sync failed event, must re-initialize.
          NTPEventEnd                         ///< Last `NTPEventBits` value; subtract `Reserved` to get the size.
          };
 
@@ -233,7 +230,35 @@ namespace BinaryClockShield
    private:
       size_t ntpBitOffset = 0;         ///< Instance NTP event bit offset.
       }; // class NTPEventBits
+   #endif // false
+   #pragma endregion Dead Code
 
+   /// @brief Enumeration of NTP event types used by the NTP class.
+   /// @details This enumeration defines the various NTP event types used for
+   ///          event bit masking. The values are offset by `NTP_RESERVED_BIT` to
+   ///          set the starting value of the enum, this is normally 0.  
+   ///          - The `Completed` event indicates that NTP sync initialization has completed.  
+   ///          - The `Synced` event indicates that an NTP sync has been received. 
+   ///          - The `SyncFailed` event indicates that the NTP sync has failed and 
+   ///                 re-initialization is required.  
+   ///          - The `NTPEventEnd` value indicates the end of the enum and can be used 
+   ///                 to determine the number of events defined by subtracting `Reserved`.  
+   ///          The only advantages of the class instance is when multiple programs/libraries
+   ///          or task groups need to use this with different offset values.
+   ///          The `CompletedMask`; `SyncedMask`; and `FailedMask` properties provide
+   ///          easy access to the respective event masks.
+   /// @author Chris-70 (2026/01)
+   enum class NtpEvents
+      {
+      Reserved  = 0,                   ///< Reserved bit, sets the starting values for the enum.
+      Completed,                       ///< NTP sync initialization completed event.
+      Synced,                          ///< NTP sync received event, set everytime we sync.
+      Failed,                          ///< NTP sync failed event, must re-initialize.
+      EventEnd                         ///< Last `EventBits` enum end marker value; subtract `Reserved` to get the size.
+      };
+
+   using NtpEventBits = TaskGroupBits<NtpEvents>;  ///< Type alias for `TaskGroupBits` with `NtpEvents` enum.
+   
    /// @brief Fixed-point 64-bit data type (32.32) returned by the NTP server.
    /// @details This structure represents a fixed-point 64-bit data type (32.32).  
    ///          The integer part is represented by a union of signed and unsigned 32-bit integers,
@@ -322,9 +347,9 @@ namespace BinaryClockShield
    
    class BinaryClockNTP
       {
-   // Friend declarations for static helper functions that need access to private members
-   friend void ntpDoInitialize(NTPTaskParam* param);
-   friend void ntpTaskWrapper(void* pvParameters);
+      // Friend declarations for static helper functions that need access to private members
+      friend void ntpDoInitialize(NTPTaskParam* param);
+      friend void ntpTaskWrapper(void* pvParameters);
 
    public:
       /// @brief Singleton access method for the `BinaryClockNTP` instance.
@@ -500,39 +525,46 @@ namespace BinaryClockShield
          { return (syncInterval / SYNC_STALE_FACTOR);  }
       #undef SYNC_STALE_FACTOR
 
-      void set_NtpEventBits(NTPEventBits* value)
-         { ntpEventBits = value; }
-      NTPEventBits* get_NtpEventBits() const
-         { return ntpEventBits; }
+      /// @brief Property (RW): NtpGroupBits - Pointer to the `NtpEventBits` instance used for event bit masking.
+      /// @details This property allows setting and getting the pointer to the `NtpEventBits` instance 
+      ///          used for event bit masking in the NTP synchronization process.  
+      ///          set_ : Set new pointer to `NtpEventBits` instance.  
+      ///          get_ : Get current pointer to `NtpEventBits` instance.  
+      /// @param value Pointer to the new `NtpEventBits` instance to set.
+      /// @see get_NtpGroupBits()
+      void set_NtpGroupBits(NtpEventBits* value)
+         { ntpTaskGroup = value; }
 
-      void set_NtpEventGroup(EventGroupHandle_t value)
-         { ntpEventGroup = value; }
-      EventGroupHandle_t get_NtpEventGroup() const
-         { return ntpEventGroup; }
+      /// @copydoc set_NtpGroupBits()
+      /// @return Current pointer to `NtpEventBits` instance used for event bit masking.
+      /// @see set_NtpGroupBits()
+      NtpEventBits* get_NtpGroupBits() const
+         { return ntpTaskGroup; }
 
       /// @brief Property: Timezone - The timezone string for local time conversion.
       /// @details The timezone string used for local time conversion in Proleptic Format:
       ///          i.e. `std offset dst[offset],[start[/time],end[/time]]` without any spaces: 
       ///               `stdoffset[dst[offset][,start[/time],end[/time]]]`   
       ///        Where:   
-      ///          - `std` is the standard time zone abbreviation (e.g. EST, PST, CET, etc.)
-      ///          - `offset` is the offset to UTC in hours, +ve west, -ve east (e.g. +5, +8, -1, etc.; est+5==UTC, cest-1==UTC)
-      ///          - `dst` is the daylight saving time zone abbreviation (e.g. EDT, PDT, CEST, etc.)
-      ///          - `offset` is the optional offset to UTC in daylight savings time. Ahead 1 hour is assumed if not specified.
+      ///          - `std` is the standard time zone abbreviation (e.g. EST, PST, CET, ACWST, ACST, NZST, etc.)
+      ///          - `offset` is the offset to UTC in hours:minutes, +ve west, -ve east (e.g. +5, +8, -1, -9:30, etc.; est+5==UTC, cest-1==UTC)
+      ///          - `dst` is the daylight saving time zone abbreviation (e.g. EDT, PDT, CEST, ACDT, NZDT, etc.)
+      ///          - `offset` is the optional offset to UTC in hours:minutes for daylight savings time. Ahead 1 hour is assumed if not specified.
       ///          - `start` is the start of DST in the format `Mmm.w.d` (month, week, day) week 5 is last; Sunday is 0.
-      ///          - `time` is the time of day when the change occurs (default is 02:00)
+      ///          - `time` is the time of day when the change occurs (default is '2' i.e. 02:00)
       ///          - `end` is the end of DST in the same format as `start`   
-      ///          set_ : Set new timezone string
-      ///          get_ : Get current timezone string
+      ///          set_ : Set new timezone string   
+      ///          get_ : Get current timezone string  
       /// @example
       ///        Examples:   
-      ///          - `UTC0` (UTC time, 0 offset, no DST)
-      ///          - `EST+5EDT,M3.2.0/2,M11.1.0/2`   UTC==EST+5;   DST: 1st  Sunday in March     @ 02:00 to 1st  Sunday in November @ 02:00 (Canada Eastern Time with DST)
-      ///          - `PST+8PDT,M3.2.0/2,M11.1.0/2`   UTC==PST+8;   DST: 1st  Sunday in March     @ 02:00 to 1st  Sunday in November @ 02:00 (US Pacific Time with DST)
-      ///          - `CET-1CEST,M3.5.0/2,M10.5.0/3`  UTC==CET-1;   DST: last Sunday in March     @ 02:00 to last Sunday in October  @ 03:00 (Central European Time with DST)
-      ///          - `NZST-12NZDT,M9.5.0/2,M4.1.0/3` UTC==NZST-12; DST: last Sunday in September @ 02:00 to 1st  Sunday in April    @ 03:00 (New Zealand Time with DST)
-      ///          - `ACWST-8:45`                    UTC==ACWST-8:45;  No DST (Australia Central Western Standard Time)
-      ///          - `LHST-10:30LHDT-11,M10.1.0/2,M3.5.0/2` UTC==LHST-10:30; DST: +30 min, 1st Sunday in October @ 02:00 to last Sunday in March @ 02:00 (Lord Howe Standard Time with DST)
+      ///          - `UTC` or `UTC0`                           UTC==UTC+0;   - Coordinated Universal Time is abbreviated to UTC (UTC time: 0 offset; no DST) also known as ZuLu Time (Z) e.g. 22:45Z
+      ///          - `EST+5EDT,M3.2.0/2,M11.1.0/2`             UTC==EST+5;       DST: +1 hour, 1st  Sunday in March     @ 02:00 to 1st  Sunday in November  @ 02:00 (Canada Eastern Time with DST)
+      ///          - `PST+8PDT,M3.2.0/2,M11.1.0/2`             UTC==PST+8;       DST: +1 hour, 1st  Sunday in March     @ 02:00 to 1st  Sunday in November  @ 02:00 (US Pacific Time with DST)
+      ///          - `CET-1CEST,M3.5.0/2,M10.5.0/3`            UTC==CET-1;       DST: +1 hour, last Sunday in March     @ 02:00 to last Sunday in October   @ 03:00 (Central European with Summer Time i.e. DST)
+      ///          - `NZST-12NZDT,M9.5.0/2,M4.1.0/3`           UTC==NZST-12;     DST: +1 hour, last Sunday in September @ 02:00 to 1st  Sunday in April     @ 03:00 (New Zealand Time with DST)
+      ///          - `ACWST-8:45`                              UTC==ACWST-8:45;  No DST (Australia Central Western Standard Time)
+      ///          - `ACST-9:30ACDT,M10.1.0/2,M4.1.0/3`        UTC==ACST-9:30;   DST: +1 hour, 1st  Sunday in October   @ 02:00 to last Sunday in March     @ 02:00 (Australia Central Standard Time with DST)
+      ///          - `LHST-10:30LHDT-11,M10.1.0/2,M3.5.0/2`    UTC==LHST-10:30;  DST:+30 min,  1st  Sunday in October   @ 02:00 to last Sunday in March     @ 02:00 (Lord Howe (AU) Standard Time with DST)
       /// @param timezone New timezone string in Proleptic Format.
       /// @see get_Timezone()
       static void set_Timezone(const char* timezone)
@@ -568,6 +600,8 @@ namespace BinaryClockShield
       BinaryClockNTP& operator=(const BinaryClockNTP&) = delete;
       /// @brief Removed move assignment operator for Singleton pattern
       BinaryClockNTP& operator=(const BinaryClockNTP&&) = delete;
+
+      void SignalEvent(enum NtpEvents event);
 
    private:
       /// @brief Method to initialize the SNTP service using the configured NTP servers.
@@ -695,9 +729,10 @@ namespace BinaryClockShield
       bool syncInProgress;             ///< Flag: syncing with NTP server is in progress.
       bool lastSyncStatus;             ///< Flag: Result of the last sync attempt.
       bool initialized;                ///< Flag: the this object and the SNTP service are initialized.
-      NTPEventBits internalNtpBits;    ///< Internal NTPEventBits instance with default offset.
-      NTPEventBits* ntpEventBits = &internalNtpBits;
-      EventGroupHandle_t ntpEventGroup = nullptr; ///< Event group for NTP events.
+      // NTPEventBits internalNtpBits;    ///< Internal NTPEventBits instance with default offset.
+      // NTPEventBits* ntpTaskGroup = &internalNtpBits;
+      // EventGroupHandle_t ntpEventGroup = nullptr; ///< Event group for NTP events.
+      TaskGroupBits<NtpEvents>* ntpTaskGroup = nullptr; ///< Pointer to TaskGroupBits for NTP events, used for signaling events to tasks.
 
       WiFiUDP udp;                     ///< A `WiFiUDP` object for getting the time from the server.
       unsigned port = NTP_DEFAULT_PORT;   ///< The port to use for the NTP server.

@@ -410,23 +410,21 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
       return result; 
       }
 
-   uint8_t BinaryClockSettings::AddWiFiCreds(const APCreds& creds)
+   uint8_t BinaryClockSettings::updateWiFiCreds(const APCreds& creds)
       {
       uint8_t id = 0;
       if (!initialized) { return id; } // Error
 
-      SERIAL_PRINT(creds.ssid)
       // First check if the entry exists in our list (i.e. same ssid && same bssid)
       for(auto& existingCreds : apCreds)
          {
          if (existingCreds == creds)
             {
-            // SERIAL_PRINT(creds.ssid)
             id = existingCreds.id;
             // Do we update the PW?
             if (existingCreds.pw != creds.pw)
                {
-               SERIAL_PRINTLN(" - WiFi SSID and BSSID already exist with different password. Updating password.")   // *** DEBUG ***
+               SERIAL_PRINTLN("updateWiFiCreds(): WiFi SSID and BSSID already exist with different password. Updating password.")   // *** DEBUG ***
                // Update password
                existingCreds.pw = creds.pw;
                existingCreds.modifiedAP = true;
@@ -436,32 +434,46 @@ std::vector<uint8_t> BinaryClockSettings::GetIDs(const String& ssid) const
             else
                {
                existingCreds.toBeDeleted = false; // In case it was marked for deletion
-               SERIAL_PRINTLN(" - WiFi credentials already exist. Not adding duplicate.")   // *** DEBUG ***
+               SERIAL_PRINTLN("updateWiFiCreds(): WiFi credentials already exist. Not updating.")   // *** DEBUG ***
                }
 
-            return id; // Return existing ID
+            break;
             }
          }
 
-      id = GetNewID();
-      if (id != 0)
-         {
-         ApAllInfo credsInfo = ApAllInfo(creds);
-         credsInfo.id = id;
-         credsInfo.modifiedAP = true; // New entry, mark as modified
-         apCreds.push_back(credsInfo);
+      return id;
+      }
 
-         numAPs = apCreds.size();
-         idList[id] = apCreds.size() - 1; // Map new ID to vector index
-         modified = true; // Mark NVS as modified
-         SERIAL_STREAM("Added new WiFi credentials, SSID: " << creds.ssid << " with ID " << static_cast<int>(id) 
-                << ". Total APs: " << static_cast<int>(numAPs) << endl) // *** DEBUG ***
-         }
-      else
-         {
-         SERIAL_PRINTLN("Error: Unable to generate new ID for WiFi credentials.")  // *** DEBUG ***
-         }
+   uint8_t BinaryClockSettings::AddWiFiCreds(const APCreds& creds)
+      {
+      uint8_t id = 0;
+      if (!initialized) { return id; } // Error
 
+      SERIAL_PRINT(creds.ssid)
+      id = updateWiFiCreds(creds);
+
+      if (id == 0)
+         {
+         // This is a new credential, add it to the list with a new ID.
+         id = GetNewID();
+         if (id != 0)
+            {
+            ApAllInfo credsInfo = ApAllInfo(creds);
+            credsInfo.id = id;
+            credsInfo.modifiedAP = true; // New entry, mark as modified
+            apCreds.push_back(credsInfo);
+
+            numAPs = apCreds.size();
+            idList[id] = apCreds.size() - 1; // Map new ID to vector index
+            modified = true; // Mark NVS as modified
+            SERIAL_STREAM("Added new WiFi credentials, SSID: " << creds.ssid << " with ID " << static_cast<int>(id) 
+                  << ". Total APs: " << static_cast<int>(numAPs) << endl) // *** DEBUG ***
+            }
+         else
+            {
+            SERIAL_PRINTLN("Error: Unable to generate new ID for WiFi credentials.")  // *** DEBUG ***
+            }
+         }
       return id;
       }
 

@@ -10,3 +10,4 @@ docs/latex/
 .VSCodeCounter/
 build_output.txt
 commits.txt
+*.bak

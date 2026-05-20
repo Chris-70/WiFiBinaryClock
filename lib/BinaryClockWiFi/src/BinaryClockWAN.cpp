@@ -40,12 +40,17 @@
 
 namespace BinaryClockShield
    {
-   BinaryClockWAN::BinaryClockWAN()
+   BinaryClockWAN::BinaryClockWAN() : initialized(false), localIP(0,0,0,0)
       {
       SERIAL_PRINT("BinaryClockWAN() constructor with IBinaryClock*: ")
       SERIAL_PRINTLN(clockPtr? clockPtr->get_IdName() : "NULL")
       WiFi.mode(WIFI_STA);
       zuluOffset = TimeSpan(0, -5, 0, 0); // Default to EST (UTC-5) // *** DEBUG ***
+      wanEventGroup = xEventGroupCreate(); // Create the event group for WiFi events.
+      ntpEventBits = TaskGroupBits<NtpEvents>(wanEventGroup, static_cast<uint8_t>(0)); // Initialize NTP event bits with no offset.
+      wpsEventBits = TaskGroupBits<WpsEvents>(wanEventGroup, ntpEventBits.EventsCount); // Initialize WPS event bits with offset after NTP events.
+      taskEventList.push_back(ntpEventBits); // Add NTP event bits to the task event list.
+      taskEventList.push_back(wpsEventBits); // Add WPS event bits to the task event list.
       }
 
    BinaryClockWAN::~BinaryClockWAN()
@@ -58,6 +63,10 @@ namespace BinaryClockShield
       if (!initialized) { return initialized; } // Ensure Begin() was called
 
       bool result = false;
+      auto res = WiFi.disconnect(false, true); // Disconnect, keep radio ON and erase credentials to ensure clean state
+      SERIAL_STREAM("BinaryClockWAN() disconnecting from WiFi, result: " << (res ? "SUCCESS" : "FAILURE") << endl)  // *** DEBUG ***
+      vTaskDelay(pdMS_TO_TICKS(100)); // Short delay to ensure disconnect is processed
+
       // Connect to the specified WiFi network using the provided credentials.
       auto status = WiFi.begin(creds.ssid.c_str(), creds.pw.c_str());
       SERIAL_STREAM("BinaryClockWAN() connecting to " << creds.ssid << ", result: " << WiFiStatusString(status) << endl)
@@ -88,9 +97,14 @@ namespace BinaryClockShield
       SERIAL_STREAM("connectLocalWiFi() - WiFi Station Mode: " << (sta ? "YES" : "NO") << endl)  // *** DEBUG ***
 
       std::vector<std::pair<APCredsPlus, WiFiInfo>> apCredList = settings.GetWiFiAPs(localAPs);
-
-      for (const auto& [cred, info] : apCredList)
+      // Changed from structured binding to explicit access for compatibility with C++11.
+      //    `for (const auto& [cred, info] : apCredList)`
+      // While C++17 is prefeered such as for structured bindings, this change allows the code to compile in 
+      //    C++11 environments without modification. This was the only line that stopped C++11 from compiling.
+      for (const auto& apEntry : apCredList)
          {
+         const APCredsPlus& cred = apEntry.first;
+         const WiFiInfo& info = apEntry.second;
          SERIAL_STREAM("  SSID: " << cred.ssid << ", BSSID: [" << cred.bssid << "], P/W: " << cred.pw 
                 << ", RSSI: " << info.rssi << ", AuthMode: " << AuthModeString(info.authMode) << endl) // *** DEBUG ***
 
@@ -320,7 +334,6 @@ namespace BinaryClockShield
          return false;
          }
       
-      ntp.set_NtpEventGroup(get_WanEventGroup());
       // Set the timezone from settings unless it is the default "UTC" for unset values.
       String curTZ = settings.get_Timezone();
       ntp.set_Timezone(curTZ == settings.UtcTimezone ? DEFAULT_TIMEZONE : curTZ.c_str());
@@ -452,7 +465,17 @@ namespace BinaryClockShield
          case ARDUINO_EVENT_WIFI_STA_START:           SERIAL_PRINTLN("WiFi client started") break;
          case ARDUINO_EVENT_WIFI_STA_STOP:            SERIAL_PRINTLN("WiFi clients stopped") break;
          case ARDUINO_EVENT_WIFI_STA_CONNECTED:       SERIAL_PRINTLN("Connected to access point") break;
-         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:    SERIAL_PRINTLN("Disconnected from WiFi access point") break;
+         case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:    
+            SERIAL_PRINT("Disconnected from WiFi access point\n    Reason:")
+            SERIAL_PRINTLN(WiFiDisconnectReasonString((wifi_err_reason_t)info.wifi_sta_disconnected.reason))
+            // TODO: Reconnect!
+            if (localCreds.IsValid())
+               {
+               SERIAL_PRINTLN("Attempting to reconnect to last known WiFi credentials...")
+               bool apResult = Connect(localCreds);
+               SERIAL_STREAM("Reconnection attempt result: " << (apResult ? "SUCCESS" : "FAILURE") << endl) // *** DEBUG ***
+               }
+            break;
          case ARDUINO_EVENT_WIFI_STA_AUTHMODE_CHANGE: SERIAL_PRINTLN("Authentication mode of access point has changed") break;
          case ARDUINO_EVENT_WIFI_STA_GOT_IP:
             SERIAL_PRINT("Obtained IP address: ")

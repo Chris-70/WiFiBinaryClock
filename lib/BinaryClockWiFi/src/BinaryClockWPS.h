@@ -44,6 +44,15 @@ namespace BinaryClockShield
       uint32_t connectionTimeMs = 0;  // Time taken to connect in milliseconds
       };
 
+   enum class WpsEvents : uint8_t
+      {
+      Reserved = 0,
+      Success,
+      Timeout,
+      Error,
+      EventEnd
+      };
+      
    /// @brief BinaryClockWPS class for WiFi connection using WPS Push Button mode
    /// @details This class handles WiFi Protected Setup (WPS) connections using the push button method.
    ///          It follows the WPS standard and populates APCreds structure upon successful connection.

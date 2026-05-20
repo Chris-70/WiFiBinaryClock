@@ -191,17 +191,14 @@ bool RTC_DS3231::lostPower(void) {
     @brief  Set the date and clear the Oscillator Stop Flag
     @param dt DateTime object containing the date/time to set
     @param is12HourMode Flag: true store in 12-hour mode; false 24-hour mode.
+    @param buf Optional pointer to an 8 byte buffer to receive the raw register 
+               values written to the DS3231.
+    @return The given `buf` pointer containing the raw register values written to the DS3231,
     @remarks The DS3231 can store the time in 12 or 24 hour modes. 
              The 12 hour mode is indicated by bit 6 of the hour register.
 */
 /**************************************************************************/
-void RTC_DS3231::adjust(const DateTime& dt) 
-               { adjust(dt, getIs12HourMode()); }
-               
-void RTC_DS3231::adjust(const DateTime &dt, bool use12HourMode) 
-               { adjust(dt, use12HourMode, nullptr); }
-
-uint8_t* RTC_DS3231::adjust(const DateTime& dt, bool use12HourMode, uint8_t* buf)
+uint8_t* RTC_DS3231::adjust(const DateTime& dt, bool use12HourMode, uint8_t (buf)[8])
    {
   // if (!dt.isValid()) { return; } // Invalid date, do not set // *** DEBUG ***
     uint8_t buffer[8] = {DS3231_TIME,
@@ -210,7 +207,7 @@ uint8_t* RTC_DS3231::adjust(const DateTime& dt, bool use12HourMode, uint8_t* buf
              (uint8_t)(SET_HOUR(dt.hour(), use12HourMode)   & DS_HOUR_REG_MASK),// 0-23 or 1-12
              (uint8_t)(bin2bcd(dt.dayOfTheWeek() + 1)       & DS_DAY_MASK),  // (0-6) +1 => (1-7)
              (uint8_t)(bin2bcd(dt.day() % (31 + 1))         & DS_DATE_MASK), // 1-31
-            (uint8_t)((bin2bcd(dt.month() % (12 + 1))       & DS_MONTH_MASK) // 1-12
+             (uint8_t)((bin2bcd(dt.month() % (12 + 1))      & DS_MONTH_MASK) // 1-12
                                                             | (dt.year() < 2100U ? 0x00 : DS3231_CENTURY_MASK)),
              (uint8_t)(bin2bcd(dt.year() % 100U)            & DS_YEAR_MASK)   // 0-99
       };
@@ -224,6 +221,18 @@ uint8_t* RTC_DS3231::adjust(const DateTime& dt, bool use12HourMode, uint8_t* buf
   write_register(DS3231_STATUSREG, statreg);
   return buf;
 }
+
+/*!
+    @copydoc adjust(const DateTime& dt, bool use12HourMode, uint8_t (buf)[8])
+*/
+void RTC_DS3231::adjust(const DateTime& dt) 
+               { adjust(dt, getIs12HourMode()); }
+               
+/*!
+    @copydoc adjust(const DateTime& dt, bool use12HourMode, uint8_t (buf)[8])
+*/
+void RTC_DS3231::adjust(const DateTime &dt, bool use12HourMode) 
+               { adjust(dt, use12HourMode, nullptr); }
 
 /**************************************************************************/
 /*!
@@ -439,6 +448,25 @@ bool RTC_DS3231::setAlarm1(const DateTime &alarmTime, Ds3231Alarm1Mode alarm_mod
   return true;
 }
 
+/*!
+    @brief Set alarm 1 for DS3231 with individual time components
+    @param  day Day of month (1-31) or day of week (1-7) depending on the alarm mode
+    @param  hour24 Hour in 24-hour format (0-23)
+    @param  min Minute (0-59)
+    @param  sec Second (0-59)
+    @param  alarm_mode Desired mode, see Ds3231Alarm1Mode enum
+    @return False if control register is not set, otherwise true
+    @see setAlarm1(const DateTime&, Ds3231Alarm1Mode, bool) for more details on the alarm modes and time mode requirements.
+    @see Ds3231Alarm1Mode enum for the available alarm modes and how the 'day' parameter is used in each mode.
+*/
+bool RTC_DS3231::setAlarm1(uint8_t day, uint8_t hour24, uint8_t min, uint8_t sec, Ds3231Alarm1Mode alarm_mode)
+   {
+   return setAlarm1((alarm_mode == Ds3231Alarm1Mode::DS3231_A1_Day 
+                     ? DateTime(DateTime::WeekdayEpoch.year(),  DateTime::WeekdayEpoch.month(),  day, hour24, min, sec)
+                     : DateTime(DateTime::DateTimeEpoch.year(), DateTime::DateTimeEpoch.month(), day, hour24, min, sec))
+                     , alarm_mode, getIs12HourMode()); 
+   }
+
 /**************************************************************************/
 /*!
     @brief  Set alarm 2 for DS3231
@@ -496,6 +524,33 @@ bool RTC_DS3231::setAlarm2(const DateTime& alarmTime, Ds3231Alarm2Mode alarm_mod
 
 /**************************************************************************/
 /*!
+    @brief  Set alarm 2 for DS3231 with individual time components
+    @details Set the alarm by day and time (hour24, minutes, seconds is 0 for Alarm2).  
+             For a day of week alarm, set the 'day' parameter to 1 - 7 for the weekday
+             to match. Use *RTC_weekdayname* (`RTC_Monday`, `RTC_Tuesday`, ..., `RTC_Sunday`)
+             to match the correct weekday number regardless of the starting day of the week.     
+             For a date alarm, set the 'day' parameter to 1 - 31 for the date to match.
+      @param  day Day of month (1-31) or day of week (1-7) depending on the alarm mode
+      @param  hour24 Hour in 24-hour format (0-23)
+      @param  min Minute (0-59)
+      @param  alarm_mode Desired mode, see Ds3231Alarm2Mode enum
+    @remarks The year and month are ignored by the DS3231 RTC, however for the day value to be correct for the day of week
+             (when `alarm_mode` is `DS3231_A2_Day`, i.e. weekly), the month and year are set to those in `WeekdayEpoch`,
+             otherwise `January` is selected as it has 31 days. 
+    @return False if control register is not set, otherwise true
+    @see setAlarm2(const DateTime&, Ds3231Alarm2Mode, bool) for more details on the alarm modes and time mode requirements.
+    @see Ds3231Alarm2Mode enum for the available alarm modes and how the 'day' parameter is used in each mode.
+*/ 
+bool RTC_DS3231::setAlarm2(uint8_t day, uint8_t hour24, uint8_t min, Ds3231Alarm2Mode alarm_mode)
+   { 
+   return setAlarm2((alarm_mode == Ds3231Alarm2Mode::DS3231_A2_Day
+                     ? DateTime(DateTime::WeekdayEpoch.year(),  DateTime::WeekdayEpoch.month(),  day, hour24, min, 0)
+                     : DateTime(DateTime::DateTimeEpoch.year(), DateTime::DateTimeEpoch.month(), day, hour24, min, 0))
+                     , alarm_mode, getIs12HourMode()); 
+   } 
+
+/**************************************************************************/
+/*!
     @brief  Get the date/time value of Alarm1
     @return DateTime object with the Alarm1 data set in the
             day, hour, minutes, and seconds fields
@@ -534,8 +589,9 @@ DateTime RTC_DS3231::getAlarm1() {
   // Use  (3) March     2000, 1 for Wednesday and 7 for Tuesday.
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
-  // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
-  return DateTime(2000, DateTime::WeekdayEpoch.month(), day, hour, minutes, seconds);
+  // selected month defined by 'FirstWeekdayMonth' in 2000.
+  // If the alarm is weekly use WeekdayEpoch.month() otherwise January.
+  return DateTime(2000, (isDayOfWeek ? DateTime::WeekdayEpoch.month() : 1), day, hour, minutes, seconds);
 }
 
 /**************************************************************************/
@@ -579,8 +635,9 @@ DateTime RTC_DS3231::getAlarm2() {
   // Use  (3) March     2000, 1 for Wednesday and 7 for Tuesday.
   // Use  (2) February  2000, 1 for Tuesday   and 7 for Monday.
   // The 'DateTime::WeekdayEpoch' variable is defined based on the
-  // selected month defined by 'FIRST_WEEKDAY_MONTH' in 2000.
-  return DateTime(2000, DateTime::WeekdayEpoch.month(), day, hour, minutes, 0);
+  // selected month defined by 'FirstWeekdayMonth' in 2000.
+  // If the alarm is weekly use WeekdayEpoch.month() otherwise January.
+  return DateTime(2000, (isDayOfWeek ? DateTime::WeekdayEpoch.month() : 1), day, hour, minutes, 0);
 }
 
 /**************************************************************************/
