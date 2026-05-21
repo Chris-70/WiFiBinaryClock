@@ -146,11 +146,13 @@ static const DateTime WeekdayEpoch;
 #### RTC Chip Synchronization
 The DS3231 and DS1307 chips store day-of-week as 1-7 (not 0-6). RTClibPlus maintains this mapping so the days of the week order doesn't change:
 - DateTime value `0` → RTC register value `1`
+- . . .
 - DateTime value `6` → RTC register value `7`  
 
 The **Original:** mapping changed Sunday (0) to 7 (RTC), so Monday became the first day of the week and Sunday the last day of the week on the RTC chips. 
 - DateTime value `0` = Sunday → RTC register value `7`
 - DateTime value `1` = Monday → RTC register value `1`
+- . . .
 - DateTime value `6` = Saturday → RTC register value `6`
 
 The `dayOfTheWeek()` calculation ensures the RTC chip's day-of-week stays synchronized with the configured `FIRST_WEEKDAY`.  
@@ -243,14 +245,22 @@ Presence of `AP` or `ap` in format string automatically switches hour display to
 
 **Without AM/PM:**
 ```cpp
+// 09:30:45
 "hh:mm:ss" → "09:30:45"  (24-hour format)
 "HH:mm:ss" → " 9:30:45"  (24-hour format, leading space for 9)
+// 14:30:45
+"hh:mm:ss" → "14:30:45"  (24-hour format)
+"HH:mm:ss" → "14:30:45"  (24-hour format, leading space for 14)
 ```
 
 **With AM/PM:**
 ```cpp
+// 09:30:45
 "hh:mm:ss AP" → "09:30:45 AM"  (12-hour format with leading zero)
 "HH:mm:ss AP" → " 9:30:45 AM"  (12-hour format with leading space)
+// 14:30:45
+"hh:mm:ss AP" → "02:30:45 PM"  (12-hour format with leading zero)
+"HH:mm:ss AP" → " 2:30:45 PM"  (12-hour format with leading space)
 ```
 
 #### New Overloaded Method
@@ -261,6 +271,7 @@ Presence of `AP` or `ap` in format string automatically switches hour display to
 
 **Original:**
 ```cpp
+// 14:30:45
 #define BUF_SIZE 32
 char buffer[BUF_SIZE];
 ...
@@ -276,6 +287,7 @@ Serial.println(dt.toString(buffer));
 
 **New Overload:**
 ```cpp
+// 14:30:45
 #define BUF_SIZE 32
 char buffer[BUF_SIZE];
 ...
@@ -315,6 +327,7 @@ Three timestamp options in `enum timestampOpt`:
 | TIMESTAMP_TIME | `hh:mm:ss` | `14:30:45` | Time only (24-hour) |
 | TIMESTAMP_DATE | `YYYY-MM-DD` | `2023-12-31` | Date only |
 ```cpp
+// 2023/12/31 14:30:45
 DateTime dt(2023, 12, 31, 14, 30, 45);
 
 dt.timestamp(TIMESTAMP_FULL);  
@@ -343,6 +356,7 @@ Seven additional timestamp options to include common formats:
 
 **Usage:**
 ```cpp
+// 2023/12/31 14:30:45
 DateTime dt(2023, 12, 31, 14, 30, 45);
 
 dt.timestamp(TIMESTAMP_DATETIME);
@@ -412,8 +426,9 @@ rtc.write_register(0x0E, controlReg | 0x04);   // Now legal
 - Direct hardware control
 - Debugging and diagnostics
 
-**Example - RTC Extension:**
+**Example - RTC child class Extension:**
 ```cpp
+// New child class example that extends RTC_DS3231
 class RTCLibPlusDS3231 : public RTC_DS3231 {
 public:
     uint8_t RawRead(uint8_t reg) {
@@ -523,6 +538,7 @@ Code that depends on the original day-of-week mapping where "Monday" though "Sat
 
 1. **Enable 12-Hour Mode:**
 ```cpp
+// 2023/12/31 14:30:45
 #define BUF_SIZE 32
 rtc.setIs12HourMode(true);
 DateTime dt = rtc.now();
@@ -536,18 +552,21 @@ dt.toString(buf, BUF_SIZE, "HH:mm:ss AP");
 // In DateTime.h or any file/option (e.g -DFIRST_WEEKDAY="Sat") before compilation:
 #define FIRST_WEEKDAY "Sat"  // Saturday is the first weekday
 ...
+// 2023/12/31 14:30:45
 uint8_t weekday = dt.dayOfTheWeek();  // Returns 1 as Saturday is 0 (2023-12-31 was a Sunday).
 dt.toString(buf, BUF_SIZE, "DDD MMM DD, YYYY"); // e.g. buf value is: "Sun Dec 31, 2023"
 ```
 
 3. **Use Extended Timestamps:**
 ```cpp
+// 2023/12/31 14:30:45
 dt.timestamp(TIMESTAMP_DATETIME12);
 // Returns: "2023-12-31  2:30:45 PM"
 ```
 
 4. **Access Registers Directly:**
 ```cpp
+// 2023/12/31 14:30:45
 uint8_t day = rtc.read_register(0x03);
 // e.g. day has the value 2 (2nd day of week, "Sunday" in this case as "Saturday" is 1)
 uint8_t date = rtc.read_register(0x04);
